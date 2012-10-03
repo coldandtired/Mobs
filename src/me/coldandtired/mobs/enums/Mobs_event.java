@@ -1,0 +1,25 @@
+package me.coldandtired.mobs.enums;
+
+public enum Mobs_event 
+{
+	//ATTACKED,
+	AUTO,
+	BLOCKS,
+	BURNS,
+	CHANGES_BLOCK,
+	CREATES_PORTAL,
+	DAMAGED,
+	DIES,
+	DYED,
+	EVOLVES,
+	EXPLODES,
+	GROWS_WOOL,
+	HEALS,
+	HIT,
+	SHEARED,
+	SPAWNS,
+	SPLITS,
+	TAMED,
+	TARGETS,
+	TELEPORTS
+}
