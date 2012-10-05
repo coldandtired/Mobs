@@ -3,6 +3,7 @@ package me.coldandtired.mobs.enums;
 public enum Mobs_event 
 {
 	//ATTACKED,
+	APPROACHED,
 	AUTO,
 	BLOCKS,
 	BURNS,
@@ -16,6 +17,7 @@ public enum Mobs_event
 	GROWS_WOOL,
 	HEALS,
 	HIT,
+	NEAR,
 	SHEARED,
 	SPAWNS,
 	SPLITS,

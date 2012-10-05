@@ -9,8 +9,7 @@ import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Action;
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_action;
-import me.coldandtired.mobs.enums.Mobs_param;
-import me.coldandtired.mobs.enums.Mobs_subelement;
+import me.coldandtired.mobs.enums.Mobs_const;
 import me.coldandtired.mobs.enums.Mobs_event;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Mobs_number;
@@ -18,6 +17,7 @@ import me.coldandtired.mobs.subelements.Target;
 
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
+import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -35,6 +35,7 @@ import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
+import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -75,14 +76,14 @@ public class Action_manager
 			case GIVE_ITEM:
 			case REMOVE_ITEM:
 			case CLEAR_ITEMS:
-				give_item(a);
+				give_item(a, le);
 				break;
 			case DROP_EXP:
 				drop_exp(a, le);
 				break;
 			case SET_EXP:
 			case SET_LEVEL:
-				give_exp(a);
+				give_exp(a, le);
 				break;
 			case PRESS_BUTTON:
 				activate_mechanism(a, "button");
@@ -117,7 +118,7 @@ public class Action_manager
 				break;
 			case DAMAGE:
 			case KILL:
-				damage_player(a);
+				damage_player(a, le);
 				break;
 			case SET_TIME:
 				change_time(a);
@@ -149,7 +150,25 @@ public class Action_manager
 					((Cancellable)orig_event).setCancelled(true);
 					Mobs.debug("CANCEL_EVENT");
 				}
-				break;				
+				break;	
+			case PLAY_BLAZE_EFFECT:
+			case PLAY_BOW_EFFECT:
+			case PLAY_CLICK1_EFFECT:
+			case PLAY_CLICK2_EFFECT:
+			case PLAY_DOOR_EFFECT:
+			case PLAY_ENDER_EFFECT:
+			case PLAY_EXTINGUISH_EFFECT:
+			case PLAY_GHAST1_EFFECT:
+			case PLAY_GHAST2_EFFECT:
+			case PLAY_FLAMES_EFFECT:
+			case PLAY_POTION_EFFECT:
+			case PLAY_SMOKE_EFFECT:
+			case PLAY_STEP_EFFECT:
+			case PLAY_ZOMBIE1_EFFECT:
+			case PLAY_ZOMBIE2_EFFECT:
+			case PLAY_ZOMBIE3_EFFECT:
+				playEffect(a, le);
+				break;
 			default:				
 				setProperty(a, le);
 				Mobs.debug(a.getAction_type().toString());
@@ -157,10 +176,70 @@ public class Action_manager
 		}
 	}
 	
+	private void playEffect(Action a, LivingEntity le)
+	{
+		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
+		if (loc == null) return;
+		
+		Effect effect = null;
+		switch (a.getAction_type())
+		{
+			case PLAY_BLAZE_EFFECT:
+				effect = Effect.BLAZE_SHOOT;
+				break;
+			case PLAY_BOW_EFFECT:
+				effect = Effect.BOW_FIRE;
+				break;
+			case PLAY_CLICK1_EFFECT:
+				effect = Effect.CLICK1;
+				break;
+			case PLAY_CLICK2_EFFECT:
+				effect = Effect.CLICK2;
+				break;
+			case PLAY_DOOR_EFFECT:
+				effect = Effect.DOOR_TOGGLE;
+				break;
+			case PLAY_ENDER_EFFECT:
+				effect = Effect.ENDER_SIGNAL;
+				break;
+			case PLAY_EXTINGUISH_EFFECT:
+				effect = Effect.EXTINGUISH;
+				break;
+			case PLAY_GHAST1_EFFECT:
+				effect = Effect.GHAST_SHOOT;
+				break;
+			case PLAY_GHAST2_EFFECT:
+				effect = Effect.GHAST_SHRIEK;
+				break;
+			case PLAY_FLAMES_EFFECT:
+				effect = Effect.MOBSPAWNER_FLAMES;
+				break;
+			case PLAY_POTION_EFFECT:
+				effect = Effect.POTION_BREAK;
+				break;
+			case PLAY_SMOKE_EFFECT:
+				effect = Effect.SMOKE;
+				break;
+			case PLAY_STEP_EFFECT:
+				effect = Effect.STEP_SOUND;
+				break;
+			case PLAY_ZOMBIE1_EFFECT:
+				effect = Effect.ZOMBIE_CHEW_IRON_DOOR;
+				break;
+			case PLAY_ZOMBIE2_EFFECT:
+				effect = Effect.ZOMBIE_CHEW_WOODEN_DOOR;
+				break;
+			case PLAY_ZOMBIE3_EFFECT:
+				effect = Effect.ZOMBIE_DESTROY_DOOR;
+				break;
+		}
+		loc.getWorld().playEffect(loc, effect, 10);
+	}
+	
 	private void setProperty(Action a, LivingEntity le)
 	{
 		Target target = a.getTarget();
-		if (target != null && target.getTarget_type() == Mobs_subelement.PLAYER) le = Bukkit.getPlayer(target.getString_param(Mobs_param.NAME));
+		if (target != null && target.getTarget_type() == Mobs_const.PLAYER) le = Bukkit.getPlayer(target.getString_param(Mobs_const.NAME));
 				
 		if (le instanceof Animals) setAnimal_property(a, (Animals)le);
 		if (le instanceof Monster) setMonster_property(a, (Monster)le);
@@ -169,42 +248,42 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_CAN_BURN_NO:
-				putData(le, Mobs_param.NO_BURN);
+				putData(le, Mobs_const.NO_BURN);
 				break;
 			case SET_CAN_BURN_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_param.NO_BURN); else removeData(le, Mobs_param.NO_BURN);
+				if (rng.nextBoolean()) putData(le, Mobs_const.NO_BURN); else removeData(le, Mobs_const.NO_BURN);
 				break;
 			case SET_CAN_BURN_YES:
-				removeData(le, Mobs_param.NO_BURN);
+				removeData(le, Mobs_const.NO_BURN);
 				break;
 			case TOGGLE_CAN_BURN:
-				if (hasData(le, Mobs_param.NO_BURN)) removeData(le, Mobs_param.NO_BURN); else putData(le, Mobs_param.NO_BURN); 
+				if (hasData(le, Mobs_const.NO_BURN)) removeData(le, Mobs_const.NO_BURN); else putData(le, Mobs_const.NO_BURN); 
 				break;
 								
 			case SET_CAN_HEAL_NO:
-				putData(le, Mobs_param.NO_HEAL);
+				putData(le, Mobs_const.NO_HEAL);
 				break;
 			case SET_CAN_HEAL_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_param.NO_HEAL); else removeData(le, Mobs_param.NO_HEAL);
+				if (rng.nextBoolean()) putData(le, Mobs_const.NO_HEAL); else removeData(le, Mobs_const.NO_HEAL);
 				break;
 			case SET_CAN_HEAL_YES:
-				removeData(le, Mobs_param.NO_HEAL);
+				removeData(le, Mobs_const.NO_HEAL);
 				break;
 			case TOGGLE_CAN_HEAL:
-				if (hasData(le, Mobs_param.NO_HEAL)) removeData(le, Mobs_param.NO_HEAL); else putData(le, Mobs_param.NO_HEAL);
+				if (hasData(le, Mobs_const.NO_HEAL)) removeData(le, Mobs_const.NO_HEAL); else putData(le, Mobs_const.NO_HEAL);
 				break;
 								
 			case SET_CAN_OVERHEAL_NO:
-				putData(le, Mobs_param.NO_OVERHEAL);
+				putData(le, Mobs_const.NO_OVERHEAL);
 				break;
 			case SET_CAN_OVERHEAL_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_param.NO_OVERHEAL); else removeData(le, Mobs_param.NO_OVERHEAL);
+				if (rng.nextBoolean()) putData(le, Mobs_const.NO_OVERHEAL); else removeData(le, Mobs_const.NO_OVERHEAL);
 				break;
 			case SET_CAN_OVERHEAL_YES:
-				removeData(le, Mobs_param.NO_OVERHEAL);
+				removeData(le, Mobs_const.NO_OVERHEAL);
 				break;	
 			case TOGGLE_CAN_OVERHEAL:
-				if (hasData(le, Mobs_param.NO_OVERHEAL)) removeData(le, Mobs_param.NO_OVERHEAL); else putData(le, Mobs_param.NO_OVERHEAL);
+				if (hasData(le, Mobs_const.NO_OVERHEAL)) removeData(le, Mobs_const.NO_OVERHEAL); else putData(le, Mobs_const.NO_OVERHEAL);
 				break;
 			
 			case SET_FIRE_EFFECT_NO:
@@ -217,7 +296,7 @@ public class Action_manager
 				return;
 			
 			case SET_MOB_NAME:
-				putData(le ,Mobs_param.NAME, a.getString_param(Mobs_param.NAME));
+				putData(le ,Mobs_const.NAME, a.getString_param(Mobs_const.NAME));
 			break;
 				//case SET_HP:
 				//	q = number.getAbsolute_value(le2.getHealth());
@@ -227,7 +306,7 @@ public class Action_manager
 	}
 	
 	@SuppressWarnings("unchecked")
-	private boolean hasData(LivingEntity le, Mobs_param param)
+	private boolean hasData(LivingEntity le, Mobs_const param)
 	{
 		if (le.hasMetadata("mobs_data"))
 		{
@@ -236,7 +315,7 @@ public class Action_manager
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void putData(LivingEntity le, Mobs_param param)
+	private void putData(LivingEntity le, Mobs_const param)
 	{
 		Map<String, Object> data;
 		if (le.hasMetadata("mobs_data"))
@@ -253,7 +332,7 @@ public class Action_manager
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void putData(LivingEntity le, Mobs_param param, Object value)
+	private void putData(LivingEntity le, Mobs_const param, Object value)
 	{
 		Map<String, Object> data;
 		if (le.hasMetadata("mobs_data"))
@@ -270,7 +349,7 @@ public class Action_manager
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void removeData(LivingEntity le, Mobs_param param)
+	private void removeData(LivingEntity le, Mobs_const param)
 	{
 		if (le.hasMetadata("mobs_data"))
 		{
@@ -295,6 +374,13 @@ public class Action_manager
 			case TOGGLE_ADULT:
 				if (animal.isAdult()) animal.setBaby(); else animal.setAdult();
 				return;
+			
+			case SET_OWNER:
+				if (animal instanceof Tameable)
+				{
+					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString_param(Mobs_const.NAME)));
+				}
+				return;
 		}
 		
 		switch (animal.getType())
@@ -316,16 +402,16 @@ public class Action_manager
 				switch (a.getAction_type())
 				{
 					case SET_CAN_BE_SHEARED_NO:
-						putData(animal, Mobs_param.NO_SHEARED);
+						putData(animal, Mobs_const.NO_SHEARED);
 						return;
 					case SET_CAN_BE_SHEARED_RANDOM:
-						if (rng.nextBoolean()) putData(animal, Mobs_param.NO_SHEARED); else removeData(animal, Mobs_param.NO_SHEARED);
+						if (rng.nextBoolean()) putData(animal, Mobs_const.NO_SHEARED); else removeData(animal, Mobs_const.NO_SHEARED);
 						return;
 					case SET_CAN_BE_SHEARED_YES:
-						removeData(animal, Mobs_param.NO_SHEARED);
+						removeData(animal, Mobs_const.NO_SHEARED);
 						return;
 					case TOGGLE_CAN_BE_SHEARED:
-						if (hasData(animal, Mobs_param.NO_SHEARED)) removeData(animal, Mobs_param.NO_SHEARED); else putData(animal ,Mobs_param.NO_SHEARED);
+						if (hasData(animal, Mobs_const.NO_SHEARED)) removeData(animal, Mobs_const.NO_SHEARED); else putData(animal ,Mobs_const.NO_SHEARED);
 						return;
 				}
 				break;				
@@ -338,7 +424,7 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_FRIENDLY_YES:
-				putData(monster, Mobs_param.FRIENDLY);
+				putData(monster, Mobs_const.FRIENDLY);
 				return;
 		}
 		
@@ -369,33 +455,33 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_CAN_EVOLVE_NO:
-				putData(creeper, Mobs_param.NO_EVOLVE);
+				putData(creeper, Mobs_const.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_RANDOM:
-				if (rng.nextBoolean()) putData(creeper, Mobs_param.NO_EVOLVE); else removeData(creeper, Mobs_param.NO_EVOLVE);
+				if (rng.nextBoolean()) putData(creeper, Mobs_const.NO_EVOLVE); else removeData(creeper, Mobs_const.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_YES:
-				removeData(creeper, Mobs_param.NO_EVOLVE);
+				removeData(creeper, Mobs_const.NO_EVOLVE);
 				return;
 			case TOGGLE_CAN_EVOLVE:
-				if (hasData(creeper, Mobs_param.NO_EVOLVE)) removeData(creeper, Mobs_param.NO_EVOLVE); else putData(creeper, Mobs_param.NO_EVOLVE);
+				if (hasData(creeper, Mobs_const.NO_EVOLVE)) removeData(creeper, Mobs_const.NO_EVOLVE); else putData(creeper, Mobs_const.NO_EVOLVE);
 				return;
 				
 			case SET_FIERY_EXPLOSION_NO:
-				removeData(creeper, Mobs_param.FIERY_EXPLOSION);
+				removeData(creeper, Mobs_const.FIERY_EXPLOSION);
 				return;
 			case SET_FIERY_EXPLOSION_RANDOM:
-				if (rng.nextBoolean()) putData(creeper, Mobs_param.FIERY_EXPLOSION); else removeData(creeper, Mobs_param.FIERY_EXPLOSION);
+				if (rng.nextBoolean()) putData(creeper, Mobs_const.FIERY_EXPLOSION); else removeData(creeper, Mobs_const.FIERY_EXPLOSION);
 				return;
 			case SET_FIERY_EXPLOSION_YES:
-				putData(creeper, Mobs_param.FIERY_EXPLOSION);
+				putData(creeper, Mobs_const.FIERY_EXPLOSION);
 				return;	
 			case TOGGLE_FIERY_EXPLOSION:
-				if (hasData(creeper, Mobs_param.FIERY_EXPLOSION)) removeData(creeper, Mobs_param.FIERY_EXPLOSION); else putData(creeper, Mobs_param.FIERY_EXPLOSION);
+				if (hasData(creeper, Mobs_const.FIERY_EXPLOSION)) removeData(creeper, Mobs_const.FIERY_EXPLOSION); else putData(creeper, Mobs_const.FIERY_EXPLOSION);
 				return;
 				
 			case SET_EXPLOSION_SIZE:
-				putData(creeper ,Mobs_param.EXPLOSION_SIZE, a.getMobs_number().getAbsolute_value(0));
+				putData(creeper ,Mobs_const.EXPLOSION_SIZE, a.getMobs_number().getAbsolute_value(0));
 				return;	
 		}		
 		
@@ -421,16 +507,16 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_BE_TAMED_NO:
-				putData(wolf, Mobs_param.NO_TAMED);
+				putData(wolf, Mobs_const.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_RANDOM:
-				if (rng.nextBoolean()) putData(wolf, Mobs_param.NO_TAMED); else removeData(wolf, Mobs_param.NO_TAMED);
+				if (rng.nextBoolean()) putData(wolf, Mobs_const.NO_TAMED); else removeData(wolf, Mobs_const.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_YES:
-				removeData(wolf, Mobs_param.NO_TAMED);
+				removeData(wolf, Mobs_const.NO_TAMED);
 				return;
 			case TOGGLE_CAN_BE_TAMED:
-				if (hasData(wolf, Mobs_param.NO_TAMED)) removeData(wolf, Mobs_param.NO_TAMED); else putData(wolf, Mobs_param.NO_TAMED);
+				if (hasData(wolf, Mobs_const.NO_TAMED)) removeData(wolf, Mobs_const.NO_TAMED); else putData(wolf, Mobs_const.NO_TAMED);
 				return;
 		}
 		
@@ -469,29 +555,29 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_MOVE_BLOCKS_NO:
-				putData(enderman, Mobs_param.NO_MOVE_BLOCKS);
+				putData(enderman, Mobs_const.NO_MOVE_BLOCKS);
 				return;
 			case SET_CAN_MOVE_BLOCKS_RANDOM:
-				if (rng.nextBoolean()) putData(enderman, Mobs_param.NO_MOVE_BLOCKS); else removeData(enderman, Mobs_param.NO_MOVE_BLOCKS);
+				if (rng.nextBoolean()) putData(enderman, Mobs_const.NO_MOVE_BLOCKS); else removeData(enderman, Mobs_const.NO_MOVE_BLOCKS);
 				return;
 			case SET_CAN_MOVE_BLOCKS_YES:
-				removeData(enderman, Mobs_param.NO_MOVE_BLOCKS);
+				removeData(enderman, Mobs_const.NO_MOVE_BLOCKS);
 				return;	
 			case TOGGLE_CAN_MOVE_BLOCKS:
-				if (hasData(enderman, Mobs_param.NO_MOVE_BLOCKS)) removeData(enderman, Mobs_param.NO_MOVE_BLOCKS); else putData(enderman, Mobs_param.NO_MOVE_BLOCKS);
+				if (hasData(enderman, Mobs_const.NO_MOVE_BLOCKS)) removeData(enderman, Mobs_const.NO_MOVE_BLOCKS); else putData(enderman, Mobs_const.NO_MOVE_BLOCKS);
 				return;
 				
 			case SET_CAN_TELEPORT_NO:
-				putData(enderman, Mobs_param.NO_TELEPORT);
+				putData(enderman, Mobs_const.NO_TELEPORT);
 				return;
 			case SET_CAN_TELEPORT_RANDOM:
-				if (rng.nextBoolean()) putData(enderman, Mobs_param.NO_TELEPORT); else removeData(enderman, Mobs_param.NO_TELEPORT);
+				if (rng.nextBoolean()) putData(enderman, Mobs_const.NO_TELEPORT); else removeData(enderman, Mobs_const.NO_TELEPORT);
 				return;
 			case SET_CAN_TELEPORT_YES:
-				removeData(enderman, Mobs_param.NO_TELEPORT);
+				removeData(enderman, Mobs_const.NO_TELEPORT);
 				return;	
 			case TOGGLE_CAN_TELEPORT:
-				if (hasData(enderman, Mobs_param.NO_TELEPORT)) removeData(enderman, Mobs_param.NO_TELEPORT); else putData(enderman, Mobs_param.NO_TELEPORT);
+				if (hasData(enderman, Mobs_const.NO_TELEPORT)) removeData(enderman, Mobs_const.NO_TELEPORT); else putData(enderman, Mobs_const.NO_TELEPORT);
 				return;	
 		}
 		
@@ -506,29 +592,29 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_CREATE_PORTALS_NO:
-				putData(ender_dragon, Mobs_param.NO_CREATE_PORTALS);
+				putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
 				return;
 			case SET_CAN_CREATE_PORTALS_RANDOM:
-				if (rng.nextBoolean()) putData(ender_dragon, Mobs_param.NO_CREATE_PORTALS); else removeData(ender_dragon, Mobs_param.NO_CREATE_PORTALS);
+				if (rng.nextBoolean()) putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS); else removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
 				return;
 			case SET_CAN_CREATE_PORTALS_YES:
-				removeData(ender_dragon, Mobs_param.NO_CREATE_PORTALS);
+				removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
 				return;	
 			case TOGGLE_CAN_CREATE_PORTALS:
-				if (hasData(ender_dragon, Mobs_param.NO_CREATE_PORTALS)) removeData(ender_dragon, Mobs_param.NO_CREATE_PORTALS); else putData(ender_dragon, Mobs_param.NO_CREATE_PORTALS);
+				if (hasData(ender_dragon, Mobs_const.NO_CREATE_PORTALS)) removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS); else putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
 				return;
 				
 			case SET_CAN_DESTROY_BLOCKS_NO:
-				putData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS);
+				putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
 				return;
 			case SET_CAN_DESTROY_BLOCKS_RANDOM:
-				if (rng.nextBoolean()) putData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS); else removeData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS);
+				if (rng.nextBoolean()) putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS); else removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
 				return;
 			case SET_CAN_DESTROY_BLOCKS_YES:
-				removeData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS);
+				removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
 				return;	
 			case TOGGLE_CAN_DESTROY_BLOCKS:
-				if (hasData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS)) removeData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS); else putData(ender_dragon, Mobs_param.NO_DESTROY_BLOCKS);
+				if (hasData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS)) removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS); else putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
 				return;
 		}		
 		
@@ -562,16 +648,16 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_BE_TAMED_NO:
-				putData(ocelot, Mobs_param.NO_TAMED);
+				putData(ocelot, Mobs_const.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_RANDOM:
-				if (rng.nextBoolean()) putData(ocelot, Mobs_param.NO_TAMED); else removeData(ocelot, Mobs_param.NO_TAMED);
+				if (rng.nextBoolean()) putData(ocelot, Mobs_const.NO_TAMED); else removeData(ocelot, Mobs_const.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_YES:
-				removeData(ocelot, Mobs_param.NO_TAMED);
+				removeData(ocelot, Mobs_const.NO_TAMED);
 				return;
 			case TOGGLE_CAN_BE_TAMED:
-				if (hasData(ocelot, Mobs_param.NO_TAMED)) removeData(ocelot, Mobs_param.NO_TAMED); else putData(ocelot, Mobs_param.NO_TAMED);
+				if (hasData(ocelot, Mobs_const.NO_TAMED)) removeData(ocelot, Mobs_const.NO_TAMED); else putData(ocelot, Mobs_const.NO_TAMED);
 				return;
 		}
 		
@@ -599,29 +685,29 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_BE_SADDLED_NO:
-				putData(pig, Mobs_param.NO_SADDLED);
+				putData(pig, Mobs_const.NO_SADDLED);
 				return;
 			case SET_CAN_BE_SADDLED_RANDOM:
-				if (rng.nextBoolean()) putData(pig, Mobs_param.NO_SADDLED); else removeData(pig, Mobs_param.NO_SADDLED);
+				if (rng.nextBoolean()) putData(pig, Mobs_const.NO_SADDLED); else removeData(pig, Mobs_const.NO_SADDLED);
 				return;
 			case SET_CAN_BE_SADDLED_YES:
-				removeData(pig, Mobs_param.NO_SADDLED);
+				removeData(pig, Mobs_const.NO_SADDLED);
 				return;
 			case TOGGLE_CAN_BE_SADDLED:
-				if (hasData(pig, Mobs_param.NO_SADDLED)) removeData(pig, Mobs_param.NO_SADDLED); else putData(pig, Mobs_param.NO_SADDLED);
+				if (hasData(pig, Mobs_const.NO_SADDLED)) removeData(pig, Mobs_const.NO_SADDLED); else putData(pig, Mobs_const.NO_SADDLED);
 				return;
 				
 			case SET_CAN_EVOLVE_NO:
-				putData(pig, Mobs_param.NO_EVOLVE);
+				putData(pig, Mobs_const.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_RANDOM:
-				if (rng.nextBoolean()) putData(pig, Mobs_param.NO_EVOLVE); else removeData(pig, Mobs_param.NO_EVOLVE);
+				if (rng.nextBoolean()) putData(pig, Mobs_const.NO_EVOLVE); else removeData(pig, Mobs_const.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_YES:
-				removeData(pig, Mobs_param.NO_EVOLVE);
+				removeData(pig, Mobs_const.NO_EVOLVE);
 				return;
 			case TOGGLE_CAN_EVOLVE:
-				if (hasData(pig, Mobs_param.NO_EVOLVE)) removeData(pig, Mobs_param.NO_EVOLVE); else putData(pig, Mobs_param.NO_EVOLVE);
+				if (hasData(pig, Mobs_const.NO_EVOLVE)) removeData(pig, Mobs_const.NO_EVOLVE); else putData(pig, Mobs_const.NO_EVOLVE);
 				return;
 		}
 
@@ -647,55 +733,55 @@ public class Action_manager
 		switch (a)
 		{
 			case SET_CAN_BE_DYED_NO:
-				putData(sheep ,Mobs_param.NO_DYED);
+				putData(sheep ,Mobs_const.NO_DYED);
 				return;
 			case SET_CAN_BE_DYED_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_param.NO_DYED); else removeData(sheep ,Mobs_param.NO_DYED);
+				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_DYED); else removeData(sheep ,Mobs_const.NO_DYED);
 				return;
 			case SET_CAN_BE_DYED_YES:
-				removeData(sheep ,Mobs_param.NO_DYED);
+				removeData(sheep ,Mobs_const.NO_DYED);
 				return;
 			case TOGGLE_CAN_BE_DYED:
-				if (hasData(sheep ,Mobs_param.NO_DYED)) removeData(sheep ,Mobs_param.NO_DYED); else putData(sheep ,Mobs_param.NO_DYED);
+				if (hasData(sheep ,Mobs_const.NO_DYED)) removeData(sheep ,Mobs_const.NO_DYED); else putData(sheep ,Mobs_const.NO_DYED);
 				return;
 				
 			case SET_CAN_BE_SHEARED_NO:
-				putData(sheep ,Mobs_param.NO_SHEARED);
+				putData(sheep ,Mobs_const.NO_SHEARED);
 				return;
 			case SET_CAN_BE_SHEARED_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_param.NO_SHEARED); else removeData(sheep ,Mobs_param.NO_SHEARED);
+				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_SHEARED); else removeData(sheep ,Mobs_const.NO_SHEARED);
 				return;
 			case SET_CAN_BE_SHEARED_YES:
-				removeData(sheep ,Mobs_param.NO_SHEARED);
+				removeData(sheep ,Mobs_const.NO_SHEARED);
 				return;
 			case TOGGLE_CAN_BE_SHEARED:
-				if (hasData(sheep ,Mobs_param.NO_SHEARED)) removeData(sheep ,Mobs_param.NO_SHEARED); else putData(sheep ,Mobs_param.NO_SHEARED);
+				if (hasData(sheep ,Mobs_const.NO_SHEARED)) removeData(sheep ,Mobs_const.NO_SHEARED); else putData(sheep ,Mobs_const.NO_SHEARED);
 				return;
 				
 			case SET_CAN_GRAZE_NO:
-				putData(sheep ,Mobs_param.NO_GRAZE);
+				putData(sheep ,Mobs_const.NO_GRAZE);
 				return;
 			case SET_CAN_GRAZE_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_param.NO_GRAZE); else removeData(sheep ,Mobs_param.NO_GRAZE);
+				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_GRAZE); else removeData(sheep ,Mobs_const.NO_GRAZE);
 				return;
 			case SET_CAN_GRAZE_YES:
-				removeData(sheep ,Mobs_param.NO_GRAZE);
+				removeData(sheep ,Mobs_const.NO_GRAZE);
 				return;
 			case TOGGLE_CAN_GRAZE:
-				if (hasData(sheep ,Mobs_param.NO_GRAZE)) removeData(sheep ,Mobs_param.NO_GRAZE); else putData(sheep ,Mobs_param.NO_GRAZE);
+				if (hasData(sheep ,Mobs_const.NO_GRAZE)) removeData(sheep ,Mobs_const.NO_GRAZE); else putData(sheep ,Mobs_const.NO_GRAZE);
 				return;
 				
 			case SET_CAN_GROW_WOOL_NO:
-				putData(sheep ,Mobs_param.NO_GROW_WOOL);
+				putData(sheep ,Mobs_const.NO_GROW_WOOL);
 				return;
 			case SET_CAN_GROW_WOOL_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_param.NO_GROW_WOOL); else removeData(sheep ,Mobs_param.NO_GROW_WOOL);
+				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_GROW_WOOL); else removeData(sheep ,Mobs_const.NO_GROW_WOOL);
 				return;
 			case SET_CAN_GROW_WOOL_YES:
-				removeData(sheep ,Mobs_param.NO_GROW_WOOL);
+				removeData(sheep ,Mobs_const.NO_GROW_WOOL);
 				return;
 			case TOGGLE_CAN_GROW_WOOL:
-				if (hasData(sheep ,Mobs_param.NO_GROW_WOOL)) removeData(sheep ,Mobs_param.NO_GROW_WOOL); else putData(sheep ,Mobs_param.NO_GROW_WOOL);
+				if (hasData(sheep ,Mobs_const.NO_GROW_WOOL)) removeData(sheep ,Mobs_const.NO_GROW_WOOL); else putData(sheep ,Mobs_const.NO_GROW_WOOL);
 				return;
 		}
 
@@ -784,14 +870,14 @@ public class Action_manager
 					break;
 			}
 		}
-		else putData(le, Mobs_param.valueOf(a.getAction_type().toString()));
+		else putData(le, Mobs_const.valueOf(a.getAction_type().toString()));
 		Mobs.debug(a.getAction_type().toString());
 	}
 		
 	private void spawn_mob(Action a, LivingEntity le)
 	{
-		String[] mob = ((String)a.getAlternative(Mobs_param.MOB)).split(":");
-		int amount = a.hasParam(Mobs_param.NUMBER) ? a.getMobs_number().getAbsolute_value(1) : 1;
+		String[] mob = ((String)a.getAlternative(Mobs_const.MOB)).split(":");
+		int amount = a.hasParam(Mobs_const.NUMBER) ? a.getMobs_number().getAbsolute_value(1) : 1;
 		for (int i = 0; i < amount; i++)
 		{
 			Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
@@ -803,18 +889,18 @@ public class Action_manager
 		
 	private void send_message(Action a, LivingEntity le)
 	{
-		String s = (String)a.getAlternative(Mobs_param.MESSAGE);
+		String s = (String)a.getAlternative(Mobs_const.MESSAGE);
 		while (s.contains("^")) s = replace_constants(s, le);
 			
 		if (a.getAction_type() == Mobs_action.SEND_MESSAGE)
 		{
-			Target target = a.getTarget();
-			if (target == null || target.getTarget_type() != Mobs_subelement.PLAYER) return;
-			
-			Player p = Bukkit.getPlayer(target.getString_param(Mobs_param.NAME));
-			if (p == null) return;
-			p.sendMessage(s);
-			Mobs.debug("SEND_MESSAGE, " + p.getName() + ", MESSAGE = " + s);
+			List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
+			if (players == null) return;
+			for (Player p : players)
+			{
+				p.sendMessage(s);
+				Mobs.debug("SEND_MESSAGE, " + ((Player)p).getName() + ", MESSAGE = " + s);
+			}
 		}
 		else if (a.getAction_type() == Mobs_action.BROADCAST)
 		{
@@ -831,7 +917,7 @@ public class Action_manager
 			
 		if (a.getAction_type() == Mobs_action.SET_BLOCK)
 		{
-			Item_drop drop = (Item_drop)a.getAlternative(Mobs_param.ITEM);
+			Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
 			if (drop == null) return;
 			loc.getBlock().setTypeIdAndData(drop.getItem_id(), (byte) drop.getItem_data(), false);
 			Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + 
@@ -848,7 +934,7 @@ public class Action_manager
 	{			
 		World w = Mobs.getInstance().getTarget_manager().getWorld(t);
 		if (w == null) return null;
-		int[] block_loc = t.getInt_array(Mobs_param.BLOCK);
+		int[] block_loc = t.getInt_array(Mobs_const.BLOCK);
 		Block block = w.getBlockAt(block_loc[0], block_loc[1], block_loc[2]);
 		return block.getState();
 	}
@@ -875,24 +961,25 @@ public class Action_manager
 		Mobs.debug(a.getAction_type().toString() + ", POWER = " + p + ", " + get_string_from_loc(loc));
 	}
 	
-	private void damage_player(Action a)
+	private void damage_player(Action a, LivingEntity le)
 	{
-		Target target = a.getTarget();
-		if (target == null || target.getTarget_type() != Mobs_subelement.PLAYER) return;
-				
-		Player p = Bukkit.getPlayer(target.getString_param(Mobs_param.NAME));
-		int q = 0;
-		if (a.getAction_type() == Mobs_action.KILL)
+		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
+		if (players == null) return;
+		for (Player p : players)
 		{
-			p.setHealth(0);
-			Mobs.debug("KILL, " + p.getName());
-		}
-		else
-		{
-			Mobs_number number = a.getMobs_number();
-			q = number.getAbsolute_value(0);
-			p.damage(q);
-			Mobs.debug("DAMAGE, " + p.getName() + ", AMOUNT = " + q);
+			int q = 0;
+			if (a.getAction_type() == Mobs_action.KILL)
+			{
+				p.setHealth(0);
+				Mobs.debug("KILL, " + p.getName());
+			}
+			else
+			{
+				Mobs_number number = a.getMobs_number();
+				q = number.getAbsolute_value(0);
+				p.damage(q);
+				Mobs.debug("DAMAGE, " + p.getName() + ", AMOUNT = " + q);
+			}
 		}
 	}
 	
@@ -932,7 +1019,7 @@ public class Action_manager
 	private void change_time(Action a)
 	{
 		World w = Mobs.getInstance().getTarget_manager().getWorld(a.getTarget());
-		Mobs.log(a.getTarget().getString_param(Mobs_param.NAME));
+		Mobs.log(a.getTarget().getString_param(Mobs_const.NAME));
 		if (w == null) return;
 		
 		Mobs_number number = a.getMobs_number();
@@ -953,7 +1040,7 @@ public class Action_manager
 	
 	private void drop_item(Action a, LivingEntity le)
 	{	
-		Item_drop drop = (Item_drop)a.getAlternative(Mobs_param.ITEM);
+		Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
 		ItemStack is = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
 		
 		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
@@ -962,45 +1049,44 @@ public class Action_manager
 					drop.getItem_id() + ":" + drop.getItem_data());
 	}
 	
-	private void give_item(Action a)
+	private void give_item(Action a, LivingEntity le)
 	{
-		Target target = a.getTarget();
-		if (target == null || target.getTarget_type() != Mobs_subelement.PLAYER) return;		
-		
-		Player p = Bukkit.getPlayer(target.getString_param(Mobs_param.NAME));
-		if (p == null) return;
-		
-		if (a.getAction_type() == Mobs_action.CLEAR_ITEMS)
-		{
-			p.getInventory().clear();
-			Mobs.debug("CLEAR_ITEMS, " + p.getName());
-			return;
-		}	
-		
-		Item_drop drop = (Item_drop)a.getAlternative(Mobs_param.ITEM);
-		if (drop == null) return;
-		
-		ItemStack stack = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
-		
-		if (a.getAction_type() == Mobs_action.GIVE_ITEM)
-		{
-			p.getInventory().addItem(stack);
-		}
-		else
-		{
-			if (a.hasParam(Mobs_param.MATCH_DATA) && a.hasParam(Mobs_param.MATCH_ENCHANTMENTS) && a.hasParam(Mobs_param.MATCH_AMOUNT) == false) p.getInventory().remove(drop.getItem_id());
-			else
-			for (ItemStack is : p.getInventory().getContents())
+		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
+		if (players == null) return;
+		for (Player p : players)
+		{		
+			if (a.getAction_type() == Mobs_action.CLEAR_ITEMS)
 			{
-				if (is == null) continue;
-				if (is.getType() != stack.getType()) continue;
-				if (a.hasParam(Mobs_param.MATCH_DATA) && is.getData().getData() != stack.getData().getData()) continue;
-				if (a.hasParam(Mobs_param.MATCH_AMOUNT) && is.getAmount() != stack.getAmount()) continue;
-				p.getInventory().remove(is);
+				p.getInventory().clear();
+				Mobs.debug("CLEAR_ITEMS, " + p.getName());
+				return;
+			}	
+			
+			Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
+			if (drop == null) return;
+			
+			ItemStack stack = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
+			
+			if (a.getAction_type() == Mobs_action.GIVE_ITEM)
+			{
+				p.getInventory().addItem(stack);
 			}
-		}	
-		Mobs.debug(a.getAction_type().toString() + ", " + p.getName() + ", ITEM = " + 
-				drop.getItem_id() + ":" + drop.getItem_data());	
+			else
+			{
+				if (a.hasParam(Mobs_const.MATCH_DATA) && a.hasParam(Mobs_const.MATCH_ENCHANTMENTS) && a.hasParam(Mobs_const.MATCH_AMOUNT) == false) p.getInventory().remove(drop.getItem_id());
+				else
+				for (ItemStack is : p.getInventory().getContents())
+				{
+					if (is == null) continue;
+					if (is.getType() != stack.getType()) continue;
+					if (a.hasParam(Mobs_const.MATCH_DATA) && is.getData().getData() != stack.getData().getData()) continue;
+					if (a.hasParam(Mobs_const.MATCH_AMOUNT) && is.getAmount() != stack.getAmount()) continue;
+					p.getInventory().remove(is);
+				}
+			}	
+			Mobs.debug(a.getAction_type().toString() + ", " + p.getName() + ", ITEM = " + 
+					drop.getItem_id() + ":" + drop.getItem_data());	
+		}
 	}
 	
 	private void drop_exp(Action a, LivingEntity le)
@@ -1014,49 +1100,48 @@ public class Action_manager
 		Mobs.debug("DROP_EXP, " + get_string_from_loc(loc) + ", AMOUNT = " + q);
 	}
 	
-	private void give_exp(Action a)
+	private void give_exp(Action a, LivingEntity le)
 	{
-		Target target = a.getTarget();
-		if (target == null || target.getTarget_type() != Mobs_subelement.PLAYER) return;
-		
-		Player p = Bukkit.getPlayer(target.getString_param(Mobs_param.NAME));
-		if (p == null) return;
-			
-		Mobs_number number = a.getMobs_number();
-		
-		if (a.getAction_type() == Mobs_action.SET_EXP)
+		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
+		if (players == null) return;
+		for (Player p : players)
 		{
-			int q = number.getAbsolute_value(p.getTotalExperience());
-			if (q <= 272)
+			Mobs_number number = a.getMobs_number();
+			
+			if (a.getAction_type() == Mobs_action.SET_EXP)
 			{
-				int level = q / 17;
-				double d = q / 17.0;
-				p.setLevel(level);
-				p.setExp((float) (d - level));
+				int q = number.getAbsolute_value(p.getTotalExperience());
+				if (q <= 272)
+				{
+					int level = q / 17;
+					double d = q / 17.0;
+					p.setLevel(level);
+					p.setExp((float) (d - level));
+				}
+				else
+				{
+					int temp = 272;
+					int level = 16;
+					int temp2 = 0;
+					while (temp < q)
+					{
+						temp += 20 + temp2;
+						level++;
+						temp2 += 3;
+					}
+					p.setLevel(level);
+					double d = (temp - q * 1.0) / (temp2 + 3);
+					p.setExp((float)d);
+				}
+				p.setTotalExperience(q);
+				Mobs.debug("SET_EXP, " + p.getName() + ", AMOUNT = " + q);
 			}
 			else
 			{
-				int temp = 272;
-				int level = 16;
-				int temp2 = 0;
-				while (temp < q)
-				{
-					temp += 20 + temp2;
-					level++;
-					temp2 += 3;
-				}
-				p.setLevel(level);
-				double d = (temp - q * 1.0) / (temp2 + 3);
-				p.setExp((float)d);
+				int q = number.getAbsolute_value(p.getLevel());
+				p.setLevel(q);	
+				Mobs.debug("SET_LEVEL, " + p.getName() + ", AMOUNT = " + q);
 			}
-			p.setTotalExperience(q);
-			Mobs.debug("SET_EXP, " + p.getName() + ", AMOUNT = " + q);
-		}
-		else
-		{
-			int q = number.getAbsolute_value(p.getLevel());
-			p.setLevel(q);	
-			Mobs.debug("SET_LEVEL, " + p.getName() + ", AMOUNT = " + q);
 		}
 	}
 	

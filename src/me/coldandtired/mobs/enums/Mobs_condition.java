@@ -6,7 +6,6 @@ public enum Mobs_condition
 	ANGRY,
 	AREA,
 	//ATTACKER_TYPE
-	//autospawnid
 	BIOME,
 	//CAN_BREED,
 	//CHUNK_MOB_COUNT,
@@ -26,6 +25,7 @@ public enum Mobs_condition
 	NOT_DEATH_CAUSE,
 	NOT_KILLED_BY_PLAYER,
 	NOT_NAME,
+	NOT_OWNER,
 	NOT_POWERED,
 	NOT_RAINING,
 	NOT_SADDLED,
@@ -34,6 +34,7 @@ public enum Mobs_condition
 	NOT_TAMED,
 	NOT_THUNDERING,
 	NOT_WORLD_NAME,
+	OWNER,
 	//MOB_NOT_STANDING_ON,
 	//MOB_STANDING_ON,
 	//OCELOT_TYPE,
@@ -52,6 +53,7 @@ public enum Mobs_condition
 	SHEARED,
 	SPAWN_REASON,
 	TAMED,
+	//owner name
 	THUNDERING,
 	//time conditions
 	//VILLAGER_TYPE,

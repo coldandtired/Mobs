@@ -2,7 +2,9 @@ package me.coldandtired.mobs;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -15,7 +17,10 @@ import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_action;
 import me.coldandtired.mobs.enums.Mobs_condition;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_subelement;
+import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.events.Mob_approached_event;
+import me.coldandtired.mobs.events.Mob_near_event;
+import me.coldandtired.mobs.listeners.Approached_listener;
 import me.coldandtired.mobs.listeners.Blocks_listener;
 import me.coldandtired.mobs.listeners.Burns_listener;
 import me.coldandtired.mobs.listeners.Changes_block_listener;
@@ -28,6 +33,7 @@ import me.coldandtired.mobs.listeners.Explodes_listener;
 import me.coldandtired.mobs.listeners.Grows_wool_listener;
 import me.coldandtired.mobs.listeners.Heals_listener;
 import me.coldandtired.mobs.listeners.Hit_listener;
+import me.coldandtired.mobs.listeners.Near_listener;
 import me.coldandtired.mobs.listeners.Sheared_listener;
 import me.coldandtired.mobs.listeners.Spawns_listener;
 import me.coldandtired.mobs.listeners.Splits_listener;
@@ -38,9 +44,15 @@ import me.coldandtired.mobs.managers.Action_manager;
 import me.coldandtired.mobs.managers.Event_manager;
 import me.coldandtired.mobs.managers.Target_manager;
 
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
@@ -66,6 +78,8 @@ public class Mobs extends JavaPlugin
 	private List<Outcome> repeating_outcomes = null;
 	private static int log_level = 1;
 	private static boolean disable_timer = false;
+	private boolean approached = false;
+	private boolean near = false;
 	
 	@Override
 	public void onEnable()
@@ -113,7 +127,7 @@ public class Mobs extends JavaPlugin
 				setupListeners(xpath, input);
 				if (!disable_timer)
 				{
-					NodeList list = (NodeList)xpath.evaluate("mobs/repeating_outcomes/outcome", input, XPathConstants.NODESET);
+					NodeList list = getList(xpath, input, "repeating_outcomes");
 					if (list.getLength() > 0)
 					{
 						repeating_outcomes = new ArrayList<Outcome>();
@@ -142,11 +156,63 @@ public class Mobs extends JavaPlugin
 	
 	private void timerTick()
 	{
+		checkNearbyPlayers();
+		// remaining life
 		if (repeating_outcomes != null)
 		{
 			for (Outcome o : repeating_outcomes)
 			{
 				if (o.canTick()) event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false);
+			}
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void checkNearbyPlayers()
+	{
+		for (World w : Bukkit.getWorlds())
+		{
+			for (Player p : w.getEntitiesByClass(Player.class))
+			{
+				List<Entity> all = p.getNearbyEntities(10, 4, 10);
+				List<Entity> temp = new ArrayList<Entity>(all);
+				if (approached)
+				{
+					if (p.hasMetadata("mobs_data"))
+					{
+						Map<String, Object> data = (Map<String, Object>) p.getMetadata("mobs_data").get(0).value();
+						if (data.containsKey(Mobs_const.NEARBY_MOBS.toString()))
+						{
+							all.removeAll((List<Entity>) data.get(Mobs_const.NEARBY_MOBS.toString()));
+							data.put(Mobs_const.NEARBY_MOBS.toString(), temp);						
+						}
+					}
+					else
+					{
+						Map<String, Object> data = new HashMap<String, Object>();
+						data.put(Mobs_const.NEARBY_MOBS.toString(), all);
+						p.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data)); 
+					}
+					
+					for (Entity e : all)
+					{
+						if (e instanceof LivingEntity)
+						{
+							getServer().getPluginManager().callEvent(new Mob_approached_event((LivingEntity)e, p));
+						}
+					}
+				}
+				
+				if (near)
+				{
+					for (Entity e :temp)
+					{
+						if (e instanceof LivingEntity)
+						{
+							getServer().getPluginManager().callEvent(new Mob_near_event((LivingEntity)e, p));
+						}
+					}
+				}
 			}
 		}
 	}
@@ -227,6 +293,20 @@ public class Mobs extends JavaPlugin
 		
 		list = getList(xpath, input, "explodes");
 		if (list.getLength() > 0) pm.registerEvents(new Explodes_listener(getEvent_outcomes(xpath, list)), this);
+		
+		list = getList(xpath, input, "approached");
+		if (list.getLength() > 0) 
+		{
+			approached = true;
+			pm.registerEvents(new Approached_listener(getEvent_outcomes(xpath, list)), this);
+		} else approached = false;
+		
+		list = getList(xpath, input, "near");
+		if (list.getLength() > 0)
+		{
+			near = true;
+			pm.registerEvents(new Near_listener(getEvent_outcomes(xpath, list)), this);
+		} else near = false;
 	}
 	
 	private NodeList getList(XPath xpath, InputSource input, String s)
@@ -300,7 +380,7 @@ public class Mobs extends JavaPlugin
 				{
 					log("Implemented targets");
 					log("----------------------");
-					for (Mobs_subelement mt : Mobs_subelement.values()) log(mt.toString().toLowerCase());
+					for (Mobs_const mt : Mobs_const.values()) log(mt.toString().toLowerCase());
 					log("See ... for more info");
 					return true;
 				}

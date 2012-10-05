@@ -3,29 +3,28 @@ package me.coldandtired.mobs.subelements;
 import javax.xml.xpath.XPath;
 
 import me.coldandtired.mobs.elements.Param_base;
-import me.coldandtired.mobs.enums.Mobs_param;
-import me.coldandtired.mobs.enums.Mobs_subelement;
+import me.coldandtired.mobs.enums.Mobs_const;
 import org.w3c.dom.Element;
 
 public class Target extends Param_base
 {	
-	private Mobs_subelement target_type;
+	private Mobs_const target_type;
 	
 	public Target(XPath xpath, Element el)
 	{	
 		super(xpath, el);
-		target_type = Mobs_subelement.valueOf(el.getLocalName().toUpperCase());
+		target_type = Mobs_const.valueOf(el.getLocalName().toUpperCase());
 		String s = "name";
-		if (el.hasAttribute(s)) params.put(Mobs_param.NAME, el.getAttribute(s));
+		if (el.hasAttribute(s)) params.put(Mobs_const.NAME, el.getAttribute(s));
 		s = "location";
-		if (el.hasAttribute(s)) params.put(Mobs_param.BLOCK, set_area(el.getAttribute(s)));
+		if (el.hasAttribute(s)) params.put(Mobs_const.BLOCK, set_area(el.getAttribute(s)));
 		s = "radius";
-		if (el.hasAttribute(s)) params.put(Mobs_param.RADIUS, set_area(el.getAttribute(s)));
+		if (el.hasAttribute(s)) params.put(Mobs_const.RADIUS, set_area(el.getAttribute(s)));
 		s = "safe_radius";
-		if (el.hasAttribute(s)) params.put(Mobs_param.SAFE_RADIUS, set_area(el.getAttribute(s)));	
+		if (el.hasAttribute(s)) params.put(Mobs_const.SAFE_RADIUS, set_area(el.getAttribute(s)));	
 	}
 
-	public Mobs_subelement getTarget_type() 
+	public Mobs_const getTarget_type() 
 	{		
 		return target_type;
 	}

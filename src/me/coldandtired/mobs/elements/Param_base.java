@@ -10,28 +10,27 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import me.coldandtired.mobs.enums.Mobs_action;
-import me.coldandtired.mobs.enums.Mobs_param;
-import me.coldandtired.mobs.enums.Mobs_subelement;
+import me.coldandtired.mobs.enums.Mobs_const;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Mobs_number;
 import me.coldandtired.mobs.subelements.Target;
 
 public class Param_base 
 {
-	protected Map<Mobs_param, Object> params = new HashMap<Mobs_param, Object>();
+	protected Map<Mobs_const, Object> params = new HashMap<Mobs_const, Object>();
 
 	public Param_base(XPath xpath, Element el)
 	{
 		String s = "match_data";
-		if (el.hasAttribute(s)) addParam(Mobs_param.MATCH_DATA);
+		if (el.hasAttribute(s)) addParam(Mobs_const.MATCH_DATA);
 		s = "match_amount";
-		if (el.hasAttribute(s)) addParam(Mobs_param.MATCH_AMOUNT);
+		if (el.hasAttribute(s)) addParam(Mobs_const.MATCH_AMOUNT);
 		s = "match_enchantments";
-		if (el.hasAttribute(s)) addParam(Mobs_param.MATCH_ENCHANTMENTS);
+		if (el.hasAttribute(s)) addParam(Mobs_const.MATCH_ENCHANTMENTS);
 		s = "world";
-		if (el.hasAttribute(s)) params.put(Mobs_param.WORLD, el.getAttribute(s));
+		if (el.hasAttribute(s)) params.put(Mobs_const.WORLD, el.getAttribute(s));
 		s = "value";
-		if (el.hasAttribute(s)) params.put(Mobs_param.VALUE, el.getAttribute(s));
+		if (el.hasAttribute(s)) params.put(Mobs_const.VALUE, el.getAttribute(s));
 		
 		try
 		{
@@ -57,12 +56,13 @@ public class Param_base
 					
 					try
 					{
-						Mobs_subelement sub = Mobs_subelement.valueOf(s.toUpperCase());
+						Mobs_const sub = Mobs_const.valueOf(s.toUpperCase());
 						switch (sub)
 						{
 							case AREA:
 							case BLOCK:
 							case MECHANISM:
+							case NEAREST_PLAYER:
 							case PLAYER:
 							case SELF:
 							case WORLD:
@@ -103,41 +103,41 @@ public class Param_base
 						}
 					}
 				}
-				if (targets.size() > 0) params.put(Mobs_param.TARGET, new Alternatives(target_count, targets));
-				if (messages.size() > 0) params.put(Mobs_param.MESSAGE, new Alternatives(message_count, messages));
-				if (items.size() > 0) params.put(Mobs_param.ITEM, new Alternatives(item_count, items));
-				if (numbers.size() > 0) params.put(Mobs_param.NUMBER, new Alternatives(number_count, numbers));
-				if (mobs.size() > 0) params.put(Mobs_param.MOB, new Alternatives(mob_count, mobs));
+				if (targets.size() > 0) params.put(Mobs_const.TARGET, new Alternatives(target_count, targets));
+				if (messages.size() > 0) params.put(Mobs_const.MESSAGE, new Alternatives(message_count, messages));
+				if (items.size() > 0) params.put(Mobs_const.ITEM, new Alternatives(item_count, items));
+				if (numbers.size() > 0) params.put(Mobs_const.NUMBER, new Alternatives(number_count, numbers));
+				if (mobs.size() > 0) params.put(Mobs_const.MOB, new Alternatives(mob_count, mobs));
 			}
 		}
 		catch (Exception e) {e.printStackTrace();}
 	}
 	
-	public String getString_param(Mobs_param param)
+	public String getString_param(Mobs_const param)
 	{
 		return (String)params.get(param);
 	}
 	
-	public Integer getInt_param(Mobs_param param)
+	public Integer getInt_param(Mobs_const param)
 	{
 		if (!params.containsKey(param)) return null;
 		return (Integer)params.get(param);
 	}
 	
-	public Boolean getBoolean_param(Mobs_param param)
+	public Boolean getBoolean_param(Mobs_const param)
 	{
 		// used in item matching
 		if (!params.containsKey(param)) return null;
 		return (Boolean)params.get(param);
 	}
 	
-	public int[] getInt_array(Mobs_param param)
+	public int[] getInt_array(Mobs_const param)
 	{
 		// used in block targets
 		return (int[])params.get(param);
 	}
 
-	public Object getAlternative(Mobs_param param)
+	public Object getAlternative(Mobs_const param)
 	{
 		if (!params.containsKey(param)) return null;
 		return ((Alternatives)params.get(param)).get_alternative();
@@ -145,35 +145,35 @@ public class Param_base
 	
 	public Mobs_number getMobs_number()
 	{
-		Object o = getAlternative(Mobs_param.NUMBER);
+		Object o = getAlternative(Mobs_const.NUMBER);
 		if (o != null) return (Mobs_number)o;
 		return null;
 	}
 	
-	public void addParam(Mobs_param param, Object o)
+	public void addParam(Mobs_const param, Object o)
 	{
 		params.put(param, o);
 	}
 
-	public void addParam(Mobs_param param)
+	public void addParam(Mobs_const param)
 	{
 		params.put(param, null);
 	}
 	
-	public boolean hasParam(Mobs_param param)
+	public boolean hasParam(Mobs_const param)
 	{
 		return params.containsKey(param);
 	}
 	
-	public void removeParam(Mobs_param param)
+	public void removeParam(Mobs_const param)
 	{
 		params.remove(param);
 	}
 
 	public Target getTarget()
 	{
-		if (!params.containsKey(Mobs_param.TARGET)) return null;
-		Target t = (Target)getAlternative(Mobs_param.TARGET);
-		return t.getTarget_type() == Mobs_subelement.SELF ? null : t;
+		if (!params.containsKey(Mobs_const.TARGET)) return null;
+		Target t = (Target)getAlternative(Mobs_const.TARGET);
+		return t.getTarget_type() == Mobs_const.SELF ? null : t;
 	}
 }

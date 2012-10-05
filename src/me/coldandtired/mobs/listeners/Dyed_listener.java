@@ -8,7 +8,7 @@ import org.bukkit.event.entity.SheepDyeWoolEvent;
 
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_param;
+import me.coldandtired.mobs.enums.Mobs_const;
 
 public class Dyed_listener extends Base_listener
 {
@@ -22,6 +22,6 @@ public class Dyed_listener extends Base_listener
 	{
 		performActions(Mobs_event.DYED, event.getEntity(), event);
 		Map<String, Object> data = getData(event.getEntity());
-		if (data != null && data.containsKey(Mobs_param.NO_DYED)) event.setCancelled(true);
+		if (data != null && data.containsKey(Mobs_const.NO_DYED)) event.setCancelled(true);
 	}
 }

@@ -8,7 +8,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_param;
+import me.coldandtired.mobs.enums.Mobs_const;
 
 public class Changes_block_listener extends Base_listener
 {
@@ -25,6 +25,6 @@ public class Changes_block_listener extends Base_listener
 		
 		performActions(Mobs_event.CHANGES_BLOCK, le, event);
 		Map<String, Object> data = getData(le);
-		if (data != null && (data.containsKey(Mobs_param.NO_MOVE_BLOCKS) || data.containsKey(Mobs_param.NO_GRAZE))) event.setCancelled(true);
+		if (data != null && (data.containsKey(Mobs_const.NO_MOVE_BLOCKS) || data.containsKey(Mobs_const.NO_GRAZE))) event.setCancelled(true);
 	}
 }

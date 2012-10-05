@@ -7,7 +7,7 @@ import java.util.Map;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_param;
+import me.coldandtired.mobs.enums.Mobs_const;
 
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
@@ -38,9 +38,9 @@ public class Spawns_listener extends Base_listener
 		LivingEntity le = event.getEntity();
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(Mobs_param.SPAWN_REASON.toString(), spawn_reason);
-		if (mob_name != null) data.put(Mobs_param.NAME.toString(), mob_name);
+		data.put(Mobs_const.SPAWN_REASON.toString(), spawn_reason);
+		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
 		event.getEntity().setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (active) performActions(Mobs_event.SPAWNS, le, event);		
+		if (active) performActions(Mobs_event.SPAWNS, le, event);	
 	}
 }

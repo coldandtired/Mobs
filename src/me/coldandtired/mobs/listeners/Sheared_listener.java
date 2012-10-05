@@ -9,7 +9,7 @@ import org.bukkit.event.player.PlayerShearEntityEvent;
 
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_param;
+import me.coldandtired.mobs.enums.Mobs_const;
 
 public class Sheared_listener extends Base_listener
 {
@@ -26,6 +26,6 @@ public class Sheared_listener extends Base_listener
 		
 		performActions(Mobs_event.SHEARED, le, event);
 		Map<String, Object> data = getData(le);
-		if (data != null && data.containsKey(Mobs_param.NO_SHEARED)) event.setCancelled(true);
+		if (data != null && data.containsKey(Mobs_const.NO_SHEARED)) event.setCancelled(true);
 	}
 }

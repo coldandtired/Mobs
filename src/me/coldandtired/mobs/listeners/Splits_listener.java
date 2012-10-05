@@ -8,7 +8,7 @@ import org.bukkit.event.entity.SlimeSplitEvent;
 
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_param;
+import me.coldandtired.mobs.enums.Mobs_const;
 
 public class Splits_listener extends Base_listener
 {
@@ -22,9 +22,9 @@ public class Splits_listener extends Base_listener
 	{
 		performActions(Mobs_event.SPLITS, event.getEntity(), event);
 		Map<String, Object> data = getData(event.getEntity());
-		if (data != null && data.containsKey(Mobs_param.SPLIT_INTO))
+		if (data != null && data.containsKey(Mobs_const.SPLIT_INTO))
 		{
-			int i = (Integer)data.get(Mobs_param.SPLIT_INTO);
+			int i = (Integer)data.get(Mobs_const.SPLIT_INTO);
 			if (i == 0) event.setCancelled(true);
 			else event.setCount(i);
 		}

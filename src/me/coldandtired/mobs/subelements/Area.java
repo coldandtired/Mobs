@@ -13,18 +13,20 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
 public class Area 
 {
-	private List<String> blocks = new ArrayList<String>();
+	private List<Integer> xs = new ArrayList<Integer>();
+	private List<Integer> ys = new ArrayList<Integer>();
+	private List<Integer> zs = new ArrayList<Integer>();
 	private String world;
-	private int x_start;
-	private int x_end;
-	private int y_start;
-	private int y_end;
-	private int z_start;
-	private int z_end;
 	
 	public Area(Element el, String world_name)
 	{
 		world = world_name;	
+		int x_start;
+		int x_end;
+		int y_start;
+		int y_end;
+		int z_start;
+		int z_end;
 		int x_safe = 0;
 		int y_safe = 0;
 		int z_safe = 0;
@@ -55,60 +57,34 @@ public class Area
 		
 		int max = Bukkit.getWorld(world).getMaxHeight();
 		
-		for (int x = x_start; x <= x_end; x++)
-		{
-			if (x <= x_start - x_safe || x >= x_start + x_safe)
-			{
-				for (int z = z_start; z <= z_end; z++)
-				{
-					if (z <= z_start - z_safe || z >= z_start + z_safe)
-					{
-						for (int y = y_start; y <= y_end; y++)
-						{
-							if ((y <= y_start - y_safe || y >= y_start + y_safe) && y < max) blocks.add("" + x + ":" + y + ":" + z);						
-						}					
-					}
-				}
-			}
-		}		
+		for (int i = x_start; i <= x_end; i++) if (i <= x_start - x_safe || i >= x_start + x_safe) xs.add(i);
+		for (int i = z_start; i <= z_end; i++) if (i <= z_start - z_safe || i >= z_start + z_safe) zs.add(i);
+		for (int i = y_start; i <= y_end; i++) if ((i <= y_start - y_safe || i >= y_start + y_safe) && i <= max) ys.add(i);					
 	}
 	
 	public Area(ProtectedRegion pr, String world_name)
 	{
 		world = world_name;
-		BlockVector bv = pr.getMinimumPoint();
-		x_start = bv.getBlockX();
-		y_start = bv.getBlockY();
-		z_start = bv.getBlockZ();
-		bv = pr.getMaximumPoint();
-		x_end = bv.getBlockX();
-		y_end = bv.getBlockY();
-		z_end = bv.getBlockZ();
+		BlockVector min = pr.getMinimumPoint();
+		BlockVector max = pr.getMaximumPoint();
 		int max_height = Bukkit.getWorld(world).getMaxHeight();
 		
-		for (int x = x_start; x <= x_end; x++)
-		{
-			for (int z = z_start; z <= z_end; z++)
-			{
-				for (int y = y_start; y <= y_end; y++)
-				{
-					if (y < max_height) blocks.add("" + x + ":" + y + ":" + z);
-				}
-			}
-		}
+		for (int i = min.getBlockX(); i <= max.getBlockX(); i++) xs.add(i);
+		for (int i = min.getBlockZ(); i <= max.getBlockZ(); i++) zs.add(i);
+		for (int i = min.getBlockY(); i <= max.getBlockY(); i++) if (i <= max_height) ys.add(i);
 	}
 	
 	public Location getLocation( )
 	{
-		String[] ss = blocks.get(new Random().nextInt(blocks.size())).split(":");
-		return Bukkit.getWorld(world).getBlockAt(Integer.parseInt(ss[0]), Integer.parseInt(ss[1]), Integer.parseInt(ss[2])).getLocation();
+		Random r = new Random();
+		int x = xs.get(r.nextInt(xs.size()));
+		int y = ys.get(r.nextInt(ys.size()));
+		int z = zs.get(r.nextInt(zs.size()));
+		return Bukkit.getWorld(world).getBlockAt(x, y, z).getLocation();
 	}
 	
 	public boolean containsLocation(Location loc)
 	{
-		int x = loc.getBlockX();
-		int y = loc.getBlockY();
-		int z = loc.getBlockZ();
-		return x >= x_start && x <= x_end && y >= y_start && y <= y_end && z >= z_start && z <= z_end;
+		return xs.contains(loc.getBlockX()) && ys.contains(loc.getBlockY()) && zs.contains(loc.getBlockZ());
 	}
 }
