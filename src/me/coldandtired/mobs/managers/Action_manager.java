@@ -252,6 +252,7 @@ public class Action_manager
 		Target target = a.getTarget();
 		if (target != null && target.getTarget_type() == Mobs_const.PLAYER) le = Bukkit.getPlayer(target.getString_param(Mobs_const.NAME));
 				
+		if (le instanceof Player) setPlayer_property(a, (Player)le);
 		if (le instanceof Animals) setAnimal_property(a, (Animals)le);
 		if (le instanceof Monster) setMonster_property(a, (Monster)le);
 		if (le instanceof EnderDragon) setEnder_dragon_property(a.getAction_type(), (EnderDragon)le);
@@ -369,6 +370,25 @@ public class Action_manager
 		if (le.hasMetadata("mobs_data"))
 		{
 			((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).remove(param.toString());
+		}
+	}
+	
+	private void setPlayer_property(Action a, Player p)
+	{
+		switch (a.getAction_type())
+		{
+			case SET_CAN_PICK_UP_ITEMS_NO:
+				putData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				return;
+			case SET_CAN_PICK_UP_ITEMS_RANDOM:
+				if (rng.nextBoolean()) putData(p, Mobs_const.NO_PICK_UP_ITEMS); else removeData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				return;
+			case SET_CAN_PICK_UP_ITEMS_YES:
+				removeData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				return;
+			case TOGGLE_CAN_PICK_UP_ITEMS:
+				if (hasData(p, Mobs_const.NO_PICK_UP_ITEMS)) removeData(p, Mobs_const.NO_PICK_UP_ITEMS); else putData(p ,Mobs_const.NO_PICK_UP_ITEMS);
+				return;
 		}
 	}
 	
