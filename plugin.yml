@@ -1,19 +1,24 @@
 name: Mobs
-version: Beta2
+version: Beta3
 author: coldandtired
 main: me.coldandtired.mobs.Mobs
-description: A fully-featured mob control plugin
+description: THE mob plugin
 softdepend: [Vault, WorldGuard, TerrainControl, Heroes]
 commands:
     reload_mobs:
         description: Reload the config without reloading the plugin itself
         aliases: rm
         usage: "Usage: /reload_mobs"
-    check_names:
-        description: Check to see what conditions, events, etc. are already implemented
-        aliases: cn
-        usage: "Usage: /check_names <actions|conditions|events|targets>"
+        permission: mobs.can_reload_mobs      
+    repeating_outcomes:
+        description: Adjust the repeating part of the plugin
+        aliases: ro
+        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval] [seconds] [name]"
+        permission: mobs.can_change_repeating_outcomes
 permissions:
     mobs.can_reload_mobs:
+        description: Allows reloading of the config
+        default: op
+    mobs.can_change_repeating_outcomes:
         description: Allows reloading of the config
         default: op

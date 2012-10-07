@@ -86,6 +86,12 @@ public class Target_manager
 	public List<Player> getPlayers(Target t, LivingEntity le)
 	{
 		List<Player> players = null;
+		if (t == null)
+		{
+			players = new ArrayList<Player>();
+			players.add((Player)le);
+			return players;
+		}
 		switch (t.getTarget_type())
 		{
 			case PLAYER:

@@ -12,6 +12,7 @@ import me.coldandtired.mobs.enums.Mobs_const;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
 public class Spawns_listener extends Base_listener
@@ -40,7 +41,18 @@ public class Spawns_listener extends Base_listener
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(Mobs_const.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
-		event.getEntity().setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
+		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
+		if (active) performActions(Mobs_event.SPAWNS, le, event);	
+	}
+	
+	@EventHandler
+	public void player_respawns(PlayerRespawnEvent event)
+	{
+		LivingEntity le = event.getPlayer();
+		Map<String, Object> data = new HashMap<String, Object>();
+		data.put(Mobs_const.SPAWN_REASON.toString(), "NATURAL");
+		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
+		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
 		if (active) performActions(Mobs_event.SPAWNS, le, event);	
 	}
 }

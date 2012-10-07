@@ -57,19 +57,29 @@ public class Action_manager
 	{
 	}
 	
-	void performActions(Outcome o, Mobs_event event, LivingEntity le, Event orig_event)
+	boolean performActions(Outcome o, Mobs_event event, LivingEntity le, Event orig_event)
 	{
+		boolean single_outcome = true;
 		Mobs.debug("Performing actions");
 		List<Action> actions = o.getActions();
 		if (actions == null) Mobs.debug("No actions to perform!");
-		else for (Action a : actions) perform_action(event, a, le, orig_event);
+		else for (Action a : actions)
+		{
+			boolean b = perform_action(event, a, le, orig_event);
+			if (b) single_outcome = false;
+		}
 		Mobs.debug("------------------");
+		return single_outcome;
 	}
 	
-	void perform_action(Mobs_event event, Action a, LivingEntity le, Event orig_event)
+	boolean perform_action(Mobs_event event, Action a, LivingEntity le, Event orig_event)
 	{		
+		//properties should have reversed, default x% values
+
+		//Hp = default
 		switch (a.getAction_type())
 		{
+			case CONTINUE: return true;
 			case DROP_ITEM:
 				drop_item(a, le);
 				break;
@@ -174,6 +184,7 @@ public class Action_manager
 				Mobs.debug(a.getAction_type().toString());
 				break;
 		}
+		return false;
 	}
 	
 	private void playEffect(Action a, LivingEntity le)
@@ -286,17 +297,21 @@ public class Action_manager
 				if (hasData(le, Mobs_const.NO_OVERHEAL)) removeData(le, Mobs_const.NO_OVERHEAL); else putData(le, Mobs_const.NO_OVERHEAL);
 				break;
 			
-			case SET_FIRE_EFFECT_NO:
-				return;
 			case SET_FRIENDLY_NO:
+				removeData(le, Mobs_const.FRIENDLY);
 				return;
 			case SET_FRIENDLY_RANDOM:
+				if (rng.nextBoolean()) putData(le, Mobs_const.FRIENDLY); else removeData(le, Mobs_const.FRIENDLY);
 				return;
 			case SET_FRIENDLY_YES:
+				putData(le, Mobs_const.FRIENDLY);
 				return;
+			case TOGGLE_FRIENDLY:
+				if (hasData(le, Mobs_const.FRIENDLY)) removeData(le, Mobs_const.FRIENDLY); else putData(le, Mobs_const.FRIENDLY);
+				break;
 			
-			case SET_MOB_NAME:
-				putData(le ,Mobs_const.NAME, a.getString_param(Mobs_const.NAME));
+			case SET_NAME:
+				putData(le, Mobs_const.NAME, a.getString_param(Mobs_const.NAME));
 			break;
 				//case SET_HP:
 				//	q = number.getAbsolute_value(le2.getHealth());

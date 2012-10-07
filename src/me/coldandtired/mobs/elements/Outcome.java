@@ -18,6 +18,8 @@ public class Outcome
 {
 	private int interval = 300;
 	private int remaining;
+	private String name = null;
+	private boolean enabled = true;
 	private List<List<Condition>> conditions = new ArrayList<List<Condition>>();
 	private Alternatives actions;
 	private List<String> affected_mobs = null;
@@ -28,6 +30,8 @@ public class Outcome
 	public Outcome(XPath xpath, Element element)
 	{
 		if (element.hasAttribute("interval")) interval = Integer.parseInt(element.getAttribute("interval"));
+		if (element.hasAttribute("name")) name = element.getAttribute("name");
+		if (element.hasAttribute("enabled")) enabled = Boolean.parseBoolean(element.getAttribute("enabled"));
 		remaining = interval;
 		if (element.hasAttribute("affected_mobs")) affected_mobs = Arrays.asList(element.getAttribute("affected_mobs").replace(" ", "").toUpperCase().split(","));
 		if (element.hasAttribute("unaffected_mobs")) unaffected_mobs = Arrays.asList(element.getAttribute("unaffected_mobs").replace(" ", "").toUpperCase().split(","));
@@ -87,6 +91,38 @@ public class Outcome
 		if (affected_mobs != null && !affected_mobs.contains(le.getType().toString())) return false;
 		if (affected_worlds != null && !affected_worlds.contains(le.getWorld().getName().toUpperCase())) return false;
 		return true;
+	}
+	
+	public boolean isEnabled()
+	{
+		return enabled;
+	}
+	
+	public void setInterval(int interval)
+	{
+		this.interval = interval;
+		remaining = interval;
+	}
+	
+	public int getRemaining()
+	{
+		return remaining;
+	}
+	
+	public void setEnabled(boolean enabled)
+	{
+		this.enabled = enabled;
+	}
+	
+	public boolean checkName(String s)
+	{
+		if (name == null) return false;
+		return name.equalsIgnoreCase(s);
+	}
+	
+	public String getName()
+	{
+		return name;
 	}
 	
 	public List<List<Condition>> getConditions()

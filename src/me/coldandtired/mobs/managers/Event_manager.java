@@ -34,7 +34,7 @@ public class Event_manager
 	}
 	
 	public void start_actions(List<Outcome> outcomes, Mobs_event event, LivingEntity le, Event orig_event, boolean single_outcome)
-	{			
+	{		
 		Mobs.debug("------------------");
 		Mobs.debug("Event - " + event.toString());
 		Mobs.debug("Outcomes - " + outcomes.size());
@@ -68,7 +68,8 @@ public class Event_manager
 			
 			if (perform)
 			{
-				Mobs.getInstance().getAction_manager().performActions(o, event, le, orig_event);
+				boolean b = Mobs.getInstance().getAction_manager().performActions(o, event, le, orig_event);
+				if (!b) single_outcome = false;
 				if (single_outcome) return;
 			}
 		}
@@ -233,7 +234,6 @@ public class Event_manager
 	
 	public boolean matchesValue(Condition c, int orig)
 	{
-		Mobs.log(orig);
 		List<Integer> temp = new ArrayList<Integer>();
 		for (String s : c.getString_param(Mobs_const.VALUE).split(","))
 		{
