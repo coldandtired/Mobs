@@ -60,12 +60,14 @@ public class Mobs extends JavaPlugin
 	private boolean approached = false;
 	private boolean near = false;
 	private boolean disabled_timer = false;
+	private static boolean spout;
 	
 	@Override
 	public void onEnable()
 	{		
 		instance = this;
 		checkConfig();
+		spout = getServer().getPluginManager().isPluginEnabled("Spout");
 		if (!load_config()) setEnabled(false);
 	}
 
@@ -117,7 +119,6 @@ public class Mobs extends JavaPlugin
 	boolean load_config()
 	{
 		XPath xpath = XPathFactory.newInstance().newXPath();
-		if (!is_latest_version(xpath)) log("There's a newer version of Mobs available!");
 		warn("This is a Beta version of the plugin.  Make sure you have backups!");
 		File f = new File(getDataFolder(), "config.txt");
 		InputSource input;
@@ -125,10 +126,13 @@ public class Mobs extends JavaPlugin
 		{
 			input = new InputSource(f.getPath());
 			Element el = (Element)xpath.evaluate("mobs/settings", input, XPathConstants.NODE);
+			boolean disable_check = false;
 			if (el != null)	
 			{
 				if (el.hasAttribute("log_level")) log_level = Integer.parseInt(el.getAttribute("log_level"));
+				if (el.hasAttribute("disable_update_check")) disable_check = Boolean.parseBoolean(el.getAttribute("disable_update_check"));
 			}
+			if (!disable_check && !is_latest_version(xpath)) log("There's a newer version of Mobs available!");
 			action_manager = new Action_manager();
 			event_manager = new Event_manager();
 			target_manager = new Target_manager((NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET));
@@ -558,5 +562,10 @@ public class Mobs extends JavaPlugin
 	{
 		if (log_level > 2) logger.info(Ansi.ansi().fg(Ansi.Color.YELLOW).toString() 
 				 + "[Mobs] " + message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+	}
+
+	public static boolean isSpout_enabled()
+	{
+		return spout;
 	}
 }

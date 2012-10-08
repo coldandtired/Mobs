@@ -48,6 +48,8 @@ import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
 import org.bukkit.material.TrapDoor;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.getspout.spoutapi.Spout;
+import org.getspout.spoutapi.player.EntitySkinType;
 
 public class Action_manager 
 {
@@ -259,6 +261,15 @@ public class Action_manager
 		
 		switch (a.getAction_type())
 		{
+			case SET_TITLE:
+				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString_param(Mobs_const.NAME));
+				break;
+			case SET_SKIN:
+				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString_param(Mobs_const.NAME), EntitySkinType.DEFAULT);
+				break;
+			case RESTORE_SKIN:
+				if (Mobs.isSpout_enabled()) Spout.getServer().resetEntitySkin(le);
+				break;
 			case SET_CAN_BURN_NO:
 				putData(le, Mobs_const.NO_BURN);
 				break;

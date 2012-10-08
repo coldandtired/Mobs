@@ -1,9 +1,9 @@
 name: Mobs
-version: Beta3
+version: Beta4
 author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
-softdepend: [Vault, WorldGuard, TerrainControl, Heroes]
+softdepend: [Vault, WorldGuard, TerrainControl, Heroes, SpoutPlugin]
 commands:
     reload_mobs:
         description: Reload the config without reloading the plugin itself
