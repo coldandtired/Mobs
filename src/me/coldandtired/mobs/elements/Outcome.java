@@ -9,7 +9,6 @@ import java.util.Map;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 
-
 import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;

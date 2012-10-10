@@ -11,6 +11,7 @@ import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_action;
 import me.coldandtired.mobs.enums.Mobs_const;
 import me.coldandtired.mobs.enums.Mobs_event;
+import me.coldandtired.mobs.enums.Mobs_target;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Mobs_number;
 import me.coldandtired.mobs.subelements.Target;
@@ -20,7 +21,6 @@ import org.bukkit.DyeColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Creeper;
@@ -54,9 +54,16 @@ import org.getspout.spoutapi.player.EntitySkinType;
 public class Action_manager 
 {
 	private Random rng = new Random();
+	private Target_manager target_manager;
 	
-	public Action_manager()
+	public Action_manager(Target_manager target_manager)
 	{
+		this.target_manager = target_manager;
+	}
+	
+	public Target_manager getTarget_manager()
+	{
+		return target_manager;
 	}
 	
 	boolean performActions(Outcome o, Mobs_event event, LivingEntity le, Event orig_event)
@@ -98,27 +105,27 @@ public class Action_manager
 				give_exp(a, le);
 				break;
 			case PRESS_BUTTON:
-				activate_mechanism(a, "button");
+				activate_mechanism(a, le, "button");
 				break;
 			case CLOSE_DOOR:
 			case OPEN_DOOR:
 			case TOGGLE_DOOR:
-				activate_mechanism(a, "door");
+				activate_mechanism(a, le, "door");
 				break;
 			case CLOSE_GATE:
 			case OPEN_GATE:
 			case TOGGLE_GATE:
-				activate_mechanism(a, "gate");
+				activate_mechanism(a, le, "gate");
 				break;
 			case PULL_LEVER:
 			case PUSH_LEVER:
 			case TOGGLE_LEVER:
-				activate_mechanism(a, "lever");
+				activate_mechanism(a, le, "lever");
 				break;
 			case CLOSE_TRAPDOOR:
 			case OPEN_TRAPDOOR:
 			case TOGGLE_TRAPDOOR:
-				activate_mechanism(a, "trapdoor");
+				activate_mechanism(a, le, "trapdoor");
 				break;
 			case LIGHTNING:
 			case LIGHTNING_EFFECT:
@@ -130,15 +137,16 @@ public class Action_manager
 				break;
 			case DAMAGE:
 			case KILL:
-				damage_player(a, le);
+			case REMOVE:
+				damage_mob(a, le);
 				break;
 			case SET_TIME:
-				change_time(a);
+				change_time(a, le);
 				break;
 			case RAIN:
 			case STORM:
 			case SUN:
-				change_weather(a);
+				change_weather(a, le);
 				break;
 			case SET_BLOCK:
 			case DESTROY_BLOCK:
@@ -191,9 +199,6 @@ public class Action_manager
 	
 	private void playEffect(Action a, LivingEntity le)
 	{
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		if (loc == null) return;
-		
 		Effect effect = null;
 		switch (a.getAction_type())
 		{
@@ -246,13 +251,13 @@ public class Action_manager
 				effect = Effect.ZOMBIE_DESTROY_DOOR;
 				break;
 		}
-		loc.getWorld().playEffect(loc, effect, 10);
+		for (Location loc : target_manager.getLocations(a, le)) loc.getWorld().playEffect(loc, effect, 10);
 	}
 	
 	private void setProperty(Action a, LivingEntity le)
 	{
 		Target target = a.getTarget();
-		if (target != null && target.getTarget_type() == Mobs_const.PLAYER) le = Bukkit.getPlayer(target.getString_param(Mobs_const.NAME));
+		if (target != null && target.getTarget_type().equals(Mobs_target.PLAYER)) le = Bukkit.getPlayer(target.getString(Mobs_const.NAME));
 				
 		if (le instanceof Player) setPlayer_property(a, (Player)le);
 		if (le instanceof Animals) setAnimal_property(a, (Animals)le);
@@ -262,10 +267,10 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_TITLE:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString_param(Mobs_const.NAME));
+				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString(Mobs_const.NAME));
 				break;
 			case SET_SKIN:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString_param(Mobs_const.NAME), EntitySkinType.DEFAULT);
+				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString(Mobs_const.NAME), EntitySkinType.DEFAULT);
 				break;
 			case RESTORE_SKIN:
 				if (Mobs.isSpout_enabled()) Spout.getServer().resetEntitySkin(le);
@@ -323,7 +328,7 @@ public class Action_manager
 				break;
 			
 			case SET_NAME:
-				putData(le, Mobs_const.NAME, a.getString_param(Mobs_const.NAME));
+				putData(le, Mobs_const.NAME, a.getString(Mobs_const.NAME));
 			break;
 				//case SET_HP:
 				//	q = number.getAbsolute_value(le2.getHealth());
@@ -424,7 +429,7 @@ public class Action_manager
 			case SET_OWNER:
 				if (animal instanceof Tameable)
 				{
-					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString_param(Mobs_const.NAME)));
+					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString(Mobs_const.NAME)));
 				}
 				return;
 		}
@@ -527,7 +532,7 @@ public class Action_manager
 				return;
 				
 			case SET_EXPLOSION_SIZE:
-				putData(creeper ,Mobs_const.EXPLOSION_SIZE, a.getMobs_number().getAbsolute_value(0));
+				putData(creeper, Mobs_const.EXPLOSION_SIZE, a.getInt(Mobs_const.NUMBER, 0));
 				return;	
 		}		
 		
@@ -922,33 +927,35 @@ public class Action_manager
 		
 	private void spawn_mob(Action a, LivingEntity le)
 	{
-		String[] mob = ((String)a.getAlternative(Mobs_const.MOB)).split(":");
-		int amount = a.hasParam(Mobs_const.NUMBER) ? a.getMobs_number().getAbsolute_value(1) : 1;
+		String[] mob = a.getString_alt(Mobs_const.MOB).split(":");
+		int amount = a.getInt(Mobs_const.NUMBER, 1);
 		for (int i = 0; i < amount; i++)
 		{
-			Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
 			Mobs.getInstance().setMob_name(mob);
-			loc.getWorld().spawnEntity(loc, EntityType.fromName(mob[0]));
-			Mobs.debug("SPAWN_MOB, " + get_string_from_loc(loc) + ", " + mob[0]);
+			for (Location loc : target_manager.getLocations(a, le))
+			{
+				loc.getWorld().spawnEntity(loc, EntityType.fromName(mob[0]));
+				Mobs.debug("SPAWN_MOB, " + get_string_from_loc(loc) + ", " + mob[0]);
+			}
 		}
 	}
 		
 	private void send_message(Action a, LivingEntity le)
 	{
-		String s = (String)a.getAlternative(Mobs_const.MESSAGE);
+		String s = a.getString_alt(Mobs_const.MESSAGE);
 		while (s.contains("^")) s = replace_constants(s, le);
 			
-		if (a.getAction_type() == Mobs_action.SEND_MESSAGE)
+		if (a.getAction_type().equals(Mobs_action.SEND_MESSAGE))
 		{
-			List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
-			if (players == null) return;
-			for (Player p : players)
+			for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
 			{
+				if (!(l instanceof Player)) continue;
+				Player p = (Player)l;
 				p.sendMessage(s);
 				Mobs.debug("SEND_MESSAGE, " + ((Player)p).getName() + ", MESSAGE = " + s);
 			}
 		}
-		else if (a.getAction_type() == Mobs_action.BROADCAST)
+		else if (a.getAction_type().equals(Mobs_action.BROADCAST))
 		{
 			Bukkit.getServer().broadcastMessage(s);
 			Mobs.debug("BROADCAST, MESSAGE = " + s);
@@ -958,80 +965,77 @@ public class Action_manager
 	
 	private void change_block(Action a, LivingEntity le)
 	{
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		if (loc == null) return;
+		List<Location> locs = target_manager.getLocations(a, le);
 			
 		if (a.getAction_type() == Mobs_action.SET_BLOCK)
 		{
 			Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
 			if (drop == null) return;
-			loc.getBlock().setTypeIdAndData(drop.getItem_id(), (byte) drop.getItem_data(), false);
-			Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + 
-					drop.getItem_id() + ":" + drop.getItem_data());
+			for (Location loc : locs)
+			{
+				loc.getBlock().setTypeIdAndData(drop.getItem_id(), (byte) drop.getItem_data(), false);
+				Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + 
+						drop.getItem_id() + ":" + drop.getItem_data());
+			}
 		}
 		else
 		{
-			loc.getBlock().breakNaturally();
-			Mobs.debug("DESTROY_BLOCK, " + get_string_from_loc(loc));
+			for (Location loc : locs)
+			{
+				loc.getBlock().breakNaturally();
+				Mobs.debug("DESTROY_BLOCK, " + get_string_from_loc(loc));
+			}
 		}
-	}
-	
-	private BlockState get_mechanism(Target t)
-	{			
-		World w = Mobs.getInstance().getTarget_manager().getWorld(t);
-		if (w == null) return null;
-		int[] block_loc = t.getInt_array(Mobs_const.BLOCK);
-		Block block = w.getBlockAt(block_loc[0], block_loc[1], block_loc[2]);
-		return block.getState();
 	}
 	
 	private void strike_with_lightning(Action a, LivingEntity le)
 	{
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		
-		World w = loc.getWorld();
-		if (a.getAction_type() == Mobs_action.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
-		else w.strikeLightning(loc);
-		Mobs.debug(a.getAction_type().toString() + ", " + get_string_from_loc(loc));
-		return;
+		for (Location loc : target_manager.getLocations(a, le))
+		{
+			World w = loc.getWorld();
+			if (a.getAction_type() == Mobs_action.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
+			else w.strikeLightning(loc);
+			Mobs.debug(a.getAction_type().toString() + ", " + get_string_from_loc(loc));
+		}
 	}
 	
 	private void cause_explosion(Action a, LivingEntity le)
 	{
-		Mobs_number number = a.getMobs_number();
-
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		
-		int p = number.getAbsolute_value(0);
-		loc.getWorld().createExplosion(loc, p, a.getAction_type() == Mobs_action.FIERY_EXPLOSION);
-		Mobs.debug(a.getAction_type().toString() + ", POWER = " + p + ", " + get_string_from_loc(loc));
+		int p = a.getInt(Mobs_const.NUMBER, 0);
+		for (Location loc : target_manager.getLocations(a, le))
+		{
+			loc.getWorld().createExplosion(loc, p, a.getAction_type() == Mobs_action.FIERY_EXPLOSION);
+			Mobs.debug(a.getAction_type().toString() + ", POWER = " + p + ", " + get_string_from_loc(loc));
+		}
 	}
 	
-	private void damage_player(Action a, LivingEntity le)
+	private void damage_mob(Action a, LivingEntity le)
 	{
-		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
-		if (players == null) return;
-		for (Player p : players)
+		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
 		{
 			int q = 0;
-			if (a.getAction_type() == Mobs_action.KILL)
+			if (a.getAction_type().equals(Mobs_action.KILL))
 			{
-				p.setHealth(0);
-				Mobs.debug("KILL, " + p.getName());
+				l.damage(10000);
+				Mobs.debug("KILL, " + l.getType().toString());
 			}
-			else
+			else if (a.getAction_type().equals(Mobs_action.DAMAGE))
 			{
-				Mobs_number number = a.getMobs_number();
-				q = number.getAbsolute_value(0);
-				p.damage(q);
-				Mobs.debug("DAMAGE, " + p.getName() + ", AMOUNT = " + q);
+				q = a.getInt(Mobs_const.NUMBER, 0);
+				l.damage(q);
+				Mobs.debug("DAMAGE, " + l.getType().toString() + ", AMOUNT = " + q);
+			}
+			else if (!(l instanceof Player))
+			{
+				l.remove();
+				Mobs.debug("REMOVE, " + l.getType().toString());
 			}
 		}
 	}
 	
-	private void change_weather(Action a)
+	private void change_weather(Action a, LivingEntity le)
 	{
-		World w = Mobs.getInstance().getTarget_manager().getWorld(a.getTarget());
+		World w = target_manager.getWorld(a, le);
 		if (w == null) return;
 		
 		String s2 = a.getAction_type().toString();
@@ -1051,7 +1055,7 @@ public class Action_manager
 				break;
 		}
 		Mobs_number number = a.getMobs_number();
-		
+
 		if (number != null)
 		{
 			int i = number.getAbsolute_value(0);
@@ -1062,24 +1066,15 @@ public class Action_manager
 		Mobs.debug(s2 + ", " + w.getName());
 	}
 	
-	private void change_time(Action a)
+	private void change_time(Action a, LivingEntity le)
 	{
-		World w = Mobs.getInstance().getTarget_manager().getWorld(a.getTarget());
-		Mobs.log(a.getTarget().getString_param(Mobs_const.NAME));
+		World w = target_manager.getWorld(a, le);
 		if (w == null) return;
 		
 		Mobs_number number = a.getMobs_number();
 		
 		long time = number.getAbsolute_value((int) w.getTime()) % 24000;
 		if (time < 0) time += 24000;
-		//if (s.startsWith("+")) time = (Long.parseLong(s.substring(1)) + w.getTime()) % 24000;
-		//else if (s.startsWith("-"))
-		//{ 
-		//	time = (w.getTime() - Long.parseLong(s.substring(1))) % 24000;
-		//	if (time < 0) time += 24000;
-			
-		//}
-		//else time = Long.parseLong(s);
 		w.setTime(time);
 		Mobs.debug("SET_TIME " + Long.toString(time) + ", " + w.getName());
 	}
@@ -1089,18 +1084,21 @@ public class Action_manager
 		Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
 		ItemStack is = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
 		
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		loc.getWorld().dropItem(loc, is);
-		Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + 
+		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		{
+			Location loc = l.getLocation();
+			loc.getWorld().dropItem(loc, is);
+			Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + 
 					drop.getItem_id() + ":" + drop.getItem_data());
+		}
 	}
 	
 	private void give_item(Action a, LivingEntity le)
 	{
-		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
-		if (players == null) return;
-		for (Player p : players)
+		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
 		{		
+			if (!(l instanceof Player)) continue;
+			Player p = (Player)l;
 			if (a.getAction_type() == Mobs_action.CLEAR_ITEMS)
 			{
 				p.getInventory().clear();
@@ -1137,21 +1135,24 @@ public class Action_manager
 	
 	private void drop_exp(Action a, LivingEntity le)
 	{
-		Location loc = Mobs.getInstance().getTarget_manager().getLocation_from_target(a.getTarget(), le);
-		Mobs_number number = a.getMobs_number();
-		int q = number.getAbsolute_value(0);	
-		
-		ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
-		orb.setExperience(q);
-		Mobs.debug("DROP_EXP, " + get_string_from_loc(loc) + ", AMOUNT = " + q);
+		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		{
+			Location loc = l.getLocation();
+			Mobs_number number = a.getMobs_number();
+			int q = number.getAbsolute_value(0);	
+			
+			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
+			orb.setExperience(q);
+			Mobs.debug("DROP_EXP, " + get_string_from_loc(loc) + ", AMOUNT = " + q);
+		}
 	}
 	
 	private void give_exp(Action a, LivingEntity le)
 	{
-		List<Player> players = Mobs.getInstance().getTarget_manager().getPlayers(a.getTarget(), le);
-		if (players == null) return;
-		for (Player p : players)
+		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
 		{
+			if (!(l instanceof Player)) continue;
+			Player p = (Player)l;
 			Mobs_number number = a.getMobs_number();
 			
 			if (a.getAction_type() == Mobs_action.SET_EXP)
@@ -1191,84 +1192,84 @@ public class Action_manager
 		}
 	}
 	
-	private void activate_mechanism(Action a, String type)
+	private void activate_mechanism(Action a, LivingEntity le, String type)
 	{
-		Target target = a.getTarget();
-		if (target == null) return;
-		
-		BlockState bs = get_mechanism(target);
-		MaterialData md = bs.getData();
-		if (type.equalsIgnoreCase("button") && bs.getData() instanceof Button)
+		for (Location l : target_manager.getLocations(a, le))
 		{
-			((Button)md).setPowered(true);
-		}
-		else if (type.equalsIgnoreCase("door") && bs.getData() instanceof Door)
-		{
-			switch (a.getAction_type())
+			BlockState bs = l.getBlock().getState();
+			MaterialData md = bs.getData();
+			if (type.equalsIgnoreCase("button") && bs.getData() instanceof Button)
 			{
-				case CLOSE_DOOR:
-					((Door)md).setOpen(false);
-					break;
-				case OPEN_DOOR:
-					((Door)md).setOpen(true);
-					break;
-				case TOGGLE_DOOR:
-					((Door)md).setOpen(!((Door)md).isOpen());
-					break;
+				((Button)md).setPowered(true);
 			}
-		}
-		else if (type.equalsIgnoreCase("gate") && bs.getData() instanceof Gate)
-		{
-			switch (a.getAction_type())
+			else if (type.equalsIgnoreCase("door") && bs.getData() instanceof Door)
 			{
-				case CLOSE_GATE:
-					((Gate)md).setOpen(false);
-					break;
-				case OPEN_GATE:
-					((Gate)md).setOpen(true);
-					break;
-				case TOGGLE_GATE:
-					((Gate)md).setOpen(!((Gate)md).isOpen());
-					break;
+				switch (a.getAction_type())
+				{
+					case CLOSE_DOOR:
+						((Door)md).setOpen(false);
+						break;
+					case OPEN_DOOR:
+						((Door)md).setOpen(true);
+						break;
+					case TOGGLE_DOOR:
+						((Door)md).setOpen(!((Door)md).isOpen());
+						break;
+				}
 			}
-		}
-		else if (type.equalsIgnoreCase("lever") && bs.getData() instanceof Lever)
-		{
-			switch (a.getAction_type())
+			else if (type.equalsIgnoreCase("gate") && bs.getData() instanceof Gate)
 			{
-				case PUSH_LEVER:
-					((Lever)md).setPowered(false);
-					break;
-				case PULL_LEVER:
-					((Lever)md).setPowered(true);
-					break;
-				case TOGGLE_LEVER:
-					((Lever)md).setPowered(!((Lever)md).isPowered());
-					break;
+				switch (a.getAction_type())
+				{
+					case CLOSE_GATE:
+						((Gate)md).setOpen(false);
+						break;
+					case OPEN_GATE:
+						((Gate)md).setOpen(true);
+						break;
+					case TOGGLE_GATE:
+						((Gate)md).setOpen(!((Gate)md).isOpen());
+						break;
+				}
 			}
-		}
-		else if (type.equalsIgnoreCase("trapdoor") && bs.getData() instanceof TrapDoor)
-		{
-			switch (a.getAction_type())
+			else if (type.equalsIgnoreCase("lever") && bs.getData() instanceof Lever)
 			{
-				case CLOSE_TRAPDOOR:
-					((TrapDoor)md).setOpen(false);
-					break;
-				case OPEN_TRAPDOOR:
-					((TrapDoor)md).setOpen(true);
-					break;
-				case TOGGLE_TRAPDOOR:
-					((TrapDoor)md).setOpen(!((TrapDoor)md).isOpen());
-					break;
+				switch (a.getAction_type())
+				{
+					case PUSH_LEVER:
+						((Lever)md).setPowered(false);
+						break;
+					case PULL_LEVER:
+						((Lever)md).setPowered(true);
+						break;
+					case TOGGLE_LEVER:
+						((Lever)md).setPowered(!((Lever)md).isPowered());
+						break;
+				}
 			}
+			else if (type.equalsIgnoreCase("trapdoor") && bs.getData() instanceof TrapDoor)
+			{
+				switch (a.getAction_type())
+				{
+					case CLOSE_TRAPDOOR:
+						((TrapDoor)md).setOpen(false);
+						break;
+					case OPEN_TRAPDOOR:
+						((TrapDoor)md).setOpen(true);
+						break;
+					case TOGGLE_TRAPDOOR:
+						((TrapDoor)md).setOpen(!((TrapDoor)md).isOpen());
+						break;
+				}
+			}
+			if (md != null)
+			{
+				bs.setData(md);
+				bs.update(true);
+			}
+			
+			Mobs.debug(a.getAction_type().toString());
 		}
-		if (md != null)
-		{
-			bs.setData(md);
-			bs.update(true);
-		}
-		
-		Mobs.debug(a.getAction_type().toString());
 	}
 
 	private String get_string_from_loc(Location loc)

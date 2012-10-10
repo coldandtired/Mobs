@@ -30,7 +30,7 @@ public class Base_listener implements Listener
 	
 	void performActions(Mobs_event event, LivingEntity le, Event orig_event)
 	{
-		Mobs.getInstance().getEvent_manager().start_actions(getRelevant_outcomes(le), event, le, orig_event, true);
+		Mobs.getInstance().getEvent_manager().start_actions(getRelevant_outcomes(le), event, le, orig_event, true, null);
 	}
 
 	@SuppressWarnings("unchecked")

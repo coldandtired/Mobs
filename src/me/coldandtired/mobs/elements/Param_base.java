@@ -4,14 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-
-import me.coldandtired.mobs.enums.Mobs_action;
 import me.coldandtired.mobs.enums.Mobs_const;
-import me.coldandtired.mobs.subelements.Item_drop;
+import me.coldandtired.mobs.enums.Mobs_target;
 import me.coldandtired.mobs.subelements.Mobs_number;
 import me.coldandtired.mobs.subelements.Target;
 
@@ -36,7 +31,7 @@ public class Param_base
 		
 		try
 		{
-			NodeList list = (NodeList)xpath.evaluate("*", el, XPathConstants.NODESET);
+			/*NodeList list = (NodeList)xpath.evaluate("*", el, XPathConstants.NODESET);
 			if (list.getLength() > 0)
 			{
 				Map<Integer, Object> targets = new HashMap<Integer, Object>();
@@ -64,6 +59,7 @@ public class Param_base
 							case AREA:
 							case BLOCK:
 							case MECHANISM:
+							case NEAREST:
 							case NEAREST_PLAYER:
 							case PLAYER:
 							case SELF:
@@ -91,7 +87,7 @@ public class Param_base
 							case TIME:
 								number_count += ratio;
 								if (list.getLength() == 1) number_count = 1;						
-								numbers.put(number_count, new Mobs_number(el2));	
+								//numbers.put(number_count, new Mobs_number(el2));	
 								continue;
 						}
 					}
@@ -110,7 +106,7 @@ public class Param_base
 				if (items.size() > 0) params.put(Mobs_const.ITEM, new Alternatives(item_count, items));
 				if (numbers.size() > 0) params.put(Mobs_const.NUMBER, new Alternatives(number_count, numbers));
 				if (mobs.size() > 0) params.put(Mobs_const.MOB, new Alternatives(mob_count, mobs));
-			}
+			}*/
 		}
 		catch (Exception e) {e.printStackTrace();}
 	}
@@ -176,6 +172,6 @@ public class Param_base
 	{
 		if (!params.containsKey(Mobs_const.TARGET)) return null;
 		Target t = (Target)getAlternative(Mobs_const.TARGET);
-		return t.getTarget_type() == Mobs_const.SELF ? null : t;
+		return t.getTarget_type() == Mobs_target.SELF ? null : t;
 	}
 }

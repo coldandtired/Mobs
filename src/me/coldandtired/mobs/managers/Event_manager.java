@@ -10,8 +10,6 @@ import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
 import me.coldandtired.mobs.enums.Mobs_const;
 import me.coldandtired.mobs.subelements.Area;
-import me.coldandtired.mobs.subelements.Target;
-
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Ageable;
@@ -33,13 +31,14 @@ public class Event_manager
 		
 	}
 	
-	public void start_actions(List<Outcome> outcomes, Mobs_event event, LivingEntity le, Event orig_event, boolean single_outcome)
+	public void start_actions(List<Outcome> outcomes, Mobs_event event, LivingEntity le, Event orig_event, boolean single_outcome, String name)
 	{		
 		Mobs.debug("------------------");
 		Mobs.debug("Event - " + event.toString());
 		Mobs.debug("Outcomes - " + outcomes.size());
 		for (Outcome o : outcomes)
 		{
+			if (name != null && !o.checkName(name)) continue;
 			List<List<Condition>> conds = o.getConditions();
 			int s = conds == null ? 0 : conds.size();
 			Mobs.debug("Checking outcome, condition groups - " + s);
@@ -80,9 +79,6 @@ public class Event_manager
 	@SuppressWarnings("unchecked")
 	boolean check_condition(Condition c, LivingEntity le, Event event)
 	{
-		Target t = c.getTarget();
-		if (t == null && le == null) return false;
-		
 		switch (c.getCondition_type())
 		{
 			case ADULT:
@@ -93,7 +89,7 @@ public class Event_manager
 				else if (le instanceof PigZombie) return ((PigZombie)le).isAngry();
 				break;
 			case AREA:
-				for (Area a : Mobs.getInstance().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return true;
+				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return true;
 				break;
 			case BIOME:
 				return matchesName(c, le.getLocation().getBlock().getBiome().name());
@@ -124,7 +120,7 @@ public class Event_manager
 				}
 				break;
 			case RAINING:
-				World w = getWorld(c);
+				World w = getWorld(c, le);
 				return w == null ? false : w.hasStorm();
 			case POWERED:
 				if (le instanceof Creeper) return ((Creeper)le).isPowered();
@@ -147,14 +143,14 @@ public class Event_manager
 				if (le instanceof Wolf) return ((Wolf)le).isTamed();
 				break;
 			case THUNDERING: 
-				w = getWorld(c);
+				w = getWorld(c, le);
 				return w == null ? false : w.isThundering();
 			case WORLD_NAME:
-				w = getWorld(c);
+				w = getWorld(c, le);
 				if (w == null) return false;
 				return matchesName(c, w.getName());
 			case WORLD_TIME: 
-				w = getWorld(c);
+				w = getWorld(c, le);
 				if (w == null) return false;
 				return (matchesValue(c, (int)w.getTime()));
 			case X: return matchesValue(c, le.getLocation().getBlockX());
@@ -169,7 +165,7 @@ public class Event_manager
 				else if (le instanceof PigZombie) return !((PigZombie)le).isAngry();
 				break;
 			case NOT_AREA:
-				for (Area a : Mobs.getInstance().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return false;
+				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return false;
 				return true;				
 			case NOT_BIOME:
 				return !matchesName(c, le.getLocation().getBlock().getBiome().name());
@@ -202,7 +198,7 @@ public class Event_manager
 				if (le instanceof Creeper) return !((Creeper)le).isPowered();
 				break;
 			case NOT_RAINING: 
-				w = getWorld(c);
+				w = getWorld(c, le);
 				return w == null ? false : !w.hasStorm();
 			case NOT_SADDLED:
 				if (le instanceof Pig) return !((Pig)le).hasSaddle();
@@ -222,10 +218,10 @@ public class Event_manager
 				if (le instanceof Wolf) return !((Wolf)le).isTamed();
 				break;
 			case NOT_THUNDERING: 
-				w = getWorld(c);
+				w = getWorld(c, le);
 				return w == null ? false : !w.isThundering();
 			case NOT_WORLD_NAME:
-				w = getWorld(c);
+				w = getWorld(c, le);
 				if (w == null) return false;
 				return !matchesName(c, w.getName());
 		}
@@ -235,7 +231,7 @@ public class Event_manager
 	public boolean matchesValue(Condition c, int orig)
 	{
 		List<Integer> temp = new ArrayList<Integer>();
-		for (String s : c.getString_param(Mobs_const.VALUE).split(","))
+		for (String s : c.getString(Mobs_const.VALUE).split(","))
 		{
 			s = s.replace(" ", "");
 			if (s.startsWith("above"))
@@ -262,20 +258,15 @@ public class Event_manager
 
 	public boolean matchesName(Condition c, String orig)
 	{
-		String name = c.getString_param(Mobs_const.NAME);
+		String name = c.getString(Mobs_const.NAME);
 		for (String s : name.split(",")) if (s.trim().equalsIgnoreCase(orig)) return true;
 		return false;
 	}
 	
-	public World getWorld(Condition condition)
+	public World getWorld(Condition c, LivingEntity le)
 	{
-		Target t = condition.getTarget();
-		if (t == null) return null;
-		
-		switch (t.getTarget_type())
-		{
-			case WORLD: return Bukkit.getWorld(t.getString_param(Mobs_const.NAME));
-		}
+		if (c.hasParam(Mobs_const.WORLD)) return Bukkit.getWorld(c.getString_alt(Mobs_const.WORLD));
+		else if (le != null) return le.getWorld();
 		return null;
 	}
 }

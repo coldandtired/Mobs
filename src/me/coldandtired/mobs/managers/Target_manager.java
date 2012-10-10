@@ -7,9 +7,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.elements.Action;
 import me.coldandtired.mobs.enums.Mobs_const;
 import me.coldandtired.mobs.subelements.Area;
 import me.coldandtired.mobs.subelements.Mobs_number;
@@ -22,7 +25,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -40,88 +42,31 @@ public class Target_manager
 	{
 		return areas.values();
 	}
-	
-	public Location getLocation_from_target(Target t, LivingEntity le)
+				
+	@SuppressWarnings("unchecked")
+	private List<LivingEntity> getNearest(List<Entity> entities, Target t, LivingEntity le)
 	{
-		World w = getWorld(t);
-		if (w == null && le != null) w = le.getWorld();
-		if (t != null)
-		{
-			switch (t.getTarget_type())
-			{
-				case PLAYER:
-					LivingEntity p = getTarget_entity(t, le);
-					Location l = p.getLocation();
-					if (w.getName().equalsIgnoreCase(l.getWorld().getName())) return l;
-					break;
-				case BLOCK:
-					int[] temp = t.getInt_array(Mobs_const.BLOCK);
-					return w.getBlockAt(temp[0], temp[1], temp[2]).getLocation();
-				case AREA:
-					String s = t.getString_param(Mobs_const.NAME).toUpperCase();
-					if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
-					Area a = areas.get(s);
-					if (a == null)
-					{
-						Mobs.warn("No area called " + s + " found!");
-						return null;
-					}
-					else return a.getLocation();					
-			}
-		}
-		return le == null ? null : le.getLocation();
-	}
-	
-	public LivingEntity getTarget_entity(Target t, LivingEntity le)
-	{
-		if (t == null) return le;
-		
-		switch (t.getTarget_type())
-		{
-			case PLAYER: return Bukkit.getPlayer(t.getString_param(Mobs_const.NAME));
-		}
-		return null;
-	}
-	
-	public List<Player> getPlayers(Target t, LivingEntity le)
-	{
-		List<Player> players = null;
-		if (t == null)
-		{
-			players = new ArrayList<Player>();
-			players.add((Player)le);
-			return players;
-		}
-		switch (t.getTarget_type())
-		{
-			case PLAYER:
-				LivingEntity p = Mobs.getInstance().getTarget_manager().getTarget_entity(t, le);			
-				if (p == null) return null;
-				players = new ArrayList<Player>();
-				players.add((Player)p);
-				break;
-			case NEAREST_PLAYER:
-				List<Nearby_mob> mobs = Mobs.getInstance().getTarget_manager().getNearest(t, le, EntityType.PLAYER);
-				if (mobs.size() == 0) return null;
-				players = new ArrayList<Player>();
-				Mobs_number number = t.getMobs_number();
-				int count = number == null ? 1 : number.getAbsolute_value(0);
-				for (int i = 0; i < count; i++)
-				{
-					if (mobs.size() <= i) return players;
-					players.add((Player)mobs.get(i).getEntity());
-				}
-				break;
-		}
-		return players;
-	}
-	
-	private List<Nearby_mob> getNearest(Target t, LivingEntity le, EntityType type)
-	{		
-		List<Entity> nearby = le.getNearbyEntities(50, 10, 50);
 		List<Nearby_mob> mobs = new ArrayList<Nearby_mob>();
 		Location loc = le.getLocation();
-		for (Entity e : nearby) if (e.getType() == type) mobs.add(new Nearby_mob(e, e.getLocation().distance(loc)));
+		String[] mob = t.hasParam(Mobs_const.MOB) ? ((String)(t.getAlternative(Mobs_const.MOB))).split(":") : null;
+
+		for (Entity e : entities)
+		{
+			if (!(e instanceof LivingEntity)) continue;
+			if (mob != null)
+			{
+				if (!e.getType().equals(EntityType.valueOf(mob[0]))) continue;
+				if (mob.length == 2)
+				{
+					if (!e.hasMetadata("mobs_data")) continue;
+					Map<String, Object> temp = (Map<String, Object>)e.getMetadata("mobs_data").get(0).value();
+						
+					String s = (String)temp.get("NAME");
+					if (s == null || !s.equalsIgnoreCase(mob[1])) continue;
+				}
+			}
+			mobs.add(new Nearby_mob(e, e.getLocation().distance(loc)));
+		}
 		
 		Collections.sort(mobs, new Comparator<Nearby_mob>() 
 		{
@@ -130,57 +75,181 @@ public class Target_manager
 		        return m1.getDistance().compareTo(m2.getDistance());
 		    }
 		});
-		return mobs;
-	}
-	
-	public World getWorld(Target t)
-	{
-		if (t == null) return null;
-		switch (t.getTarget_type())
-		{
-			case WORLD: return Bukkit.getWorld(t.getString_param(Mobs_const.NAME));
-		}
-		return null;
-	}
-	
-	/*public Location get_location_from_arear(Target t, World w)
-	{
-		int[] b = t.getInt_array(Mob_param.BLOCK);
-		int[] r = t.getInt_array(Mob_param.RADIUS);
-		int[] s = t.getInt_array(Mob_param.SAFE_RADIUS);
-
-		int safex = s != null ? s[0] : 0;
-		int safez = s != null ? s[2] : 0;	
-		int safey = s!= null ? s[1] : 0;
-		int max = w.getMaxHeight();
-				
-		List<String> temp = new ArrayList<String>();
 		
-		for (int x = b[0] - r[0]; x <= b[0] + r[0]; x++)
+		List<LivingEntity> targets = new ArrayList<LivingEntity>();
+		Mobs_number number = t.getMobs_number();
+		int count = number == null ? 1 : number.getAbsolute_value(1);
+		for (int i = 0; i < count; i++)
 		{
-			if (x <= b[0] - safex || x >= b[0] + safex)
+			if (mobs.size() <= i) return targets;
+			targets.add((LivingEntity)mobs.get(i).getEntity());
+		}
+		return targets;
+	}
+	
+	private List<LivingEntity> getNearby(List<Entity> entities, Target t)
+	{		
+		String[] mob = t.hasParam(Mobs_const.MOB) ? ((String)(t.getAlternative(Mobs_const.MOB))).split(":") : null;
+		List<LivingEntity> targets = new ArrayList<LivingEntity>();
+		for (Entity e : entities)
+		{
+			if (!(e instanceof LivingEntity)) continue;
+			if (mob != null)
 			{
-				for (int z = b[2] - r[2]; z <= b[2] + r[2]; z++)
+				if (!e.getType().equals(EntityType.valueOf(mob[0]))) continue;
+				if (mob.length == 2)
 				{
-					if (z <= b[2] - safez || z >= b[2] + safez)
-					{
-						for (int y = b[1] - r[1]; y <= b[1] + r[1]; y++)
-						{
-							if ((y <= b[1] - safey || y >= b[1] + safey) && y < max)
-							{								
-								temp.add("" + x + ":" + y + ":" + z);
-							}
-						}
-					}
+					if (!e.hasMetadata("mobs_data")) continue;
+					@SuppressWarnings("unchecked")
+					Map<String, Object> temp = (Map<String, Object>)e.getMetadata("mobs_data").get(0).value();
+						
+					String s = (String)temp.get("NAME");
+					if (s == null || !s.equalsIgnoreCase(mob[1])) continue;
 				}
 			}
+			targets.add((LivingEntity)e);
 		}
-		if (temp.size() == 0) return null;
-		String[] ss = temp.get(new Random().nextInt(temp.size())).split(":");
-		return w.getBlockAt(Integer.parseInt(ss[0]), Integer.parseInt(ss[1]), Integer.parseInt(ss[2])).getLocation();
-	}*/
+		
+		Collections.shuffle(targets);
+		Mobs_number number = t.getMobs_number();
+		int count = number == null ? targets.size() : number.getAbsolute_value(1);
+		if (count > targets.size()) count = targets.size();
+		return targets.subList(0, count);
+	}
 	
-	private void importAreas(NodeList list)
+	public World getWorld(Action a, LivingEntity le)
+	{
+		if (a.hasParam(Mobs_const.WORLD)) return Bukkit.getWorld(a.getString_alt(Mobs_const.WORLD));
+		else if (le != null) return le.getWorld();
+		return null;
+	}
+		
+	public List<LivingEntity> getTargets(Target t, LivingEntity le)
+	{
+		List<LivingEntity> targets = new ArrayList<LivingEntity>();
+		if (t == null) return targets;
+		
+		switch (t.getTarget_type())
+		{
+			case PLAYER:
+				targets.add(Bukkit.getPlayer(t.getString(Mobs_const.NAME)));
+				break;
+			case NEAREST:
+				targets = getNearest(le.getNearbyEntities(50, 10, 50), t, le);
+				break;
+			case RANDOM:
+				targets = getNearby(le.getWorld().getEntities(), t);
+				break;
+			case SELF:
+				if (le != null) targets.add(le);
+				break;
+		}
+		return targets;
+	}
+	
+	public List<Location> getLocations(Action a, LivingEntity le)
+	{
+		List<Location> locs = new ArrayList<Location>();
+		Target t = (Target)a.getAlternative(Mobs_const.TARGET);
+		World w = getWorld(a, le);
+		if (w == null) return locs;
+		// no world, can't continue
+		
+		if (t == null)
+		{
+			if (le != null) locs.add(le.getLocation());
+			return locs;
+		}
+		switch (t.getTarget_type())
+		{
+			case AREA:
+				String s = t.getString(Mobs_const.NAME).toUpperCase();
+				if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
+				Area area = areas.get(s);
+				if (area == null)
+				{
+					Mobs.warn("No area called " + s + " found!");
+					return null;
+				}
+				else locs.add(area.getLocation());
+			case BLOCK:
+				int[] temp = t.getInt_array(Mobs_const.BLOCK);
+				locs.add(w.getBlockAt(temp[0], temp[1], temp[2]).getLocation());
+				break;
+			case NEAR:
+				List<LivingEntity> targets = getNearby(w.getEntities(), t);
+				for (LivingEntity l : targets) locs.add(getOffset(t, l.getLocation()));
+				break;
+			default:
+				for (LivingEntity l : getTargets(t, le)) locs.add(l.getLocation());
+				break;
+		}
+		return locs;
+	}
+
+	private Location getOffset(Target t, Location loc)
+	{
+		Random r = new Random();
+		int start = loc.getBlockX();
+		int safe_radius = t.getInt(Mobs_const.X_SAFE_RADIUS, 0);
+		if (!t.hasParam(Mobs_const.X_RADIUS))
+		{
+			if (safe_radius == 0) safe_radius = 1;
+			if (r.nextBoolean()) loc.setX(start - safe_radius); else loc.setX(start + safe_radius);
+		}
+		else
+		{
+			int radius = t.getInt(Mobs_const.X_RADIUS, 1);
+			List<Integer> choices = new ArrayList<Integer>();
+			for (int i = start - radius; i <= start + radius; i++)
+			{
+				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
+			}
+			loc.setX(choices.get(r.nextInt(choices.size())));
+		}
+		
+		start = loc.getBlockZ();
+		safe_radius = t.getInt(Mobs_const.Z_SAFE_RADIUS, 0);
+		if (!t.hasParam(Mobs_const.Z_RADIUS))
+		{
+			if (safe_radius == 0) safe_radius = 1;
+			if (r.nextBoolean()) loc.setZ(start - safe_radius); else loc.setZ(start + safe_radius);
+		}
+		else
+		{
+			int radius = t.getInt(Mobs_const.Z_RADIUS, 1);
+			List<Integer> choices = new ArrayList<Integer>();
+			for (int i = start - radius; i <= start + radius; i++)
+			{
+				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
+			}
+			loc.setZ(choices.get(r.nextInt(choices.size())));
+		}
+		
+		start = loc.getBlockY() + 1;
+		safe_radius = t.getInt(Mobs_const.Y_SAFE_RADIUS, 0);
+		int max = loc.getWorld().getMaxHeight();
+		if (!t.hasParam(Mobs_const.Y_RADIUS))
+		{
+			if (safe_radius == 0) safe_radius = 1;
+			int y = r.nextBoolean() ? start - safe_radius : start + safe_radius;
+			if (y > max) loc.setY(max); else loc.setY(y);
+		}
+		else
+		{
+			int radius = t.getInt(Mobs_const.Y_RADIUS, 1);
+			List<Integer> choices = new ArrayList<Integer>();
+			for (int i = start - radius; i <= start + radius; i++)
+			{
+				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
+			}
+			int y = choices.get(r.nextInt(choices.size()));
+			if (y > max) loc.setY(max); else loc.setY(y);
+		}
+		return loc;
+	}
+	
+ 	private void importAreas(NodeList list)
 	{
 		Plugin p = Bukkit.getServer().getPluginManager().getPlugin("WorldGuard");
 		if (p != null && p instanceof WorldGuardPlugin)
@@ -206,18 +275,3 @@ public class Target_manager
 		}
 	}
 }
-
-/*ExecutorService pool = Executors.newFixedThreadPool(1);
-Future<Location> test = pool.submit(new Callable<Location>()
-{
-	public Location call()
-	{
-		return get_location_from_area(t, w);
-	}
-});
-try
-{
-	loc = test.get();
-}
-catch (Exception e){e.printStackTrace();}
-break;*/

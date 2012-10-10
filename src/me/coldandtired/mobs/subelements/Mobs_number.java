@@ -4,17 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.w3c.dom.Element;
-
 public class Mobs_number 
 {
 	private String value;
 	private String type = "abs";
 	private String type2 = "abs";
 	
-	public Mobs_number(Element el)
+	public Mobs_number(String value)
 	{
-		value = el.getAttribute("value");
+		this.value = value;
 		if (value.endsWith("%"))
 		{
 			type = "percent";

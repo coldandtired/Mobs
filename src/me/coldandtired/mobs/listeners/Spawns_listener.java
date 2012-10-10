@@ -34,15 +34,13 @@ public class Spawns_listener extends Base_listener
 		mob_name = mob.length == 2 ? mob[1] : null;
 	}
 	
-	@SuppressWarnings("unchecked")
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void spawns(CreatureSpawnEvent event)
 	{
 		LivingEntity le = event.getEntity();
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		if (le.hasMetadata("mobs_data")) Mobs.log("has");
-		Map<String, Object> data = le.hasMetadata("Mobs_data") ?
-			 (Map<String, Object>) le.getMetadata("mobs_data") : new HashMap<String, Object>();
+		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(Mobs_const.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));

@@ -13,15 +13,18 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 
 public class Dies_listener extends Base_listener
 {	
-	public Dies_listener(List<Outcome> outcomes)
+	private boolean active;
+	
+	public Dies_listener(List<Outcome> outcomes, boolean active)
 	{
 		super(outcomes);
+		this.active = active;
 	}
 
 	@EventHandler
 	public void dies(EntityDeathEvent event)
 	{
-		performActions(Mobs_event.DIES, event.getEntity(), event);
+		if (active) performActions(Mobs_event.DIES, event.getEntity(), event);
 		Map<String, Object> data = getData(event.getEntity());
 		if (data != null)
 		{
@@ -33,7 +36,7 @@ public class Dies_listener extends Base_listener
 	@EventHandler
 	public void player_dies(PlayerDeathEvent event)
 	{
-		performActions(Mobs_event.DIES, event.getEntity(), event);
+		if (active) performActions(Mobs_event.DIES, event.getEntity(), event);
 		Map<String, Object> data = getData(event.getEntity());
 		if (data != null)
 		{

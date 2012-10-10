@@ -53,21 +53,18 @@ public class Mobs extends JavaPlugin
 	private static Mobs instance;
 	private Action_manager action_manager;
 	private Event_manager event_manager;
-	private Target_manager target_manager;
 	private Spawns_listener spawns_listener;
 	private List<Outcome> repeating_outcomes = null;
 	private static int log_level = 1;
 	private boolean approached = false;
 	private boolean near = false;
 	private boolean disabled_timer = false;
-	private static boolean spout;
 	
 	@Override
 	public void onEnable()
 	{		
 		instance = this;
 		checkConfig();
-		spout = getServer().getPluginManager().isPluginEnabled("Spout");
 		if (!load_config()) setEnabled(false);
 	}
 
@@ -133,9 +130,8 @@ public class Mobs extends JavaPlugin
 				if (el.hasAttribute("disable_update_check")) disable_check = Boolean.parseBoolean(el.getAttribute("disable_update_check"));
 			}
 			if (!disable_check && !is_latest_version(xpath)) log("There's a newer version of Mobs available!");
-			action_manager = new Action_manager();
 			event_manager = new Event_manager();
-			target_manager = new Target_manager((NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET));
+			action_manager = new Action_manager(new Target_manager((NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET)));
 			boolean needs_timer = setupListeners(xpath, input);
 			NodeList list = getList(xpath, input, "repeating_outcomes");
 			if (list.getLength() > 0)
@@ -165,11 +161,12 @@ public class Mobs extends JavaPlugin
 	{
 		checkNearbyPlayers();
 		// remaining life
+		//fire attack
 		if (!disabled_timer && repeating_outcomes != null)
 		{
 			for (Outcome o : repeating_outcomes)
 			{
-				if (o.isEnabled() && o.canTick()) event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false);
+				if (o.isEnabled() && o.canTick()) event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, null);
 			}
 		}
 	}
@@ -233,7 +230,7 @@ public class Mobs extends JavaPlugin
 		pm.registerEvents(spawns_listener, this);
 		
 		list = getList(xpath, input, "dies");
-		if (list.getLength() > 0) pm.registerEvents(new Dies_listener(getEvent_outcomes(xpath, list)), this);
+		pm.registerEvents(new Dies_listener(getEvent_outcomes(xpath, list), list.getLength() > 0), this);
 		
 		boolean use_hit = false;
 		boolean use_damaged = false;
@@ -354,7 +351,6 @@ public class Mobs extends JavaPlugin
 			getServer().getScheduler().cancelTasks(this);
 			repeating_outcomes = null;
 			event_manager = null;
-			target_manager = null;
 			action_manager = null;
 			spawns_listener = null;
 			HandlerList.unregisterAll(this);
@@ -421,6 +417,21 @@ public class Mobs extends JavaPlugin
 							return true;
 						}
 					}
+				}
+			}
+			if (args[0].equalsIgnoreCase("activate"))
+			{
+				if (args.length == 1)
+				{					
+					sender.sendMessage("Enabled all repeating outcomes!");
+					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, null);
+					return true;
+				}
+				else if (args.length == 2)
+				{
+					sender.sendMessage("Enabled repeating outcome " + args[1] + "!");
+					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, args[1]);
+					return true;
 				}
 			}
 			else if (args[0].equalsIgnoreCase("unpause"))
@@ -509,11 +520,6 @@ public class Mobs extends JavaPlugin
 	{
 		return event_manager;
 	}
-		
-	public Target_manager getTarget_manager()
-	{
-		return target_manager;
-	}
 	
 	public void setMob_name(String[] mob)
 	{
@@ -539,7 +545,6 @@ public class Mobs extends JavaPlugin
 		logger = null;
 		instance = null;
 		event_manager = null;
-		target_manager = null;
 		action_manager = null;
 		spawns_listener = null;
 	}
@@ -566,6 +571,6 @@ public class Mobs extends JavaPlugin
 
 	public static boolean isSpout_enabled()
 	{
-		return spout;
+		return Bukkit.getServer().getPluginManager().isPluginEnabled("Spout");
 	}
 }

@@ -65,5 +65,12 @@ public enum Mobs_condition
 	//WORLD_TYPE,
 	X,
 	Y,
-	Z
+	Z;
+	
+	public static String getXpath()
+	{
+		String s = "";
+		for (Mobs_condition c : values()) s = s + " | " + c.toString().toLowerCase();
+		return s.substring(3);
+	}
 }

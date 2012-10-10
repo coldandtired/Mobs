@@ -15,7 +15,7 @@ public enum Mobs_const
 	
 	//WOOL_COLOR
 	AMOUNT,
-	AREA,
+	//AREA,
 	BLOCK,
 	CLEAR_DROPS,
 	CLEAR_EXP,
@@ -33,7 +33,8 @@ public enum Mobs_const
 	MOB,
 	NAME,
 	NEARBY_MOBS,
-	NEAREST_PLAYER,
+	//NEAREST,
+	//NEAREST_PLAYER,
 	NO_BURN,
 	NO_CREATE_PORTALS,
 	NO_DESTROY_BLOCKS,
@@ -50,7 +51,7 @@ public enum Mobs_const
 	NO_TAMED,
 	NO_TELEPORT,
 	NUMBER,
-	PLAYER,
+	//PLAYER,
 	POWER,
 	RADIUS,
 	SAFE_RADIUS,
@@ -60,5 +61,11 @@ public enum Mobs_const
 	TARGET,
 	TIME,
 	VALUE,
-	WORLD
+	WORLD,
+	X_RADIUS,
+	X_SAFE_RADIUS,
+	Y_RADIUS,
+	Y_SAFE_RADIUS,
+	Z_RADIUS,
+	Z_SAFE_RADIUS
 }

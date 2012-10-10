@@ -46,6 +46,7 @@ public enum Mobs_action
 	PULL_LEVER,
 	PUSH_LEVER,
 	RAIN,
+	REMOVE,
 	REMOVE_ITEM,
 	RESTORE_SKIN,
 	SEND_MESSAGE,
