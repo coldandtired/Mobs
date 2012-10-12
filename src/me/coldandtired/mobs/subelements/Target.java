@@ -22,7 +22,7 @@ public class Target extends P
 	public Target(XPath xpath, Element element)
 	{	
 		target_type = Mobs_target.valueOf(element.getLocalName().toUpperCase());
-		if (target_type.equals(Mobs_target.PLAYER))	params.put(Mobs_const.NAME, element.getTextContent());
+		if (target_type.equals(Mobs_target.PLAYER))	params.put(Mobs_const.VALUE, element.getTextContent());
 		
 		else if (target_type.equals(Mobs_target.BLOCK))
 		{
@@ -33,7 +33,17 @@ public class Target extends P
 					};
 			params.put(Mobs_const.BLOCK, temp);
 		}	
-		else if (target_type.equals(Mobs_target.AREA)) params.put(Mobs_const.NAME, element.getTextContent());
+		else if (target_type.equals(Mobs_target.AREA))
+		{
+			if (element.getChildNodes().getLength() == 1) params.put(Mobs_const.VALUE, element.getTextContent());
+			else params.put(Mobs_const.AREA, new Area(element));
+		}
+		else if (target_type.equals(Mobs_target.NEAR))
+		{
+			params.put(Mobs_const.X, element.getElementsByTagName("x").item(0).getTextContent());
+			params.put(Mobs_const.Y, element.getElementsByTagName("y").item(0).getTextContent());
+			params.put(Mobs_const.Z, element.getElementsByTagName("z").item(0).getTextContent());
+		}
 		
 		// subvalues
 		try
@@ -74,103 +84,7 @@ public class Target extends P
 					temp.put(count, el.getLocalName().toUpperCase() + ":" + el.getTextContent());	
 				}
 				params.put(Mobs_const.MOB, new Alternatives(count, temp));
-			}			
-			
-			list = (NodeList)xpath.evaluate("x_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.X_RADIUS, new Alternatives(count, temp));
-			}
-			
-			list = (NodeList)xpath.evaluate("x_safe_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.X_SAFE_RADIUS, new Alternatives(count, temp));
-			}
-			
-			list = (NodeList)xpath.evaluate("y_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.Y_RADIUS, new Alternatives(count, temp));
-			}
-			
-			list = (NodeList)xpath.evaluate("y_safe_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.Y_SAFE_RADIUS, new Alternatives(count, temp));
-			}
-			
-			list = (NodeList)xpath.evaluate("z_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.Z_RADIUS, new Alternatives(count, temp));
-			}
-			
-			list = (NodeList)xpath.evaluate("z_safe_radius", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.Z_SAFE_RADIUS, new Alternatives(count, temp));
-			}
+			}	
 		}
 		catch (Exception e) {e.printStackTrace();}
 	}

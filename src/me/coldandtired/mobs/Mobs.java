@@ -19,6 +19,10 @@ import javax.xml.xpath.XPathFactory;
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.Mobs_event;
 import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.events.Dawn_event;
+import me.coldandtired.mobs.events.Dusk_event;
+import me.coldandtired.mobs.events.Midday_event;
+import me.coldandtired.mobs.events.Midnight_event;
 import me.coldandtired.mobs.events.Mob_approached_event;
 import me.coldandtired.mobs.events.Mob_near_event;
 import me.coldandtired.mobs.listeners.*;
@@ -131,7 +135,7 @@ public class Mobs extends JavaPlugin
 			}
 			if (!disable_check && !is_latest_version(xpath)) log("There's a newer version of Mobs available!");
 			event_manager = new Event_manager();
-			action_manager = new Action_manager(new Target_manager((NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET)));
+			action_manager = new Action_manager(new Target_manager(xpath, (NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET)));
 			boolean needs_timer = setupListeners(xpath, input);
 			NodeList list = getList(xpath, input, "repeating_outcomes");
 			if (list.getLength() > 0)
@@ -150,17 +154,14 @@ public class Mobs extends JavaPlugin
 			
 		}
 		catch (Exception e) {warn("Something went wrong loading the config - stopping!"); e.printStackTrace(); return false;}
-		finally
-		{
-			input = null;
-		}
 		return true;
 	}
 	
 	private void timerTick()
 	{
-		checkNearbyPlayers();
-		// remaining life
+		checkNearby_Players();
+		checkMax_life();
+		checkTime();
 		//fire attack
 		if (!disabled_timer && repeating_outcomes != null)
 		{
@@ -171,8 +172,20 @@ public class Mobs extends JavaPlugin
 		}
 	}
 	
+	private void checkTime()
+	{
+		for (World w : Bukkit.getWorlds())
+		{
+			long l = w.getTime();
+			if (l > 0 && l <= 19) getServer().getPluginManager().callEvent(new Dawn_event());
+			if (l > 6000 && l <= 6019) getServer().getPluginManager().callEvent(new Midday_event());
+			if (l > 12000 && l <= 12019) getServer().getPluginManager().callEvent(new Dusk_event());
+			if (l > 18000 && l <= 18019) getServer().getPluginManager().callEvent(new Midnight_event());
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
-	private void checkNearbyPlayers()
+	private void checkNearby_Players()
 	{
 		for (World w : Bukkit.getWorlds())
 		{
@@ -216,6 +229,28 @@ public class Mobs extends JavaPlugin
 							getServer().getPluginManager().callEvent(new Mob_near_event((LivingEntity)e, p));
 						}
 					}
+				}
+			}
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void checkMax_life()
+	{
+		for (World w : Bukkit.getWorlds())
+		{
+			for (LivingEntity le : w.getEntitiesByClass(LivingEntity.class))
+			{
+				if (le instanceof Player) continue;
+				
+				if (le.hasMetadata("mobs_data"))
+				{
+					Map<String, Object> data = (Map<String, Object>)le.getMetadata("mobs_data").get(0).value();
+					Integer life = (Integer)data.get(Mobs_const.MAX_LIFE.toString());
+					if (life == null) continue;
+					
+					data.put(Mobs_const.MAX_LIFE.toString(), life - 1);
+					if (life < 1) le.remove();					
 				}
 			}
 		}
@@ -301,6 +336,34 @@ public class Mobs extends JavaPlugin
 
 		list = getList(xpath, input, "picks_up_item");
 		if (list.getLength() > 0) pm.registerEvents(new Picks_up_item_listener(getEvent_outcomes(xpath, list)), this);
+		
+		list = getList(xpath, input, "dawn");
+		if (list.getLength() > 0)
+		{
+			pm.registerEvents(new Dawn_listener(getEvent_outcomes(xpath, list)), this);
+			needs_timer = true;
+		}
+		
+		list = getList(xpath, input, "midday");
+		if (list.getLength() > 0)
+		{
+			pm.registerEvents(new Midday_listener(getEvent_outcomes(xpath, list)), this);
+			needs_timer = true;
+		}
+		
+		list = getList(xpath, input, "dusk");
+		if (list.getLength() > 0)
+		{
+			pm.registerEvents(new Dusk_listener(getEvent_outcomes(xpath, list)), this);
+			needs_timer = true;
+		}
+		
+		list = getList(xpath, input, "midnight");
+		if (list.getLength() > 0)
+		{
+			pm.registerEvents(new Midnight_listener(getEvent_outcomes(xpath, list)), this);
+			needs_timer = true;
+		}
 		
 		list = getList(xpath, input, "approached");
 		if (list.getLength() > 0) 
@@ -423,13 +486,13 @@ public class Mobs extends JavaPlugin
 			{
 				if (args.length == 1)
 				{					
-					sender.sendMessage("Enabled all repeating outcomes!");
+					sender.sendMessage("Activated all repeating outcomes!");
 					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, null);
 					return true;
 				}
 				else if (args.length == 2)
 				{
-					sender.sendMessage("Enabled repeating outcome " + args[1] + "!");
+					sender.sendMessage("Activated repeating outcome " + args[1] + "!");
 					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, args[1]);
 					return true;
 				}

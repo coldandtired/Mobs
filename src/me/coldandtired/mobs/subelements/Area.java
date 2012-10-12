@@ -1,11 +1,9 @@
 package me.coldandtired.mobs.subelements;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.w3c.dom.Element;
 
 import com.sk89q.worldedit.BlockVector;
@@ -13,78 +11,111 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
 public class Area 
 {
-	private List<Integer> xs = new ArrayList<Integer>();
-	private List<Integer> ys = new ArrayList<Integer>();
-	private List<Integer> zs = new ArrayList<Integer>();
-	private String world;
+	private int x_start;
+	private int x_length;
+	private int x_offset = 0;
+	private int y_start;
+	private int y_length;
+	private int y_offset = 0;
+	private int z_start;
+	private int z_length;
+	private int z_offset = 0;
 	
-	public Area(Element el, String world_name)
+	public Area(Element element)
 	{
-		world = world_name;	
-		int x_start;
-		int x_end;
-		int y_start;
-		int y_end;
-		int z_start;
-		int z_end;
-		int x_safe = 0;
-		int y_safe = 0;
-		int z_safe = 0;
-		if (el.hasAttribute("from_x"))
+		String[] temp = element.getElementsByTagName("x").item(0).getTextContent().split(":");
+		if (temp.length == 2)
 		{
-			x_start = Integer.parseInt(el.getAttribute("from_x"));
-			x_end = Integer.parseInt(el.getAttribute("to_x"));
-			y_start = Integer.parseInt(el.getAttribute("from_y"));
-			y_end = Integer.parseInt(el.getAttribute("to_y"));
-			z_start = Integer.parseInt(el.getAttribute("from_z"));
-			z_end = Integer.parseInt(el.getAttribute("to_z"));
+			x_start = Integer.parseInt(temp[0]);
+			x_length = Integer.parseInt(temp[1]) + 1;
+			
+			temp = element.getElementsByTagName("y").item(0).getTextContent().split(":");
+			y_start = Integer.parseInt(temp[0]);
+			y_length = Integer.parseInt(temp[1]) + 1;
+			
+			temp = element.getElementsByTagName("z").item(0).getTextContent().split(":");
+			z_start = Integer.parseInt(temp[0]);
+			z_length = Integer.parseInt(temp[1]) + 1;
 		}
 		else
 		{
-			int temp = Integer.parseInt(el.getAttribute("radius_x"));
-			x_start = Integer.parseInt(el.getAttribute("mid_x")) - temp;
-			x_end = x_start + temp;
-			if (el.hasAttribute("safe_radius_x")) x_safe = Integer.parseInt(el.getAttribute("safe_radius_x"));
-			temp = Integer.parseInt(el.getAttribute("radius_y"));
-			y_start = Integer.parseInt(el.getAttribute("mid_y")) - temp;
-			y_end = y_start + temp;
-			if (el.hasAttribute("safe_radius_y")) y_safe = Integer.parseInt(el.getAttribute("safe_radius_y"));
-			temp = Integer.parseInt(el.getAttribute("radius_z"));
-			z_start = Integer.parseInt(el.getAttribute("mid_z")) - temp;
-			z_end = z_start + temp;
-			if (el.hasAttribute("safe_radius_z")) z_safe = Integer.parseInt(el.getAttribute("safe_radius_z"));
-		}
-		
-		int max = Bukkit.getWorld(world).getMaxHeight();
-		
-		for (int i = x_start; i <= x_end; i++) if (i <= x_start - x_safe || i >= x_start + x_safe) xs.add(i);
-		for (int i = z_start; i <= z_end; i++) if (i <= z_start - z_safe || i >= z_start + z_safe) zs.add(i);
-		for (int i = y_start; i <= y_end; i++) if ((i <= y_start - y_safe || i >= y_start + y_safe) && i <= max) ys.add(i);					
-	}
+			//mid, radius, safe
+			int i = Integer.parseInt(temp[1]);
+			x_start = Integer.parseInt(temp[0]) - i;			
+			x_offset = (Integer.parseInt(temp[2]) * 2) + 1;
+			x_length = (i * 2) - x_offset + 1;
+
+			temp = element.getElementsByTagName("y").item(0).getTextContent().split(":");
+			i = Integer.parseInt(temp[1]);
+			y_start = Integer.parseInt(temp[0]) - i;			
+			y_offset = (Integer.parseInt(temp[2]) * 2) + 1;
+			y_length = (i * 2) - y_offset + 1;
+
+			temp = element.getElementsByTagName("z").item(0).getTextContent().split(":");
+			i = Integer.parseInt(temp[1]);
+			z_start = Integer.parseInt(temp[0]) - i;			
+			z_offset = (Integer.parseInt(temp[2]) * 2) + 1;
+			z_length = (i * 2) - z_offset + 1;
+		}	
+}
 	
-	public Area(ProtectedRegion pr, String world_name)
+	public Area(ProtectedRegion pr)
 	{
-		world = world_name;
-		BlockVector min = pr.getMinimumPoint();
-		BlockVector max = pr.getMaximumPoint();
-		int max_height = Bukkit.getWorld(world).getMaxHeight();
-		
-		for (int i = min.getBlockX(); i <= max.getBlockX(); i++) xs.add(i);
-		for (int i = min.getBlockZ(); i <= max.getBlockZ(); i++) zs.add(i);
-		for (int i = min.getBlockY(); i <= max.getBlockY(); i++) if (i <= max_height) ys.add(i);
+		BlockVector bv = pr.getMinimumPoint();
+		x_start = bv.getBlockX();
+		bv = pr.getMaximumPoint();
+		x_length = bv.getBlockX() - x_start + 1;
 	}
 	
-	public Location getLocation( )
+	public Location getLocation(World world)
 	{
 		Random r = new Random();
-		int x = xs.get(r.nextInt(xs.size()));
-		int y = ys.get(r.nextInt(ys.size()));
-		int z = zs.get(r.nextInt(zs.size()));
-		return Bukkit.getWorld(world).getBlockAt(x, y, z).getLocation();
+		int x = r.nextInt(x_length);
+		if (x_offset > 0 && x >= (x_length / 2)) x += x_offset;
+		x += x_start;
+		
+		int y = r.nextInt(y_length);
+		if (y_offset > 0 && y >= (y_length / 2)) y += y_offset;
+		y += y_start;
+		if (y > world.getMaxHeight()) y = world.getMaxHeight();
+		
+		int z = r.nextInt(z_length);
+		if (z_offset > 0 && z >= (z_length / 2)) z += z_offset;
+		z += z_start;
+		return world.getBlockAt(x, y, z).getLocation();
 	}
 	
 	public boolean containsLocation(Location loc)
 	{
-		return xs.contains(loc.getBlockX()) && ys.contains(loc.getBlockY()) && zs.contains(loc.getBlockZ());
+		int i = loc.getBlockX();
+		if (i < x_start || i >= x_start + x_offset + x_length) return false;
+		// outside external limit
+		if (x_offset > 0)
+		{
+			int temp = (x_offset - 1) / 2;
+			if (i > x_start + temp || i <= x_start + temp + x_offset) return false;
+			//inside safe area
+		}
+
+		i = loc.getBlockY();
+		if (i < y_start || i >= y_start + y_offset + y_length) return false;
+		// outside external limit
+		if (y_offset > 0)
+		{
+			int temp = (y_offset - 1) / 2;
+			if (i > y_start + temp || i <= y_start + temp + y_offset) return false;
+			//inside safe area
+		}
+		
+		i = loc.getBlockZ();
+		if (i < z_start || i >= z_start + z_offset + z_length) return false;
+		// outside external limit
+		if (z_offset > 0)
+		{
+			int temp = (z_offset - 1) / 2;
+			if (i > z_start + temp || i <= z_start + temp + z_offset) return false;
+			//inside safe area
+		}
+		return true;
 	}
 }

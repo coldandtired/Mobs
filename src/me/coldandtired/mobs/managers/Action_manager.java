@@ -257,7 +257,7 @@ public class Action_manager
 	private void setProperty(Action a, LivingEntity le)
 	{
 		Target target = a.getTarget();
-		if (target != null && target.getTarget_type().equals(Mobs_target.PLAYER)) le = Bukkit.getPlayer(target.getString(Mobs_const.NAME));
+		if (target != null && target.getTarget_type().equals(Mobs_target.PLAYER)) le = Bukkit.getPlayer(target.getString(Mobs_const.VALUE));
 				
 		if (le instanceof Player) setPlayer_property(a, (Player)le);
 		if (le instanceof Animals) setAnimal_property(a, (Animals)le);
@@ -267,14 +267,21 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_TITLE:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString(Mobs_const.NAME));
+				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString(Mobs_const.VALUE));
 				break;
 			case SET_SKIN:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString(Mobs_const.NAME), EntitySkinType.DEFAULT);
+				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString(Mobs_const.VALUE), EntitySkinType.DEFAULT);
 				break;
 			case RESTORE_SKIN:
 				if (Mobs.isSpout_enabled()) Spout.getServer().resetEntitySkin(le);
 				break;
+			case SET_MAX_LIFE:
+				putData(le, Mobs_const.MAX_LIFE, Integer.parseInt(a.getString(Mobs_const.VALUE)));
+				break;	
+			case REMOVE_MAX_LIFE:
+				removeData(le, Mobs_const.MAX_LIFE);
+				break;			
+			
 			case SET_CAN_BURN_NO:
 				putData(le, Mobs_const.NO_BURN);
 				break;
@@ -328,7 +335,7 @@ public class Action_manager
 				break;
 			
 			case SET_NAME:
-				putData(le, Mobs_const.NAME, a.getString(Mobs_const.NAME));
+				putData(le, Mobs_const.NAME, a.getString(Mobs_const.VALUE));
 			break;
 				//case SET_HP:
 				//	q = number.getAbsolute_value(le2.getHealth());
@@ -429,7 +436,7 @@ public class Action_manager
 			case SET_OWNER:
 				if (animal instanceof Tameable)
 				{
-					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString(Mobs_const.NAME)));
+					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString(Mobs_const.VALUE)));
 				}
 				return;
 		}
@@ -1084,9 +1091,8 @@ public class Action_manager
 		Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
 		ItemStack is = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
 		
-		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		for (Location loc : target_manager.getLocations(a, le))
 		{
-			Location loc = l.getLocation();
 			loc.getWorld().dropItem(loc, is);
 			Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + 
 					drop.getItem_id() + ":" + drop.getItem_data());
@@ -1135,9 +1141,8 @@ public class Action_manager
 	
 	private void drop_exp(Action a, LivingEntity le)
 	{
-		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		for (Location loc : target_manager.getLocations(a, le))
 		{
-			Location loc = l.getLocation();
 			Mobs_number number = a.getMobs_number();
 			int q = number.getAbsolute_value(0);	
 			

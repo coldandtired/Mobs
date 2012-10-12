@@ -1,5 +1,5 @@
 name: Mobs
-version: Beta5
+version: Beta7
 author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
@@ -13,7 +13,7 @@ commands:
     repeating_outcomes:
         description: Adjust the repeating part of the plugin
         aliases: ro
-        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval] [seconds] [name]"
+        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval|activate] [seconds] [name]"
         permission: mobs.can_change_repeating_outcomes
 permissions:
     mobs.can_reload_mobs:

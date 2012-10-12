@@ -29,7 +29,12 @@ public class P
 		return (String)getAlternative(param);
 	}
 	
-	public Object getAlternative(Mobs_const param)
+	public Object getObject(Mobs_const param)
+	{
+		return params.get(param);
+	}
+	
+ 	public Object getAlternative(Mobs_const param)
 	{
 		if (!params.containsKey(param)) return null;
 		return ((Alternatives)params.get(param)).get_alternative();

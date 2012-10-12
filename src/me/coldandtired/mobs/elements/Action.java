@@ -24,7 +24,7 @@ public class Action extends P
 	public Action(XPath xpath, Element element) 
 	{
 		action_type = Mobs_action.valueOf(element.getLocalName().toUpperCase());
-		if (element.hasChildNodes() && element.getChildNodes().getLength() == 1) params.put(Mobs_const.NAME, element.getChildNodes().item(0).getTextContent());
+		if (element.hasChildNodes() && element.getChildNodes().getLength() == 1) params.put(Mobs_const.VALUE, element.getChildNodes().item(0).getTextContent());
 		try
 		{
 			NodeList list = (NodeList)xpath.evaluate(Mobs_target.getXpath(), element, XPathConstants.NODESET);		
@@ -124,7 +124,7 @@ public class Action extends P
 					int ratio = getRatio(el);
 					count += ratio;
 					if (list.getLength() == 1) count = 1;						
-					temp.put(count, el.getLocalName().toUpperCase() + ":" + el.getTextContent());	
+					temp.put(count, el.getLocalName().toUpperCase() + ":" + el.getTextContent());
 				}
 				params.put(Mobs_const.MOB, new Alternatives(count, temp));
 			}

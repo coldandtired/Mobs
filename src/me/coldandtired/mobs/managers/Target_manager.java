@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Mobs;
@@ -33,9 +36,9 @@ public class Target_manager
 {
 	private Map<String, Area> areas = new HashMap<String, Area>();
 	
-	public Target_manager(NodeList list)
+	public Target_manager(XPath xpath, NodeList list)
 	{
-		importAreas(list);
+		importAreas(xpath, list);
 	}
 	
 	Collection<Area> getAreas()
@@ -132,7 +135,7 @@ public class Target_manager
 		switch (t.getTarget_type())
 		{
 			case PLAYER:
-				targets.add(Bukkit.getPlayer(t.getString(Mobs_const.NAME)));
+				targets.add(Bukkit.getPlayer(t.getString(Mobs_const.VALUE)));
 				break;
 			case NEAREST:
 				targets = getNearest(le.getNearbyEntities(50, 10, 50), t, le);
@@ -163,15 +166,22 @@ public class Target_manager
 		switch (t.getTarget_type())
 		{
 			case AREA:
-				String s = t.getString(Mobs_const.NAME).toUpperCase();
-				if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
-				Area area = areas.get(s);
-				if (area == null)
+				Area area = null;
+				if (t.hasParam(Mobs_const.VALUE))
 				{
-					Mobs.warn("No area called " + s + " found!");
-					return null;
+					String s = t.getString(Mobs_const.VALUE).toUpperCase();
+				
+					if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
+					area = areas.get(s);
+					if (area == null)
+					{
+						Mobs.warn("No area called " + s + " found!");
+						break;
+					}
 				}
-				else locs.add(area.getLocation());
+				else if (t.hasParam(Mobs_const.AREA)) area = (Area)t.getObject(Mobs_const.AREA);
+				locs.add(area.getLocation(w));
+				break;
 			case BLOCK:
 				int[] temp = t.getInt_array(Mobs_const.BLOCK);
 				locs.add(w.getBlockAt(temp[0], temp[1], temp[2]).getLocation());
@@ -190,66 +200,33 @@ public class Target_manager
 	private Location getOffset(Target t, Location loc)
 	{
 		Random r = new Random();
-		int start = loc.getBlockX();
-		int safe_radius = t.getInt(Mobs_const.X_SAFE_RADIUS, 0);
-		if (!t.hasParam(Mobs_const.X_RADIUS))
-		{
-			if (safe_radius == 0) safe_radius = 1;
-			if (r.nextBoolean()) loc.setX(start - safe_radius); else loc.setX(start + safe_radius);
-		}
-		else
-		{
-			int radius = t.getInt(Mobs_const.X_RADIUS, 1);
-			List<Integer> choices = new ArrayList<Integer>();
-			for (int i = start - radius; i <= start + radius; i++)
-			{
-				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
-			}
-			loc.setX(choices.get(r.nextInt(choices.size())));
-		}
-		
-		start = loc.getBlockZ();
-		safe_radius = t.getInt(Mobs_const.Z_SAFE_RADIUS, 0);
-		if (!t.hasParam(Mobs_const.Z_RADIUS))
-		{
-			if (safe_radius == 0) safe_radius = 1;
-			if (r.nextBoolean()) loc.setZ(start - safe_radius); else loc.setZ(start + safe_radius);
-		}
-		else
-		{
-			int radius = t.getInt(Mobs_const.Z_RADIUS, 1);
-			List<Integer> choices = new ArrayList<Integer>();
-			for (int i = start - radius; i <= start + radius; i++)
-			{
-				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
-			}
-			loc.setZ(choices.get(r.nextInt(choices.size())));
-		}
-		
-		start = loc.getBlockY() + 1;
-		safe_radius = t.getInt(Mobs_const.Y_SAFE_RADIUS, 0);
-		int max = loc.getWorld().getMaxHeight();
-		if (!t.hasParam(Mobs_const.Y_RADIUS))
-		{
-			if (safe_radius == 0) safe_radius = 1;
-			int y = r.nextBoolean() ? start - safe_radius : start + safe_radius;
-			if (y > max) loc.setY(max); else loc.setY(y);
-		}
-		else
-		{
-			int radius = t.getInt(Mobs_const.Y_RADIUS, 1);
-			List<Integer> choices = new ArrayList<Integer>();
-			for (int i = start - radius; i <= start + radius; i++)
-			{
-				if (i < start - safe_radius || i > start + safe_radius) choices.add(i);
-			}
-			int y = choices.get(r.nextInt(choices.size()));
-			if (y > max) loc.setY(max); else loc.setY(y);
-		}
+		int start = loc.getBlockX();		
+		String[] temp = t.getString(Mobs_const.X).split(":");
+		int rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		int safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		int i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
+		if (r.nextBoolean()) loc.setX(start - i); else loc.setX(start + i);		
+
+		start = loc.getBlockY();		
+		temp = t.getString(Mobs_const.Y).split(":");
+		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;		
+		rad = r.nextBoolean() ? start - i : start + i;
+		if (rad > loc.getWorld().getMaxHeight()) rad = loc.getWorld().getMaxHeight();
+		loc.setY(rad);		
+
+		start = loc.getBlockZ();		
+		temp = t.getString(Mobs_const.Z).split(":");
+		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
+		if (r.nextBoolean()) loc.setZ(start - i); else loc.setX(start + i);
+
 		return loc;
 	}
 	
- 	private void importAreas(NodeList list)
+ 	private void importAreas(XPath xpath, NodeList list)
 	{
 		Plugin p = Bukkit.getServer().getPluginManager().getPlugin("WorldGuard");
 		if (p != null && p instanceof WorldGuardPlugin)
@@ -261,7 +238,7 @@ public class Target_manager
 				String world_name = w.getName().toUpperCase();
 				for (String s : wgp.getRegionManager(w).getRegions().keySet())
 				{
-					areas.put(world_name + ":" + s.toUpperCase(), new Area(wgp.getRegionManager(w).getRegion(s), world_name));
+					areas.put(world_name + ":" + s.toUpperCase(), new Area(wgp.getRegionManager(w).getRegion(s)));
 				}
 			}
 		}
@@ -269,9 +246,17 @@ public class Target_manager
 		if (list.getLength() == 0) return;
 		for (int i = 0; i < list.getLength(); i++)
 		{
-			Element el = (Element)list.item(i);
-			String world_name = el.getAttribute("world").toUpperCase();
-			areas.put(world_name + ":" + el.getLocalName().toUpperCase(), new Area(el, world_name));
+			String world = list.item(i).getLocalName();
+			try
+			{
+				NodeList list2 = (NodeList)xpath.evaluate("*", list.item(i), XPathConstants.NODESET);
+				for (int j = 0; j < list2.getLength(); j++)
+				{
+					Element el = (Element)list2.item(j);
+					areas.put(world.toUpperCase() + ":" + el.getLocalName().toUpperCase(), new Area(el));
+				}
+			}
+			catch (Exception e) {e.printStackTrace();}
 		}
 	}
 }

@@ -92,31 +92,31 @@ public class Event_manager
 				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return true;
 				break;
 			case BIOME:
-				return matchesName(c, le.getLocation().getBlock().getBiome().name());
+				return matchesString(c, le.getLocation().getBlock().getBiome().name());
 			case DEATH_CAUSE:
 				if (!le.isDead()) return false;
-				return matchesName(c, le.getLastDamageCause().toString());
+				return matchesString(c, le.getLastDamageCause().toString());
 			case KILLED_BY_PLAYER:
 				if (le.isDead()) return le.getKiller() instanceof Player;
 				break;
-			case LIGHT_LEVEL: return matchesValue(c, le.getLocation().getBlock().getLightLevel());
+			case LIGHT_LEVEL: return matchesInt(c, le.getLocation().getBlock().getLightLevel());
 			case NAME:
 				if (le instanceof Player)
 				{
-					return matchesName(c, ((Player)le).getName());
+					return matchesString(c, ((Player)le).getName());
 				}
 				else if (le.hasMetadata("mobs_data"))
 				{
 					String name = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.NAME.toString());
 					if (name == null) return false;
-					return matchesName(c, name);
+					return matchesString(c, name);
 				}
 				break;
 			case OWNER:
 				if (le instanceof Tameable)
 				{
 					AnimalTamer tamer = ((Tameable)le).getOwner();
-					if (tamer != null) return matchesName(c, tamer.getName());
+					if (tamer != null) return matchesString(c, tamer.getName());
 				}
 				break;
 			case RAINING:
@@ -136,7 +136,7 @@ public class Event_manager
 				{
 					String spawn_reason = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.SPAWN_REASON.toString());
 					if (spawn_reason == null) return false;
-					return matchesName(c, spawn_reason);
+					return matchesString(c, spawn_reason);
 				}
 				break;
 			case TAMED:
@@ -148,14 +148,14 @@ public class Event_manager
 			case WORLD_NAME:
 				w = getWorld(c, le);
 				if (w == null) return false;
-				return matchesName(c, w.getName());
+				return matchesString(c, w.getName());
 			case WORLD_TIME: 
 				w = getWorld(c, le);
 				if (w == null) return false;
-				return (matchesValue(c, (int)w.getTime()));
-			case X: return matchesValue(c, le.getLocation().getBlockX());
-			case Y: return matchesValue(c, le.getLocation().getBlockY());
-			case Z: return matchesValue(c, le.getLocation().getBlockZ());
+				return (matchesInt(c, (int)w.getTime()));
+			case X: return matchesInt(c, le.getLocation().getBlockX());
+			case Y: return matchesInt(c, le.getLocation().getBlockY());
+			case Z: return matchesInt(c, le.getLocation().getBlockZ());
 						
 			case NOT_ADULT:
 				if (le instanceof Ageable) return !((Ageable)le).isAdult();
@@ -168,30 +168,30 @@ public class Event_manager
 				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return false;
 				return true;				
 			case NOT_BIOME:
-				return !matchesName(c, le.getLocation().getBlock().getBiome().name());
+				return !matchesString(c, le.getLocation().getBlock().getBiome().name());
 			case NOT_DEATH_CAUSE:
 				if (!le.isDead()) return false;
-				return !matchesName(c, le.getLastDamageCause().toString());
+				return !matchesString(c, le.getLastDamageCause().toString());
 			case NOT_KILLED_BY_PLAYER:
 				if (le.isDead()) return !(le.getKiller() instanceof Player);
 				break;
 			case NOT_NAME:
 				if (le instanceof Player)
 				{
-					return !matchesName(c, ((Player)le).getName());
+					return !matchesString(c, ((Player)le).getName());
 				}
 				else if (le.hasMetadata("mobs_data"))
 				{
 					String name = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.NAME.toString());
 					if (name == null) return true;
-					return !matchesName(c, name);
+					return !matchesString(c, name);
 				}
 				break;
 			case NOT_OWNER:
 				if (le instanceof Tameable)
 				{
 					AnimalTamer tamer = ((Tameable)le).getOwner();
-					if (tamer != null) return !matchesName(c, tamer.getName());
+					if (tamer != null) return !matchesString(c, tamer.getName());
 				}
 				return true;
 			case NOT_POWERED:
@@ -211,7 +211,7 @@ public class Event_manager
 				{
 					String spawn_reason = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.SPAWN_REASON.toString());
 					if (spawn_reason == null) return true;
-					return !matchesName(c, spawn_reason);
+					return !matchesString(c, spawn_reason);
 				}
 				return true;
 			case NOT_TAMED:
@@ -223,12 +223,12 @@ public class Event_manager
 			case NOT_WORLD_NAME:
 				w = getWorld(c, le);
 				if (w == null) return false;
-				return !matchesName(c, w.getName());
+				return !matchesString(c, w.getName());
 		}
 		return false;
 	}
 	
-	public boolean matchesValue(Condition c, int orig)
+	public boolean matchesInt(Condition c, int orig)
 	{
 		List<Integer> temp = new ArrayList<Integer>();
 		for (String s : c.getString(Mobs_const.VALUE).split(","))
@@ -256,9 +256,9 @@ public class Event_manager
 		return temp.contains(orig);
 	}
 
-	public boolean matchesName(Condition c, String orig)
+	public boolean matchesString(Condition c, String orig)
 	{
-		String name = c.getString(Mobs_const.NAME);
+		String name = c.getString(Mobs_const.VALUE);
 		for (String s : name.split(",")) if (s.trim().equalsIgnoreCase(orig)) return true;
 		return false;
 	}

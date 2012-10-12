@@ -22,12 +22,6 @@ public class Param_base
 		if (el.hasAttribute(s)) addParam(Mobs_const.MATCH_AMOUNT);
 		s = "match_enchantments";
 		if (el.hasAttribute(s)) addParam(Mobs_const.MATCH_ENCHANTMENTS);
-		s = "world";
-		if (el.hasAttribute(s)) params.put(Mobs_const.WORLD, el.getAttribute(s));
-		s = "value";
-		if (el.hasAttribute(s)) params.put(Mobs_const.VALUE, el.getAttribute(s));
-		s = "name";
-		if (el.hasAttribute(s)) params.put(Mobs_const.NAME, el.getAttribute(s));
 		
 		try
 		{
