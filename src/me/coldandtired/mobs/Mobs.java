@@ -2,9 +2,11 @@ package me.coldandtired.mobs;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,8 +19,8 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.events.Dawn_event;
 import me.coldandtired.mobs.events.Dusk_event;
 import me.coldandtired.mobs.events.Midday_event;
@@ -27,6 +29,7 @@ import me.coldandtired.mobs.events.Mob_approached_event;
 import me.coldandtired.mobs.events.Mob_near_event;
 import me.coldandtired.mobs.listeners.*;
 import me.coldandtired.mobs.managers.*;
+import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -38,6 +41,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
 import org.w3c.dom.Document;
@@ -55,10 +59,10 @@ public class Mobs extends JavaPlugin
 {
 	private static Logger logger = Logger.getLogger("Minecraft");
 	private static Mobs instance;
-	private Action_manager action_manager;
-	private Event_manager event_manager;
+	public static Economy economy = null;
 	private Spawns_listener spawns_listener;
 	private List<Outcome> repeating_outcomes = null;
+	private static XPath xpath;
 	private static int log_level = 1;
 	private boolean approached = false;
 	private boolean near = false;
@@ -72,6 +76,11 @@ public class Mobs extends JavaPlugin
 		if (!load_config()) setEnabled(false);
 	}
 
+	public static XPath getXPath()
+	{
+		return xpath;
+	}
+	
 	private void checkConfig()
 	{
 		InputStream inputstream = null;
@@ -103,7 +112,7 @@ public class Mobs extends JavaPlugin
 	}
 	
 	/** checks if the running version is the newest available (works with release versions only) */
-	boolean is_latest_version(XPath xpath)
+	boolean is_latest_version()
 	{
 		DocumentBuilder dbf;
 		try 
@@ -119,29 +128,22 @@ public class Mobs extends JavaPlugin
 	/** loads the config file and splits it into the relevant objects */
 	boolean load_config()
 	{
-		XPath xpath = XPathFactory.newInstance().newXPath();
-		warn("This is a Beta version of the plugin.  Make sure you have backups!");
+		xpath = XPathFactory.newInstance().newXPath();
+		error("This is a Beta version of the plugin.  Make sure you have backups!");
 		File f = new File(getDataFolder(), "config.txt");
 		InputSource input;
 		try
 		{
 			input = new InputSource(f.getPath());
-			Element el = (Element)xpath.evaluate("mobs/settings", input, XPathConstants.NODE);
-			boolean disable_check = false;
-			if (el != null)	
-			{
-				if (el.hasAttribute("log_level")) log_level = Integer.parseInt(el.getAttribute("log_level"));
-				if (el.hasAttribute("disable_update_check")) disable_check = Boolean.parseBoolean(el.getAttribute("disable_update_check"));
-			}
-			if (!disable_check && !is_latest_version(xpath)) log("There's a newer version of Mobs available!");
-			event_manager = new Event_manager();
-			action_manager = new Action_manager(new Target_manager(xpath, (NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET)));
-			boolean needs_timer = setupListeners(xpath, input);
+			loadSettings((Element)xpath.evaluate("mobs/settings", input, XPathConstants.NODE));
+			
+			Target_manager.get().importAreas(xpath, (NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET));
+			boolean needs_timer = setupListeners(input);
 			NodeList list = getList(xpath, input, "repeating_outcomes");
 			if (list.getLength() > 0)
 			{
 				repeating_outcomes = new ArrayList<Outcome>();
-				for (int i = 0; i < list.getLength(); i++) repeating_outcomes.add(new Outcome(xpath, (Element)list.item(i)));
+				for (int i = 0; i < list.getLength(); i++) repeating_outcomes.add(new Outcome((Element)list.item(i)));
 				needs_timer = true;
 			} else disabled_timer = true;
 			if (needs_timer)
@@ -153,8 +155,45 @@ public class Mobs extends JavaPlugin
 			}
 			
 		}
-		catch (Exception e) {warn("Something went wrong loading the config - stopping!"); e.printStackTrace(); return false;}
+		catch (Exception e) {error("Something went wrong loading the config - stopping!"); e.printStackTrace(); return false;}
 		return true;
+	}
+	
+	private void loadSettings(Element el)
+	{
+		//boolean disable_check = false;
+		if (el != null)	
+		{
+			if (el.hasAttribute("log_level")) log_level = Integer.parseInt(el.getAttribute("log_level"));
+			//if (el.hasAttribute("disable_update_check")) disable_check = Boolean.parseBoolean(el.getAttribute("disable_update_check"));
+			if (el.hasAttribute("ignored_worlds"))
+			{
+				List<String> temp = Arrays.asList(el.getAttribute("ignored_worlds").replace(" ", "").split(","));
+				for (World w : Bukkit.getWorlds())
+				{
+					Data.removeData(w, MParam.IGNORED_WORLD);
+					if (temp.contains(w.getName())) Data.putData(w, MParam.IGNORED_WORLD);
+				}
+			}
+		}
+		
+		if (getServer().getPluginManager().getPlugin("Vault") != null)
+		{
+	        RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+	        if (economyProvider != null) economy = economyProvider.getProvider();
+		}
+		
+		try 
+		{
+		    Metrics metrics = new Metrics(this);
+		    metrics.start();
+		} 
+		catch (IOException e) 
+		{
+		    error("Something went wrong with Metrics - it will be disabled.");
+		}
+		
+		//if (!disable_check && !is_latest_version()) log("There's a newer version of Mobs available!");
 	}
 	
 	private void timerTick()
@@ -167,7 +206,7 @@ public class Mobs extends JavaPlugin
 		{
 			for (Outcome o : repeating_outcomes)
 			{
-				if (o.isEnabled() && o.canTick()) event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, null);
+				if (o.isEnabled() && o.canTick()) Event_manager.get().start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, null);
 			}
 		}
 	}
@@ -176,19 +215,23 @@ public class Mobs extends JavaPlugin
 	{
 		for (World w : Bukkit.getWorlds())
 		{
+			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
+			
 			long l = w.getTime();
-			if (l > 0 && l <= 19) getServer().getPluginManager().callEvent(new Dawn_event());
-			if (l > 6000 && l <= 6019) getServer().getPluginManager().callEvent(new Midday_event());
-			if (l > 12000 && l <= 12019) getServer().getPluginManager().callEvent(new Dusk_event());
-			if (l > 18000 && l <= 18019) getServer().getPluginManager().callEvent(new Midnight_event());
+			if (l > 0 && l <= 19) getServer().getPluginManager().callEvent(new Dawn_event(w));
+			if (l > 6000 && l <= 6019) getServer().getPluginManager().callEvent(new Midday_event(w));
+			if (l > 12000 && l <= 12019) getServer().getPluginManager().callEvent(new Dusk_event(w));
+			if (l > 18000 && l <= 18019) getServer().getPluginManager().callEvent(new Midnight_event(w));
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void checkNearby_Players()
+ 	private void checkNearby_Players()
 	{
 		for (World w : Bukkit.getWorlds())
 		{
+			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
+			
 			for (Player p : w.getEntitiesByClass(Player.class))
 			{
 				List<Entity> all = p.getNearbyEntities(10, 4, 10);
@@ -198,16 +241,16 @@ public class Mobs extends JavaPlugin
 					if (p.hasMetadata("mobs_data"))
 					{
 						Map<String, Object> data = (Map<String, Object>) p.getMetadata("mobs_data").get(0).value();
-						if (data.containsKey(Mobs_const.NEARBY_MOBS.toString()))
+						if (data.containsKey(MParam.NEARBY_MOBS.toString()))
 						{
-							all.removeAll((List<Entity>) data.get(Mobs_const.NEARBY_MOBS.toString()));
-							data.put(Mobs_const.NEARBY_MOBS.toString(), temp);						
+							all.removeAll((List<Entity>) data.get(MParam.NEARBY_MOBS.toString()));
+							data.put(MParam.NEARBY_MOBS.toString(), temp);						
 						}
 					}
 					else
 					{
 						Map<String, Object> data = new HashMap<String, Object>();
-						data.put(Mobs_const.NEARBY_MOBS.toString(), all);
+						data.put(MParam.NEARBY_MOBS.toString(), all);
 						p.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data)); 
 					}
 					
@@ -234,134 +277,113 @@ public class Mobs extends JavaPlugin
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	private void checkMax_life()
 	{
 		for (World w : Bukkit.getWorlds())
 		{
+			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
+			
 			for (LivingEntity le : w.getEntitiesByClass(LivingEntity.class))
 			{
 				if (le instanceof Player) continue;
 				
-				if (le.hasMetadata("mobs_data"))
-				{
-					Map<String, Object> data = (Map<String, Object>)le.getMetadata("mobs_data").get(0).value();
-					Integer life = (Integer)data.get(Mobs_const.MAX_LIFE.toString());
-					if (life == null) continue;
-					
-					data.put(Mobs_const.MAX_LIFE.toString(), life - 1);
-					if (life < 1) le.remove();					
-				}
+				Integer life = (Integer)Data.getData(le, MParam.MAX_LIFE);
+				if (life == null) continue;
+				life--;
+				log(life);
+				if (life < 0) le.remove();	
+				else Data.putData(le, MParam.MAX_LIFE, life);
 			}
 		}
 	}
 	
-	private boolean setupListeners(XPath xpath, InputSource input)
+	private boolean setupListeners(InputSource input)
 	{
 		boolean needs_timer = false;
 		PluginManager pm = getServer().getPluginManager();
 		NodeList list = getList(xpath, input, "spawns");
-		spawns_listener = new Spawns_listener(getEvent_outcomes(xpath, list), list.getLength() > 0);
+		spawns_listener = new Spawns_listener(getEvent_outcomes(list));
 		pm.registerEvents(spawns_listener, this);
 		
-		list = getList(xpath, input, "dies");
-		pm.registerEvents(new Dies_listener(getEvent_outcomes(xpath, list), list.getLength() > 0), this);
-		
-		boolean use_hit = false;
-		boolean use_damaged = false;
-		boolean use_blocks = false;
-		list = getList(xpath, input, "damaged");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Damaged_listener(getEvent_outcomes(xpath, list)), this);
-			use_damaged = true;
-		}
-
-		list = getList(xpath, input, "blocks");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Blocks_listener(getEvent_outcomes(xpath, list)), this);
-			use_blocks = true;
-		}				
-
-		list = getList(xpath, input, "hit");
-		if (list.getLength() > 0) use_hit = true;
-				
-		if (use_hit || use_damaged || use_blocks) pm.registerEvents(new Hit_listener(getEvent_outcomes(xpath, list), use_hit, use_damaged, use_blocks), this);
-		
 		list = getList(xpath, input, "burns");
-		if (list.getLength() > 0) pm.registerEvents(new Burns_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "targets");
-		if (list.getLength() > 0) pm.registerEvents(new Targets_listener(getEvent_outcomes(xpath, list)), this);
+		pm.registerEvents(new Burns_listener(getEvent_outcomes(list)), this);
 		
 		list = getList(xpath, input, "changes_block");
-		if (list.getLength() > 0) pm.registerEvents(new Changes_block_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "evolves");
-		if (list.getLength() > 0) pm.registerEvents(new Evolves_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "teleports");
-		if (list.getLength() > 0) pm.registerEvents(new Teleports_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "tamed");
-		if (list.getLength() > 0) pm.registerEvents(new Tamed_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "splits");
-		if (list.getLength() > 0) pm.registerEvents(new Splits_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "teleports");
-		if (list.getLength() > 0) pm.registerEvents(new Teleports_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "tamed");
-		if (list.getLength() > 0) pm.registerEvents(new Tamed_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "sheared");
-		if (list.getLength() > 0) pm.registerEvents(new Sheared_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "dyed");
-		if (list.getLength() > 0) pm.registerEvents(new Dyed_listener(getEvent_outcomes(xpath, list)), this);
-		
-		list = getList(xpath, input, "grows_wool");
-		if (list.getLength() > 0) pm.registerEvents(new Grows_wool_listener(getEvent_outcomes(xpath, list)), this);
+		pm.registerEvents(new Changes_block_listener(getEvent_outcomes(list)), this);
 		
 		list = getList(xpath, input, "creates_portal");
-		if (list.getLength() > 0) pm.registerEvents(new Creates_portal_listener(getEvent_outcomes(xpath, list)), this);
+		pm.registerEvents(new Creates_portal_listener(getEvent_outcomes(list)), this);
 		
-		list = getList(xpath, input, "heals");
-		if (list.getLength() > 0) pm.registerEvents(new Heals_listener(getEvent_outcomes(xpath, list)), this);
+		list = getList(xpath, input, "dies");
+		pm.registerEvents(new Dies_listener(getEvent_outcomes(list)), this);
 		
+		list = getList(xpath, input, "dyed");
+		pm.registerEvents(new Dyed_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "evolves");
+		pm.registerEvents(new Evolves_listener(getEvent_outcomes(list)), this);
+
 		list = getList(xpath, input, "explodes");
-		if (list.getLength() > 0) pm.registerEvents(new Explodes_listener(getEvent_outcomes(xpath, list)), this);
+		pm.registerEvents(new Explodes_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "grows_wool");
+		pm.registerEvents(new Grows_wool_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "heals");
+		pm.registerEvents(new Heals_listener(getEvent_outcomes(list)), this);
 
 		list = getList(xpath, input, "picks_up_item");
-		if (list.getLength() > 0) pm.registerEvents(new Picks_up_item_listener(getEvent_outcomes(xpath, list)), this);
-		
+		pm.registerEvents(new Picks_up_item_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "sheared");
+		pm.registerEvents(new Sheared_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "splits");
+		pm.registerEvents(new Splits_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "tamed");
+		pm.registerEvents(new Tamed_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "targets");
+		pm.registerEvents(new Targets_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "teleports");
+		pm.registerEvents(new Teleports_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "damaged");
+		pm.registerEvents(new Damaged_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "blocks");
+		if (list.getLength() > 0) pm.registerEvents(new Blocks_listener(getEvent_outcomes(list)), this);
+
+		list = getList(xpath, input, "hit");
+		pm.registerEvents(new Hit_listener(getEvent_outcomes(list)), this);
+			
 		list = getList(xpath, input, "dawn");
 		if (list.getLength() > 0)
 		{
-			pm.registerEvents(new Dawn_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Dawn_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		}
 		
 		list = getList(xpath, input, "midday");
 		if (list.getLength() > 0)
 		{
-			pm.registerEvents(new Midday_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Midday_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		}
 		
 		list = getList(xpath, input, "dusk");
 		if (list.getLength() > 0)
 		{
-			pm.registerEvents(new Dusk_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Dusk_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		}
 		
 		list = getList(xpath, input, "midnight");
 		if (list.getLength() > 0)
 		{
-			pm.registerEvents(new Midnight_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Midnight_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		}
 		
@@ -369,7 +391,7 @@ public class Mobs extends JavaPlugin
 		if (list.getLength() > 0) 
 		{
 			approached = true;
-			pm.registerEvents(new Approached_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Approached_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		} else approached = false;
 		
@@ -377,12 +399,12 @@ public class Mobs extends JavaPlugin
 		if (list.getLength() > 0)
 		{
 			near = true;
-			pm.registerEvents(new Near_listener(getEvent_outcomes(xpath, list)), this);
+			pm.registerEvents(new Near_listener(getEvent_outcomes(list)), this);
 			needs_timer = true;
 		} else near = false;
 
 		list = getList(xpath, input, "joins");
-		if (list.getLength() > 0) pm.registerEvents(new Joins_listener(getEvent_outcomes(xpath, list)), this);
+		if (list.getLength() > 0) pm.registerEvents(new Joins_listener(getEvent_outcomes(list)), this);
 		
 		return needs_timer;
 	}
@@ -396,12 +418,12 @@ public class Mobs extends JavaPlugin
 		catch (Exception e){return null;}
 	}
 	
-	public List<Outcome> getEvent_outcomes(XPath xpath, NodeList list)
+	public List<Outcome> getEvent_outcomes(NodeList list)
 	{
 		List<Outcome> temp = new ArrayList<Outcome>();
 		for (int i = 0; i < list.getLength(); i++)
 		{
-			temp.add(new Outcome(xpath, (Element)list.item(i)));
+			temp.add(new Outcome((Element)list.item(i)));
 		}
 		return temp;
 	}
@@ -413,8 +435,6 @@ public class Mobs extends JavaPlugin
 		{
 			getServer().getScheduler().cancelTasks(this);
 			repeating_outcomes = null;
-			event_manager = null;
-			action_manager = null;
 			spawns_listener = null;
 			HandlerList.unregisterAll(this);
 			load_config();
@@ -484,16 +504,17 @@ public class Mobs extends JavaPlugin
 			}
 			if (args[0].equalsIgnoreCase("activate"))
 			{
+				Event_manager event_manager = Event_manager.get();
 				if (args.length == 1)
 				{					
 					sender.sendMessage("Activated all repeating outcomes!");
-					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, null);
+					event_manager.start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, null);
 					return true;
 				}
 				else if (args.length == 2)
 				{
 					sender.sendMessage("Activated repeating outcome " + args[1] + "!");
-					event_manager.start_actions(repeating_outcomes, Mobs_event.AUTO, null, null, false, args[1]);
+					event_manager.start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, args[1]);
 					return true;
 				}
 			}
@@ -573,20 +594,10 @@ public class Mobs extends JavaPlugin
 		}
 		return false;
 	}
-	
-	public Action_manager getAction_manager()
+				
+	public void setMob_name(String name)
 	{
-		return action_manager;
-	}
-		
-	public Event_manager getEvent_manager()
-	{
-		return event_manager;
-	}
-	
-	public void setMob_name(String[] mob)
-	{
-		spawns_listener.setMob_name(mob);
+		spawns_listener.setMob_name(name);
 	}
 	
 	public int getLog_level()
@@ -607,8 +618,6 @@ public class Mobs extends JavaPlugin
 		repeating_outcomes = null;
 		logger = null;
 		instance = null;
-		event_manager = null;
-		action_manager = null;
 		spawns_listener = null;
 	}
 
@@ -618,9 +627,18 @@ public class Mobs extends JavaPlugin
 				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
 	}
 	
+	/** log error */
+	public static void error(Object message)
+	{
+		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
+				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+	}
+	
 	/** log warning */
 	public static void warn(Object message)
 	{
+		if (log_level < 2) return;
+		
 		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
 				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
 	}

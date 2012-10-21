@@ -1,15 +1,15 @@
 package me.coldandtired.mobs.listeners;
 
 import java.util.List;
-import java.util.Map;
 
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 
 public class Heals_listener extends Base_listener
 {
@@ -24,18 +24,20 @@ public class Heals_listener extends Base_listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		performActions(Mobs_event.HEALS, le, event);
-		Map<String, Object> data = getData(le);
-		if (data != null && data.containsKey(Mobs_const.NO_HEAL))
+		performActions(MEvent.HEALS, le, event);
+		if (event.isCancelled()) return;
+		
+		if (Data.hasData(le, MParam.NO_HEAL))
 		{
 			event.setCancelled(true);
 			return;
 		}
-
-		//if (mob.hasParam("hp")) return;
 		
-		//int i = mob.getInt_param("hp") + event.getAmount();
-		//if (mob.hasParam("can_overheal") && mob.getBoolean_param("can_overheal")) mob.setHp(i);
-		//else mob.setHp(i > mob.getMax_hp() ? mob.getMax_hp() : i);
+		if (!Data.hasData(le, MParam.HP)) return;
+		
+		int hp = (Integer)Data.getData(le, MParam.HP) + event.getAmount();
+		int max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
+		if (hp > max_hp && Data.hasData(le, MParam.NO_OVERHEAL)) hp = max_hp;
+		Data.putData(le, MParam.HP, hp);
 	}
 }

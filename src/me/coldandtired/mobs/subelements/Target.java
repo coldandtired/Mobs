@@ -1,96 +1,120 @@
 package me.coldandtired.mobs.subelements;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 
-import me.coldandtired.mobs.elements.Alternatives;
-import me.coldandtired.mobs.elements.P;
-import me.coldandtired.mobs.enums.Mobs_const;
-import me.coldandtired.mobs.enums.Mobs_target;
+import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.elements.Param;
+import me.coldandtired.mobs.elements.Text_value;
+import me.coldandtired.mobs.enums.MTarget;
 
-import org.bukkit.entity.EntityType;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
-public class Target extends P
+public class Target extends Param
 {
-	private Mobs_target target_type;
+	private MTarget target_type;
+	private Text_value player;
+	private Area area;
+	private Text_value area_name;
+	private Text_value x;
+	private Text_value y;
+	private Text_value z;
+	private Text_value mob;
+	private Text_value amount;
+	private Text_value world;
 	
-	public Target(XPath xpath, Element element)
+	public Target(Element element) throws XPathExpressionException
 	{	
-		target_type = Mobs_target.valueOf(element.getLocalName().toUpperCase());
-		if (target_type.equals(Mobs_target.PLAYER))	params.put(Mobs_const.VALUE, element.getTextContent());
-		
-		else if (target_type.equals(Mobs_target.BLOCK))
+		target_type = MTarget.valueOf(element.getLocalName().toUpperCase());
+		Element el;
+		switch (target_type)
 		{
-			int[] temp = {
-					Integer.parseInt(element.getElementsByTagName("x").item(0).getTextContent()),
-					Integer.parseInt(element.getElementsByTagName("y").item(0).getTextContent()),
-					Integer.parseInt(element.getElementsByTagName("z").item(0).getTextContent())
-					};
-			params.put(Mobs_const.BLOCK, temp);
-		}	
-		else if (target_type.equals(Mobs_target.AREA))
-		{
-			if (element.getChildNodes().getLength() == 1) params.put(Mobs_const.VALUE, element.getTextContent());
-			else params.put(Mobs_const.AREA, new Area(element));
-		}
-		else if (target_type.equals(Mobs_target.NEAR))
-		{
-			params.put(Mobs_const.X, element.getElementsByTagName("x").item(0).getTextContent());
-			params.put(Mobs_const.Y, element.getElementsByTagName("y").item(0).getTextContent());
-			params.put(Mobs_const.Z, element.getElementsByTagName("z").item(0).getTextContent());
+			case PLAYER:
+				player = new Text_value(element);
+				break;
+			case AROUND:
+			case BLOCK:
+				el = (Element)Mobs.getXPath().evaluate("x", element, XPathConstants.NODE);
+				if (el != null) x = new Text_value(el);
+				el = (Element)Mobs.getXPath().evaluate("y", element, XPathConstants.NODE);
+				if (el != null) y = new Text_value(el);
+				el = (Element)Mobs.getXPath().evaluate("z", element, XPathConstants.NODE);
+				if (el != null) z = new Text_value(el);
+				break;
+			case AREA:
+				if (element.getChildNodes().getLength() == 0) area_name = new Text_value(element);
+				else area = new Area(element); 
+				break;				
 		}
 		
-		// subvalues
-		try
-		{
-			NodeList list = (NodeList)xpath.evaluate("amount", element, XPathConstants.NODESET);		
-			Map<Integer, Object> temp;
-			int count;
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, new Mobs_number(el.getTextContent()));
-				}
-				params.put(Mobs_const.NUMBER, new Alternatives(count, temp));
-			}
-			
-			String s = null;
-			for (EntityType et : EntityType.values()) s = s + " | " + et.toString().toLowerCase();
-			s = s.substring(3);
-					
-			list = (NodeList)xpath.evaluate(s, element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = getRatio(el);
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, el.getLocalName().toUpperCase() + ":" + el.getTextContent());	
-				}
-				params.put(Mobs_const.MOB, new Alternatives(count, temp));
-			}	
-		}
-		catch (Exception e) {e.printStackTrace();}
+		el = (Element)Mobs.getXPath().evaluate("amount", element, XPathConstants.NODE);
+		if (el != null) amount = new Text_value(el);
+		
+		el = (Element)Mobs.getXPath().evaluate("mob", element, XPathConstants.NODE);
+		if (el != null) mob = new Text_value(el);
+		
+		el = (Element)Mobs.getXPath().evaluate("world", element, XPathConstants.NODE);
+		if (el != null) world = new Text_value(el);
 	}
 	
-	public Mobs_target getTarget_type()
+	public MTarget getTarget_type()
 	{
 		return target_type;
+	}
+
+	public String getArea_name()
+	{
+		if (area_name == null) return null;
+		return area_name.getValue();
+	}
+
+	public Area getArea()
+	{
+		return area;
+	}
+	
+	public String getX()
+	{
+		if (x == null) return null;
+		return x.getValue();
+	}
+	
+	public String getY()
+	{
+		if (y == null) return null;
+		return x.getValue();
+	}
+	
+	public String getZ()
+	{
+		if (z == null) return null;
+		return z.getValue();
+	}
+	
+	public String getPlayer()
+	{
+		if (player == null) return null;
+		return player.getValue();
+	}
+	
+	public World getWorld(LivingEntity le)
+	{
+		if (world == null) return le.getWorld();
+		return Bukkit.getWorld(world.getValue());
+	}
+	
+	public String[] getMob()
+	{
+		if (mob == null) return null;
+		return mob.getValue().toUpperCase().split(":");
+	}
+	
+	public int getAmount(int orig)
+	{
+		if (amount == null) return orig;
+		return amount.getInt_value(orig);			
 	}
 }

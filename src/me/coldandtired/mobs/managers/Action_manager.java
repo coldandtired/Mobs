@@ -1,19 +1,17 @@
 package me.coldandtired.mobs.managers;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Action;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_action;
-import me.coldandtired.mobs.enums.Mobs_const;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_target;
+import me.coldandtired.mobs.elements.Text_value;
+import me.coldandtired.mobs.enums.MAction;
+import me.coldandtired.mobs.enums.MParam;
+import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.subelements.Item_drop;
-import me.coldandtired.mobs.subelements.Mobs_number;
 import me.coldandtired.mobs.subelements.Target;
 
 import org.bukkit.Bukkit;
@@ -47,26 +45,27 @@ import org.bukkit.material.Gate;
 import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
 import org.bukkit.material.TrapDoor;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.getspout.spoutapi.Spout;
 import org.getspout.spoutapi.player.EntitySkinType;
 
 public class Action_manager 
 {
 	private Random rng = new Random();
-	private Target_manager target_manager;
-	
-	public Action_manager(Target_manager target_manager)
+	private static Target_manager tm = Target_manager.get();
+	private static Action_manager am;
+		
+	private Action_manager()
 	{
-		this.target_manager = target_manager;
+		// empty for singleton
 	}
 	
-	public Target_manager getTarget_manager()
+	public static Action_manager get()
 	{
-		return target_manager;
+		if (am == null) am = new Action_manager();
+		return am;
 	}
 	
-	boolean performActions(Outcome o, Mobs_event event, LivingEntity le, Event orig_event)
+	boolean performActions(Outcome o, MEvent event, LivingEntity le, Event orig_event)
 	{
 		boolean single_outcome = true;
 		Mobs.debug("Performing actions");
@@ -81,8 +80,8 @@ public class Action_manager
 		return single_outcome;
 	}
 	
-	boolean perform_action(Mobs_event event, Action a, LivingEntity le, Event orig_event)
-	{		
+	boolean perform_action(MEvent event, Action a, LivingEntity le, Event orig_event)
+	{				
 		//properties should have reversed, default x% values
 
 		//Hp = default
@@ -96,6 +95,9 @@ public class Action_manager
 			case REMOVE_ITEM:
 			case CLEAR_ITEMS:
 				give_item(a, le);
+				break;
+			case SET_MONEY:
+				setMoney(a, le);
 				break;
 			case DROP_EXP:
 				drop_exp(a, le);
@@ -155,10 +157,13 @@ public class Action_manager
 			case SEND_MESSAGE:
 			case BROADCAST:
 			case LOG:
-				send_message(a, le);
+				send_message(a, le); // ok
 				break;
 			case SPAWN_MOB:
 				spawn_mob(a, le);
+				break;
+			case CLEAR_DATA:
+				clearData(a, le);
 				break;
 			case CLEAR_DROPS:
 			case CLEAR_EXP:
@@ -189,12 +194,44 @@ public class Action_manager
 			case PLAY_ZOMBIE3_EFFECT:
 				playEffect(a, le);
 				break;
-			default:				
+			default:		
 				setProperty(a, le);
 				Mobs.debug(a.getAction_type().toString());
 				break;
 		}
 		return false;
+	}
+	
+	private void clearData(Action a, LivingEntity live)
+	{
+		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
+		{
+			Data.clearData(le);
+			Mobs.debug("CLEAR_DATA, " + le.getType().toString());
+		}
+	}
+	
+	private void setMoney(Action a, LivingEntity le)
+	{
+		if (Mobs.economy == null)
+		{
+			Mobs.warn("SET_MONEY failed - no economy plugin!");
+			return;
+		}
+		List<LivingEntity> list = tm.getTargets(a.getTarget(), le);
+		
+		Text_value value = a.getPure_amount();
+		for (LivingEntity l : list)
+		{		
+			if (!(l instanceof Player)) continue;
+			Player p = (Player)l;
+			double amount = Mobs.economy.getBalance(p.getName());
+			Mobs.economy.withdrawPlayer(p.getName(), amount);
+			int am = value.getInt_value((int)amount);
+			Mobs.economy.depositPlayer(p.getName(), am);
+			if (!a.isLocked() && list.size() > 1) value = a.getPure_amount();
+			Mobs.debug("SET_MONEY " + p.getName() + ", " + am);
+		}
 	}
 	
 	private void playEffect(Action a, LivingEntity le)
@@ -251,166 +288,134 @@ public class Action_manager
 				effect = Effect.ZOMBIE_DESTROY_DOOR;
 				break;
 		}
-		for (Location loc : target_manager.getLocations(a, le)) loc.getWorld().playEffect(loc, effect, 10);
+		for (Location loc : Target_manager.get().getLocations(a.getTarget(), le)) loc.getWorld().playEffect(loc, effect, 10);
 	}
 	
-	private void setProperty(Action a, LivingEntity le)
+	private void setProperty(Action a, LivingEntity live)
 	{
-		Target target = a.getTarget();
-		if (target != null && target.getTarget_type().equals(Mobs_target.PLAYER)) le = Bukkit.getPlayer(target.getString(Mobs_const.VALUE));
-				
-		if (le instanceof Player) setPlayer_property(a, (Player)le);
-		if (le instanceof Animals) setAnimal_property(a, (Animals)le);
-		if (le instanceof Monster) setMonster_property(a, (Monster)le);
-		if (le instanceof EnderDragon) setEnder_dragon_property(a.getAction_type(), (EnderDragon)le);
+		List<LivingEntity> list = tm.getTargets(a.getTarget(), live);
 		
-		switch (a.getAction_type())
+		for (LivingEntity le : list)
 		{
-			case SET_TITLE:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getString(Mobs_const.VALUE));
-				break;
-			case SET_SKIN:
-				if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getString(Mobs_const.VALUE), EntitySkinType.DEFAULT);
-				break;
-			case RESTORE_SKIN:
-				if (Mobs.isSpout_enabled()) Spout.getServer().resetEntitySkin(le);
-				break;
-			case SET_MAX_LIFE:
-				putData(le, Mobs_const.MAX_LIFE, Integer.parseInt(a.getString(Mobs_const.VALUE)));
-				break;	
-			case REMOVE_MAX_LIFE:
-				removeData(le, Mobs_const.MAX_LIFE);
-				break;			
+			if (le == null) le = live;
+			if (le instanceof Player) setPlayer_property(a, (Player)le);
+			if (le instanceof Animals) setAnimal_property(a, (Animals)le);
+			if (le instanceof Monster) setMonster_property(a, (Monster)le);
+			if (le instanceof EnderDragon) setEnder_dragon_property(a.getAction_type(), (EnderDragon)le);
 			
-			case SET_CAN_BURN_NO:
-				putData(le, Mobs_const.NO_BURN);
+			switch (a.getAction_type())
+			{
+				case SET_TITLE:
+					if (Mobs.isSpout_enabled()) Spout.getServer().setTitle(le, a.getValue());
+					break;
+				case SET_SKIN:
+					if (Mobs.isSpout_enabled()) Spout.getServer().setEntitySkin(le, a.getValue(), EntitySkinType.DEFAULT);
+					break;
+				case RESTORE_SKIN:
+					if (Mobs.isSpout_enabled()) Spout.getServer().resetEntitySkin(le);
+					break;
+				case SET_MAX_LIFE:
+					Integer i = (Integer)Data.getData(le, MParam.MAX_LIFE);
+					if (i == null) i = 0;
+					Data.putData(le, MParam.MAX_LIFE, a.getInt_value(i));
+					break;	
+				case REMOVE_MAX_LIFE:
+					Data.removeData(le, MParam.MAX_LIFE);
+					break;			
+				
+				case SET_CAN_BURN_NO:
+					Data.putData(le, MParam.NO_BURN);
+					break;
+				case SET_CAN_BURN_RANDOM:
+					Data.putRandom_data(le, MParam.NO_BURN);
+					break;
+				case SET_CAN_BURN_YES:
+					Data.removeData(le, MParam.NO_BURN);
+					break;
+				case TOGGLE_CAN_BURN:
+					Data.toggleData(le, MParam.NO_BURN); 
+					break;
+									
+				case SET_CAN_HEAL_NO:
+					Data.putData(le, MParam.NO_HEAL);
+					break;
+				case SET_CAN_HEAL_RANDOM:
+					Data.putRandom_data(le, MParam.NO_HEAL);
+					break;
+				case SET_CAN_HEAL_YES:
+					Data.removeData(le, MParam.NO_HEAL);
+					break;
+				case TOGGLE_CAN_HEAL:
+					Data.toggleData(le, MParam.NO_HEAL);
+					break;
+									
+				case SET_CAN_OVERHEAL_NO:
+					Data.putData(le, MParam.NO_OVERHEAL);
+					break;
+				case SET_CAN_OVERHEAL_RANDOM:
+					Data.putRandom_data(le, MParam.NO_OVERHEAL);
+					break;
+				case SET_CAN_OVERHEAL_YES:
+					Data.removeData(le, MParam.NO_OVERHEAL);
+					break;	
+				case TOGGLE_CAN_OVERHEAL:
+					Data.toggleData(le, MParam.NO_OVERHEAL);
+					break;
+				
+				case SET_FRIENDLY_NO:
+					Data.removeData(le, MParam.FRIENDLY);
+					return;
+				case SET_FRIENDLY_RANDOM:
+					Data.putRandom_data(le, MParam.FRIENDLY);
+					return;
+				case SET_FRIENDLY_YES:
+					Data.putData(le, MParam.FRIENDLY);
+					return;
+				case TOGGLE_FRIENDLY:
+					Data.toggleData(le, MParam.FRIENDLY);
+					break;
+				
+				case SET_NAME:
+					Data.putData(le, MParam.NAME, a.getValue());
 				break;
-			case SET_CAN_BURN_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_const.NO_BURN); else removeData(le, Mobs_const.NO_BURN);
-				break;
-			case SET_CAN_BURN_YES:
-				removeData(le, Mobs_const.NO_BURN);
-				break;
-			case TOGGLE_CAN_BURN:
-				if (hasData(le, Mobs_const.NO_BURN)) removeData(le, Mobs_const.NO_BURN); else putData(le, Mobs_const.NO_BURN); 
-				break;
-								
-			case SET_CAN_HEAL_NO:
-				putData(le, Mobs_const.NO_HEAL);
-				break;
-			case SET_CAN_HEAL_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_const.NO_HEAL); else removeData(le, Mobs_const.NO_HEAL);
-				break;
-			case SET_CAN_HEAL_YES:
-				removeData(le, Mobs_const.NO_HEAL);
-				break;
-			case TOGGLE_CAN_HEAL:
-				if (hasData(le, Mobs_const.NO_HEAL)) removeData(le, Mobs_const.NO_HEAL); else putData(le, Mobs_const.NO_HEAL);
-				break;
-								
-			case SET_CAN_OVERHEAL_NO:
-				putData(le, Mobs_const.NO_OVERHEAL);
-				break;
-			case SET_CAN_OVERHEAL_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_const.NO_OVERHEAL); else removeData(le, Mobs_const.NO_OVERHEAL);
-				break;
-			case SET_CAN_OVERHEAL_YES:
-				removeData(le, Mobs_const.NO_OVERHEAL);
-				break;	
-			case TOGGLE_CAN_OVERHEAL:
-				if (hasData(le, Mobs_const.NO_OVERHEAL)) removeData(le, Mobs_const.NO_OVERHEAL); else putData(le, Mobs_const.NO_OVERHEAL);
-				break;
-			
-			case SET_FRIENDLY_NO:
-				removeData(le, Mobs_const.FRIENDLY);
-				return;
-			case SET_FRIENDLY_RANDOM:
-				if (rng.nextBoolean()) putData(le, Mobs_const.FRIENDLY); else removeData(le, Mobs_const.FRIENDLY);
-				return;
-			case SET_FRIENDLY_YES:
-				putData(le, Mobs_const.FRIENDLY);
-				return;
-			case TOGGLE_FRIENDLY:
-				if (hasData(le, Mobs_const.FRIENDLY)) removeData(le, Mobs_const.FRIENDLY); else putData(le, Mobs_const.FRIENDLY);
-				break;
-			
-			case SET_NAME:
-				putData(le, Mobs_const.NAME, a.getString(Mobs_const.VALUE));
-			break;
-				//case SET_HP:
-				//	q = number.getAbsolute_value(le2.getHealth());
-				//	le2.setHealth(q);
-				//	break;
+				case SET_MAX_HP:
+					i = (Integer)Data.getData(le, MParam.MAX_HP);
+					if (i == null) i = 0;
+					Integer max_hp = a.getInt_value(i);
+					Integer hp = (Integer)Data.getData(le, MParam.HP);
+					if (hp == null || hp > max_hp) hp = max_hp;
+					Data.putData(le, MParam.HP, hp);
+					Data.putData(le, MParam.MAX_HP, max_hp);
+					break;
+				case SET_HP:
+					i = (Integer)Data.getData(le, MParam.HP);
+					if (i == null) i = 0;
+					hp = a.getInt_value(i);
+					max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
+					if (max_hp == null) max_hp = hp;
+					if (hp > max_hp) hp = max_hp;
+					Data.putData(le, MParam.HP, hp);
+					Data.putData(le, MParam.MAX_HP, max_hp);
+					break;
+			}
 		}
 	}
-	
-	@SuppressWarnings("unchecked")
-	private boolean hasData(LivingEntity le, Mobs_const param)
-	{
-		if (le.hasMetadata("mobs_data"))
-		{
-			return ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).containsKey(param.toString());
-		} else return false;
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void putData(LivingEntity le, Mobs_const param)
-	{
-		Map<String, Object> data;
-		if (le.hasMetadata("mobs_data"))
-		{
-			data = (Map<String, Object>)le.getMetadata("mobs_data").get(0).value();
-			data.put(param.toString(), null);
-		}
-		else 
-		{
-			data = new HashMap<String, Object>();
-			data.put(param.toString(), null);
-			le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void putData(LivingEntity le, Mobs_const param, Object value)
-	{
-		Map<String, Object> data;
-		if (le.hasMetadata("mobs_data"))
-		{
-			data = (Map<String, Object>)le.getMetadata("mobs_data").get(0).value();
-			data.put(param.toString(), value);
-		}
-		else 
-		{
-			data = new HashMap<String, Object>();
-			data.put(param.toString(), value);
-			le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void removeData(LivingEntity le, Mobs_const param)
-	{
-		if (le.hasMetadata("mobs_data"))
-		{
-			((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).remove(param.toString());
-		}
-	}
-	
+		
 	private void setPlayer_property(Action a, Player p)
 	{
 		switch (a.getAction_type())
 		{
 			case SET_CAN_PICK_UP_ITEMS_NO:
-				putData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				Data.putData(p, MParam.NO_PICK_UP_ITEMS);
 				return;
 			case SET_CAN_PICK_UP_ITEMS_RANDOM:
-				if (rng.nextBoolean()) putData(p, Mobs_const.NO_PICK_UP_ITEMS); else removeData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				Data.putRandom_data(p, MParam.NO_PICK_UP_ITEMS);
 				return;
 			case SET_CAN_PICK_UP_ITEMS_YES:
-				removeData(p, Mobs_const.NO_PICK_UP_ITEMS);
+				Data.removeData(p, MParam.NO_PICK_UP_ITEMS);
 				return;
 			case TOGGLE_CAN_PICK_UP_ITEMS:
-				if (hasData(p, Mobs_const.NO_PICK_UP_ITEMS)) removeData(p, Mobs_const.NO_PICK_UP_ITEMS); else putData(p ,Mobs_const.NO_PICK_UP_ITEMS);
+				Data.toggleData(p ,MParam.NO_PICK_UP_ITEMS);
 				return;
 		}
 	}
@@ -436,7 +441,7 @@ public class Action_manager
 			case SET_OWNER:
 				if (animal instanceof Tameable)
 				{
-					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getString(Mobs_const.VALUE)));
+					((Tameable)animal).setOwner(Bukkit.getPlayer(a.getValue()));
 				}
 				return;
 		}
@@ -460,16 +465,16 @@ public class Action_manager
 				switch (a.getAction_type())
 				{
 					case SET_CAN_BE_SHEARED_NO:
-						putData(animal, Mobs_const.NO_SHEARED);
+						Data.putData(animal, MParam.NO_SHEARED);
 						return;
 					case SET_CAN_BE_SHEARED_RANDOM:
-						if (rng.nextBoolean()) putData(animal, Mobs_const.NO_SHEARED); else removeData(animal, Mobs_const.NO_SHEARED);
+						Data.putRandom_data(animal, MParam.NO_SHEARED);
 						return;
 					case SET_CAN_BE_SHEARED_YES:
-						removeData(animal, Mobs_const.NO_SHEARED);
+						Data.removeData(animal, MParam.NO_SHEARED);
 						return;
 					case TOGGLE_CAN_BE_SHEARED:
-						if (hasData(animal, Mobs_const.NO_SHEARED)) removeData(animal, Mobs_const.NO_SHEARED); else putData(animal ,Mobs_const.NO_SHEARED);
+						Data.toggleData(animal ,MParam.NO_SHEARED);
 						return;
 				}
 				break;				
@@ -482,7 +487,7 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_FRIENDLY_YES:
-				putData(monster, Mobs_const.FRIENDLY);
+				Data.putData(monster, MParam.FRIENDLY);
 				return;
 		}
 		
@@ -513,33 +518,33 @@ public class Action_manager
 		switch (a.getAction_type())
 		{
 			case SET_CAN_EVOLVE_NO:
-				putData(creeper, Mobs_const.NO_EVOLVE);
+				Data.putData(creeper, MParam.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_RANDOM:
-				if (rng.nextBoolean()) putData(creeper, Mobs_const.NO_EVOLVE); else removeData(creeper, Mobs_const.NO_EVOLVE);
+				Data.putRandom_data(creeper, MParam.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_YES:
-				removeData(creeper, Mobs_const.NO_EVOLVE);
+				Data.removeData(creeper, MParam.NO_EVOLVE);
 				return;
 			case TOGGLE_CAN_EVOLVE:
-				if (hasData(creeper, Mobs_const.NO_EVOLVE)) removeData(creeper, Mobs_const.NO_EVOLVE); else putData(creeper, Mobs_const.NO_EVOLVE);
+				Data.toggleData(creeper, MParam.NO_EVOLVE);
 				return;
 				
 			case SET_FIERY_EXPLOSION_NO:
-				removeData(creeper, Mobs_const.FIERY_EXPLOSION);
+				Data.removeData(creeper, MParam.FIERY_EXPLOSION);
 				return;
 			case SET_FIERY_EXPLOSION_RANDOM:
-				if (rng.nextBoolean()) putData(creeper, Mobs_const.FIERY_EXPLOSION); else removeData(creeper, Mobs_const.FIERY_EXPLOSION);
+				Data.putRandom_data(creeper, MParam.FIERY_EXPLOSION);
 				return;
 			case SET_FIERY_EXPLOSION_YES:
-				putData(creeper, Mobs_const.FIERY_EXPLOSION);
+				Data.putData(creeper, MParam.FIERY_EXPLOSION);
 				return;	
 			case TOGGLE_FIERY_EXPLOSION:
-				if (hasData(creeper, Mobs_const.FIERY_EXPLOSION)) removeData(creeper, Mobs_const.FIERY_EXPLOSION); else putData(creeper, Mobs_const.FIERY_EXPLOSION);
+				Data.toggleData(creeper, MParam.FIERY_EXPLOSION);
 				return;
 				
 			case SET_EXPLOSION_SIZE:
-				putData(creeper, Mobs_const.EXPLOSION_SIZE, a.getInt(Mobs_const.NUMBER, 0));
+				Data.putData(creeper, MParam.EXPLOSION_SIZE, a.getInt_value(0));
 				return;	
 		}		
 		
@@ -560,21 +565,21 @@ public class Action_manager
 		}
 	}
 	
-	private void setWolf_property(Mobs_action a, Wolf wolf)
+	private void setWolf_property(MAction a, Wolf wolf)
 	{
 		switch (a)
 		{
 			case SET_CAN_BE_TAMED_NO:
-				putData(wolf, Mobs_const.NO_TAMED);
+				Data.putData(wolf, MParam.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_RANDOM:
-				if (rng.nextBoolean()) putData(wolf, Mobs_const.NO_TAMED); else removeData(wolf, Mobs_const.NO_TAMED);
+				Data.putRandom_data(wolf, MParam.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_YES:
-				removeData(wolf, Mobs_const.NO_TAMED);
+				Data.removeData(wolf, MParam.NO_TAMED);
 				return;
 			case TOGGLE_CAN_BE_TAMED:
-				if (hasData(wolf, Mobs_const.NO_TAMED)) removeData(wolf, Mobs_const.NO_TAMED); else putData(wolf, Mobs_const.NO_TAMED);
+				Data.toggleData(wolf, MParam.NO_TAMED);
 				return;
 		}
 		
@@ -608,34 +613,34 @@ public class Action_manager
 		}
 	}
 	
-	private void setEnderman_property(Mobs_action a, Enderman enderman)
+	private void setEnderman_property(MAction a, Enderman enderman)
 	{
 		switch (a)
 		{
 			case SET_CAN_MOVE_BLOCKS_NO:
-				putData(enderman, Mobs_const.NO_MOVE_BLOCKS);
+				Data.putData(enderman, MParam.NO_MOVE_BLOCKS);
 				return;
 			case SET_CAN_MOVE_BLOCKS_RANDOM:
-				if (rng.nextBoolean()) putData(enderman, Mobs_const.NO_MOVE_BLOCKS); else removeData(enderman, Mobs_const.NO_MOVE_BLOCKS);
+				Data.putRandom_data(enderman, MParam.NO_MOVE_BLOCKS);
 				return;
 			case SET_CAN_MOVE_BLOCKS_YES:
-				removeData(enderman, Mobs_const.NO_MOVE_BLOCKS);
+				Data.removeData(enderman, MParam.NO_MOVE_BLOCKS);
 				return;	
 			case TOGGLE_CAN_MOVE_BLOCKS:
-				if (hasData(enderman, Mobs_const.NO_MOVE_BLOCKS)) removeData(enderman, Mobs_const.NO_MOVE_BLOCKS); else putData(enderman, Mobs_const.NO_MOVE_BLOCKS);
+				Data.toggleData(enderman, MParam.NO_MOVE_BLOCKS);
 				return;
 				
 			case SET_CAN_TELEPORT_NO:
-				putData(enderman, Mobs_const.NO_TELEPORT);
+				Data.putData(enderman, MParam.NO_TELEPORT);
 				return;
 			case SET_CAN_TELEPORT_RANDOM:
-				if (rng.nextBoolean()) putData(enderman, Mobs_const.NO_TELEPORT); else removeData(enderman, Mobs_const.NO_TELEPORT);
+				Data.putRandom_data(enderman, MParam.NO_TELEPORT);
 				return;
 			case SET_CAN_TELEPORT_YES:
-				removeData(enderman, Mobs_const.NO_TELEPORT);
+				Data.removeData(enderman, MParam.NO_TELEPORT);
 				return;	
 			case TOGGLE_CAN_TELEPORT:
-				if (hasData(enderman, Mobs_const.NO_TELEPORT)) removeData(enderman, Mobs_const.NO_TELEPORT); else putData(enderman, Mobs_const.NO_TELEPORT);
+				Data.toggleData(enderman, MParam.NO_TELEPORT);
 				return;	
 		}
 		
@@ -645,34 +650,34 @@ public class Action_manager
 		}
 	}
 	
-	private void setEnder_dragon_property(Mobs_action a, EnderDragon ender_dragon)
+	private void setEnder_dragon_property(MAction a, EnderDragon ender_dragon)
 	{
 		switch (a)
 		{
 			case SET_CAN_CREATE_PORTALS_NO:
-				putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
+				Data.putData(ender_dragon, MParam.NO_CREATE_PORTALS);
 				return;
 			case SET_CAN_CREATE_PORTALS_RANDOM:
-				if (rng.nextBoolean()) putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS); else removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
+				Data.putRandom_data(ender_dragon, MParam.NO_CREATE_PORTALS);
 				return;
 			case SET_CAN_CREATE_PORTALS_YES:
-				removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
+				Data.removeData(ender_dragon, MParam.NO_CREATE_PORTALS);
 				return;	
 			case TOGGLE_CAN_CREATE_PORTALS:
-				if (hasData(ender_dragon, Mobs_const.NO_CREATE_PORTALS)) removeData(ender_dragon, Mobs_const.NO_CREATE_PORTALS); else putData(ender_dragon, Mobs_const.NO_CREATE_PORTALS);
+				Data.toggleData(ender_dragon, MParam.NO_CREATE_PORTALS);
 				return;
 				
 			case SET_CAN_DESTROY_BLOCKS_NO:
-				putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
+				Data.putData(ender_dragon, MParam.NO_DESTROY_BLOCKS);
 				return;
 			case SET_CAN_DESTROY_BLOCKS_RANDOM:
-				if (rng.nextBoolean()) putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS); else removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
+				Data.putRandom_data(ender_dragon, MParam.NO_DESTROY_BLOCKS);
 				return;
 			case SET_CAN_DESTROY_BLOCKS_YES:
-				removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
+				Data.removeData(ender_dragon, MParam.NO_DESTROY_BLOCKS);
 				return;	
 			case TOGGLE_CAN_DESTROY_BLOCKS:
-				if (hasData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS)) removeData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS); else putData(ender_dragon, Mobs_const.NO_DESTROY_BLOCKS);
+				Data.toggleData(ender_dragon, MParam.NO_DESTROY_BLOCKS);
 				return;
 		}		
 		
@@ -682,7 +687,7 @@ public class Action_manager
 		}
 	}
 	
-	private void setPig_zombie_property(Mobs_action a, PigZombie pig_zombie)
+	private void setPig_zombie_property(MAction a, PigZombie pig_zombie)
 	{		
 		switch (a)
 		{
@@ -701,21 +706,21 @@ public class Action_manager
 		}
 	}
 	
-	private void setOcelot_property(Mobs_action a, Ocelot ocelot)
+	private void setOcelot_property(MAction a, Ocelot ocelot)
 	{
 		switch (a)
 		{
 			case SET_CAN_BE_TAMED_NO:
-				putData(ocelot, Mobs_const.NO_TAMED);
+				Data.putData(ocelot, MParam.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_RANDOM:
-				if (rng.nextBoolean()) putData(ocelot, Mobs_const.NO_TAMED); else removeData(ocelot, Mobs_const.NO_TAMED);
+				Data.putRandom_data(ocelot, MParam.NO_TAMED);
 				return;
 			case SET_CAN_BE_TAMED_YES:
-				removeData(ocelot, Mobs_const.NO_TAMED);
+				Data.removeData(ocelot, MParam.NO_TAMED);
 				return;
 			case TOGGLE_CAN_BE_TAMED:
-				if (hasData(ocelot, Mobs_const.NO_TAMED)) removeData(ocelot, Mobs_const.NO_TAMED); else putData(ocelot, Mobs_const.NO_TAMED);
+				Data.toggleData(ocelot, MParam.NO_TAMED);
 				return;
 		}
 		
@@ -738,34 +743,34 @@ public class Action_manager
 		}
 	}
 		
-	private void setPig_property(Mobs_action a, Pig pig)
+	private void setPig_property(MAction a, Pig pig)
 	{
 		switch (a)
 		{
 			case SET_CAN_BE_SADDLED_NO:
-				putData(pig, Mobs_const.NO_SADDLED);
+				Data.putData(pig, MParam.NO_SADDLED);
 				return;
 			case SET_CAN_BE_SADDLED_RANDOM:
-				if (rng.nextBoolean()) putData(pig, Mobs_const.NO_SADDLED); else removeData(pig, Mobs_const.NO_SADDLED);
+				Data.putRandom_data(pig, MParam.NO_SADDLED);
 				return;
 			case SET_CAN_BE_SADDLED_YES:
-				removeData(pig, Mobs_const.NO_SADDLED);
+				Data.removeData(pig, MParam.NO_SADDLED);
 				return;
 			case TOGGLE_CAN_BE_SADDLED:
-				if (hasData(pig, Mobs_const.NO_SADDLED)) removeData(pig, Mobs_const.NO_SADDLED); else putData(pig, Mobs_const.NO_SADDLED);
+				Data.toggleData(pig, MParam.NO_SADDLED);
 				return;
 				
 			case SET_CAN_EVOLVE_NO:
-				putData(pig, Mobs_const.NO_EVOLVE);
+				Data.putData(pig, MParam.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_RANDOM:
-				if (rng.nextBoolean()) putData(pig, Mobs_const.NO_EVOLVE); else removeData(pig, Mobs_const.NO_EVOLVE);
+				Data.putRandom_data(pig, MParam.NO_EVOLVE);
 				return;
 			case SET_CAN_EVOLVE_YES:
-				removeData(pig, Mobs_const.NO_EVOLVE);
+				Data.removeData(pig, MParam.NO_EVOLVE);
 				return;
 			case TOGGLE_CAN_EVOLVE:
-				if (hasData(pig, Mobs_const.NO_EVOLVE)) removeData(pig, Mobs_const.NO_EVOLVE); else putData(pig, Mobs_const.NO_EVOLVE);
+				Data.toggleData(pig, MParam.NO_EVOLVE);
 				return;
 		}
 
@@ -786,60 +791,60 @@ public class Action_manager
 		}
 	}
 	
-	private void setSheep_property(Mobs_action a, Sheep sheep)
+	private void setSheep_property(MAction a, Sheep sheep)
 	{
 		switch (a)
 		{
 			case SET_CAN_BE_DYED_NO:
-				putData(sheep ,Mobs_const.NO_DYED);
+				Data.putData(sheep ,MParam.NO_DYED);
 				return;
 			case SET_CAN_BE_DYED_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_DYED); else removeData(sheep ,Mobs_const.NO_DYED);
+				Data.putRandom_data(sheep ,MParam.NO_DYED);
 				return;
 			case SET_CAN_BE_DYED_YES:
-				removeData(sheep ,Mobs_const.NO_DYED);
+				Data.removeData(sheep ,MParam.NO_DYED);
 				return;
 			case TOGGLE_CAN_BE_DYED:
-				if (hasData(sheep ,Mobs_const.NO_DYED)) removeData(sheep ,Mobs_const.NO_DYED); else putData(sheep ,Mobs_const.NO_DYED);
+				Data.toggleData(sheep ,MParam.NO_DYED);
 				return;
 				
 			case SET_CAN_BE_SHEARED_NO:
-				putData(sheep ,Mobs_const.NO_SHEARED);
+				Data.putData(sheep ,MParam.NO_SHEARED);
 				return;
 			case SET_CAN_BE_SHEARED_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_SHEARED); else removeData(sheep ,Mobs_const.NO_SHEARED);
+				Data.putRandom_data(sheep ,MParam.NO_SHEARED);
 				return;
 			case SET_CAN_BE_SHEARED_YES:
-				removeData(sheep ,Mobs_const.NO_SHEARED);
+				Data.removeData(sheep ,MParam.NO_SHEARED);
 				return;
 			case TOGGLE_CAN_BE_SHEARED:
-				if (hasData(sheep ,Mobs_const.NO_SHEARED)) removeData(sheep ,Mobs_const.NO_SHEARED); else putData(sheep ,Mobs_const.NO_SHEARED);
+				Data.toggleData(sheep ,MParam.NO_SHEARED);
 				return;
 				
 			case SET_CAN_GRAZE_NO:
-				putData(sheep ,Mobs_const.NO_GRAZE);
+				Data.putData(sheep ,MParam.NO_GRAZE);
 				return;
 			case SET_CAN_GRAZE_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_GRAZE); else removeData(sheep ,Mobs_const.NO_GRAZE);
+				Data.putRandom_data(sheep ,MParam.NO_GRAZE);
 				return;
 			case SET_CAN_GRAZE_YES:
-				removeData(sheep ,Mobs_const.NO_GRAZE);
+				Data.removeData(sheep ,MParam.NO_GRAZE);
 				return;
 			case TOGGLE_CAN_GRAZE:
-				if (hasData(sheep ,Mobs_const.NO_GRAZE)) removeData(sheep ,Mobs_const.NO_GRAZE); else putData(sheep ,Mobs_const.NO_GRAZE);
+				Data.toggleData(sheep ,MParam.NO_GRAZE);
 				return;
 				
 			case SET_CAN_GROW_WOOL_NO:
-				putData(sheep ,Mobs_const.NO_GROW_WOOL);
+				Data.putData(sheep ,MParam.NO_GROW_WOOL);
 				return;
 			case SET_CAN_GROW_WOOL_RANDOM:
-				if (rng.nextBoolean()) putData(sheep ,Mobs_const.NO_GROW_WOOL); else removeData(sheep ,Mobs_const.NO_GROW_WOOL);
+				Data.putRandom_data(sheep ,MParam.NO_GROW_WOOL);
 				return;
 			case SET_CAN_GROW_WOOL_YES:
-				removeData(sheep ,Mobs_const.NO_GROW_WOOL);
+				Data.removeData(sheep ,MParam.NO_GROW_WOOL);
 				return;
 			case TOGGLE_CAN_GROW_WOOL:
-				if (hasData(sheep ,Mobs_const.NO_GROW_WOOL)) removeData(sheep ,Mobs_const.NO_GROW_WOOL); else putData(sheep ,Mobs_const.NO_GROW_WOOL);
+				Data.toggleData(sheep ,MParam.NO_GROW_WOOL);
 				return;
 		}
 
@@ -912,57 +917,86 @@ public class Action_manager
 		}
 	}
 	
-	private void clear_drops(Action a, LivingEntity le, Mobs_event event, Event orig_event)
+	private void clear_drops(Action a, LivingEntity live, MEvent event, Event orig_event)
 	{
-		if (event == Mobs_event.DIES)
+		List<LivingEntity> list = tm.getTargets(a.getTarget(), live);
+		
+		for (LivingEntity le : list)
 		{
-			EntityDeathEvent e = (EntityDeathEvent)orig_event;
-			switch (a.getAction_type())
+			if (event == MEvent.DIES)
 			{
-				case CLEAR_EXP:
-					e.setDroppedExp(0);
-					break;
-				case CLEAR_DROPS:
-					e.setDroppedExp(0);
-					e.getDrops().clear();
-					break;
+				EntityDeathEvent e = (EntityDeathEvent)orig_event;
+				switch (a.getAction_type())
+				{
+					case CLEAR_EXP:
+						e.setDroppedExp(0);
+						break;
+					case CLEAR_DROPS:
+						e.setDroppedExp(0);
+						e.getDrops().clear();
+						break;
+				}
 			}
+			else Data.putData(le, MParam.valueOf(a.getAction_type().toString()));
+			Mobs.debug(a.getAction_type().toString());
 		}
-		else putData(le, Mobs_const.valueOf(a.getAction_type().toString()));
-		Mobs.debug(a.getAction_type().toString());
 	}
 		
 	private void spawn_mob(Action a, LivingEntity le)
 	{
-		String[] mob = a.getString_alt(Mobs_const.MOB).split(":");
-		int amount = a.getInt(Mobs_const.NUMBER, 1);
+		String[] mob = null;
+		String name = null;
+		mob = a.getMob();
+		name = mob.length > 1 ? mob[1] : null;
+		int amount = a.getAmount(1);
+		List<Location> list = tm.getLocations(a.getTarget(), le);
+		if (list.size() == 0) Mobs.log("empty list");
 		for (int i = 0; i < amount; i++)
 		{
-			Mobs.getInstance().setMob_name(mob);
-			for (Location loc : target_manager.getLocations(a, le))
+			Mobs.getInstance().setMob_name(name);
+			for (Location loc : list)
 			{
-				loc.getWorld().spawnEntity(loc, EntityType.fromName(mob[0]));
-				Mobs.debug("SPAWN_MOB, " + get_string_from_loc(loc) + ", " + mob[0]);
+				loc.getWorld().spawnEntity(loc, EntityType.valueOf(mob[0]));
+				Mobs.debug("SPAWN_MOB, " + get_string_from_loc(loc) + ", " + name);
+			}
+			if (!a.isLocked())
+			{
+				mob = a.getMob();
+				name = mob.length > 1 ? mob[1] : null;
 			}
 		}
 	}
 		
 	private void send_message(Action a, LivingEntity le)
 	{
-		String s = a.getString_alt(Mobs_const.MESSAGE);
+		String s = a.getValue();
+		if (s == null) s = a.getMessage();
 		while (s.contains("^")) s = replace_constants(s, le);
 			
-		if (a.getAction_type().equals(Mobs_action.SEND_MESSAGE))
+		if (a.getAction_type().equals(MAction.SEND_MESSAGE))
 		{
-			for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+			for (LivingEntity l : tm.getTargets(a.getTarget(), le))
 			{
-				if (!(l instanceof Player)) continue;
-				Player p = (Player)l;
-				p.sendMessage(s);
-				Mobs.debug("SEND_MESSAGE, " + ((Player)p).getName() + ", MESSAGE = " + s);
+				if (l instanceof Player)
+				{
+					Player p = (Player)l;
+					p.sendMessage(s);
+					Mobs.debug("SEND_MESSAGE, " + ((Player)p).getName() + ", MESSAGE = " + s);
+				}
+				else 
+				{
+					Mobs.debug("SEND_MESSAGE, failed - target isn't a player or is offline!");
+					continue;
+				}
+				if (!a.isLocked())
+				{
+					s = a.getValue();
+					if (s == null) s = a.getMessage();
+					while (s.contains("^")) s = replace_constants(s, le);
+				}
 			}
 		}
-		else if (a.getAction_type().equals(Mobs_action.BROADCAST))
+		else if (a.getAction_type().equals(MAction.BROADCAST))
 		{
 			Bukkit.getServer().broadcastMessage(s);
 			Mobs.debug("BROADCAST, MESSAGE = " + s);
@@ -972,17 +1006,19 @@ public class Action_manager
 	
 	private void change_block(Action a, LivingEntity le)
 	{
-		List<Location> locs = target_manager.getLocations(a, le);
+		List<Location> locs = tm.getLocations(a.getTarget(), le);
 			
-		if (a.getAction_type() == Mobs_action.SET_BLOCK)
+		if (a.getAction_type() == MAction.SET_BLOCK)
 		{
-			Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
+			Item_drop drop = a.getItem();
 			if (drop == null) return;
+			
+			int id = drop.getId();
+			short data = drop.getData();
 			for (Location loc : locs)
 			{
-				loc.getBlock().setTypeIdAndData(drop.getItem_id(), (byte) drop.getItem_data(), false);
-				Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + 
-						drop.getItem_id() + ":" + drop.getItem_data());
+				loc.getBlock().setTypeIdAndData(id, (byte) data, false);
+				Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + id + ":" + data);
 			}
 		}
 		else
@@ -997,10 +1033,10 @@ public class Action_manager
 	
 	private void strike_with_lightning(Action a, LivingEntity le)
 	{
-		for (Location loc : target_manager.getLocations(a, le))
+		for (Location loc : tm.getLocations(a.getTarget(), le))
 		{
 			World w = loc.getWorld();
-			if (a.getAction_type() == Mobs_action.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
+			if (a.getAction_type() == MAction.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
 			else w.strikeLightning(loc);
 			Mobs.debug(a.getAction_type().toString() + ", " + get_string_from_loc(loc));
 		}
@@ -1008,27 +1044,27 @@ public class Action_manager
 	
 	private void cause_explosion(Action a, LivingEntity le)
 	{
-		int p = a.getInt(Mobs_const.NUMBER, 0);
-		for (Location loc : target_manager.getLocations(a, le))
+		int p = a.getInt_value(0);
+		for (Location loc : tm.getLocations(a.getTarget(), le))
 		{
-			loc.getWorld().createExplosion(loc, p, a.getAction_type() == Mobs_action.FIERY_EXPLOSION);
+			loc.getWorld().createExplosion(loc, p, a.getAction_type() == MAction.FIERY_EXPLOSION);
 			Mobs.debug(a.getAction_type().toString() + ", POWER = " + p + ", " + get_string_from_loc(loc));
 		}
 	}
 	
 	private void damage_mob(Action a, LivingEntity le)
 	{
-		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		for (LivingEntity l : tm.getTargets(a.getTarget(), le))
 		{
 			int q = 0;
-			if (a.getAction_type().equals(Mobs_action.KILL))
+			if (a.getAction_type().equals(MAction.KILL))
 			{
 				l.damage(10000);
 				Mobs.debug("KILL, " + l.getType().toString());
 			}
-			else if (a.getAction_type().equals(Mobs_action.DAMAGE))
+			else if (a.getAction_type().equals(MAction.DAMAGE))
 			{
-				q = a.getInt(Mobs_const.NUMBER, 0);
+				q = a.getInt_value(0);
 				l.damage(q);
 				Mobs.debug("DAMAGE, " + l.getType().toString() + ", AMOUNT = " + q);
 			}
@@ -1042,7 +1078,7 @@ public class Action_manager
 	
 	private void change_weather(Action a, LivingEntity le)
 	{
-		World w = target_manager.getWorld(a, le);
+		World w = a.getWorld(le);
 		if (w == null) return;
 		
 		String s2 = a.getAction_type().toString();
@@ -1061,11 +1097,10 @@ public class Action_manager
 				w.setThundering(true);
 				break;
 		}
-		Mobs_number number = a.getMobs_number();
+		Integer i = a.getInt_value(0);
 
-		if (number != null)
+		if (i != null)
 		{
-			int i = number.getAbsolute_value(0);
 			s2 += ", DURATION = " + i + " seconds";
 			w.setWeatherDuration(i * 20);
 		}
@@ -1075,12 +1110,10 @@ public class Action_manager
 	
 	private void change_time(Action a, LivingEntity le)
 	{
-		World w = target_manager.getWorld(a, le);
+		World w = a.getWorld(le);
 		if (w == null) return;
 		
-		Mobs_number number = a.getMobs_number();
-		
-		long time = number.getAbsolute_value((int) w.getTime()) % 24000;
+		long time = a.getInt_value((int)w.getTime()) % 24000;
 		if (time < 0) time += 24000;
 		w.setTime(time);
 		Mobs.debug("SET_TIME " + Long.toString(time) + ", " + w.getName());
@@ -1088,64 +1121,83 @@ public class Action_manager
 	
 	private void drop_item(Action a, LivingEntity le)
 	{	
-		Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
-		ItemStack is = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
+		Item_drop drop = a.getItem();
+		int id = drop.getId();
+		short data = drop.getData();
+		ItemStack is = new ItemStack(id, a.getAmount(1), data);
 		
-		for (Location loc : target_manager.getLocations(a, le))
+		for (Location loc : tm.getLocations(a.getTarget(), le))
 		{
 			loc.getWorld().dropItem(loc, is);
-			Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + 
-					drop.getItem_id() + ":" + drop.getItem_data());
+			Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + id + ":" + data);
 		}
 	}
 	
 	private void give_item(Action a, LivingEntity le)
 	{
-		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		Target t = a.getTarget();
+		if (t == null)
+		{
+			Mobs.debug(a.getAction_type() + " failed - no target set!");
+			return;
+		}
+		
+		List<LivingEntity> list = tm.getTargets(t, le);
+		
+		if (a.getAction_type() == MAction.CLEAR_ITEMS)
+		{
+			for (LivingEntity l : list)
+			{		
+				if (!(l instanceof Player)) continue;
+				Player p = (Player)l;
+				p.getInventory().clear();
+				Mobs.debug("CLEAR_ITEMS, " + p.getName());					
+			}
+			return;
+		}
+		
+		Item_drop drop = a.getItem();
+		if (drop == null) return;
+		int id = drop.getId();
+		short data = drop.getData();
+		int amount = drop.getAmount();
+		ItemStack stack = new ItemStack(id, amount, data);
+		
+		for (LivingEntity l : list)
 		{		
 			if (!(l instanceof Player)) continue;
-			Player p = (Player)l;
-			if (a.getAction_type() == Mobs_action.CLEAR_ITEMS)
-			{
-				p.getInventory().clear();
-				Mobs.debug("CLEAR_ITEMS, " + p.getName());
-				return;
-			}	
+			Player p = (Player)l;			
 			
-			Item_drop drop = (Item_drop)a.getAlternative(Mobs_const.ITEM);
-			if (drop == null) return;
-			
-			ItemStack stack = new ItemStack(drop.getItem_id(), drop.getAmount(), drop.getItem_data());
-			
-			if (a.getAction_type() == Mobs_action.GIVE_ITEM)
+			if (a.getAction_type() == MAction.GIVE_ITEM)
 			{
 				p.getInventory().addItem(stack);
 			}
 			else
 			{
-				if (a.hasParam(Mobs_const.MATCH_DATA) && a.hasParam(Mobs_const.MATCH_ENCHANTMENTS) && a.hasParam(Mobs_const.MATCH_AMOUNT) == false) p.getInventory().remove(drop.getItem_id());
-				else
 				for (ItemStack is : p.getInventory().getContents())
 				{
-					if (is == null) continue;
-					if (is.getType() != stack.getType()) continue;
-					if (a.hasParam(Mobs_const.MATCH_DATA) && is.getData().getData() != stack.getData().getData()) continue;
-					if (a.hasParam(Mobs_const.MATCH_AMOUNT) && is.getAmount() != stack.getAmount()) continue;
-					p.getInventory().remove(is);
+					if (drop.matches(is, stack)) p.getInventory().remove(is);
 				}
 			}	
-			Mobs.debug(a.getAction_type().toString() + ", " + p.getName() + ", ITEM = " + 
-					drop.getItem_id() + ":" + drop.getItem_data());	
+			if (!a.isLocked() && list.size() > 1) 
+			{
+				drop = a.getItem();
+				id = drop.getId();
+				data = drop.getData();
+				amount = a.getAmount(1);
+				stack = new ItemStack(id, amount, data);
+			}
+			Mobs.debug(a.getAction_type() + ", " + p.getName() + ", ITEM = " + id + ":" + data);	
 		}
 	}
 	
 	private void drop_exp(Action a, LivingEntity le)
 	{
-		for (Location loc : target_manager.getLocations(a, le))
-		{
-			Mobs_number number = a.getMobs_number();
-			int q = number.getAbsolute_value(0);	
-			
+		Integer q = a.getInt_value(0);
+		if (q == null || q == 0) return;
+		
+		for (Location loc : tm.getLocations(a.getTarget(), le))
+		{	
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
 			orb.setExperience(q);
 			Mobs.debug("DROP_EXP, " + get_string_from_loc(loc) + ", AMOUNT = " + q);
@@ -1154,15 +1206,16 @@ public class Action_manager
 	
 	private void give_exp(Action a, LivingEntity le)
 	{
-		for (LivingEntity l : target_manager.getTargets(a.getTarget(), le))
+		Integer q = a.getInt_value(0);
+		if (q == null || q == 0) return;
+		
+		for (LivingEntity l : tm.getTargets(a.getTarget(), le))
 		{
 			if (!(l instanceof Player)) continue;
 			Player p = (Player)l;
-			Mobs_number number = a.getMobs_number();
 			
-			if (a.getAction_type() == Mobs_action.SET_EXP)
+			if (a.getAction_type() == MAction.SET_EXP)
 			{
-				int q = number.getAbsolute_value(p.getTotalExperience());
 				if (q <= 272)
 				{
 					int level = q / 17;
@@ -1190,7 +1243,6 @@ public class Action_manager
 			}
 			else
 			{
-				int q = number.getAbsolute_value(p.getLevel());
 				p.setLevel(q);	
 				Mobs.debug("SET_LEVEL, " + p.getName() + ", AMOUNT = " + q);
 			}
@@ -1199,7 +1251,7 @@ public class Action_manager
 	
 	private void activate_mechanism(Action a, LivingEntity le, String type)
 	{
-		for (Location l : target_manager.getLocations(a, le))
+		for (Location l : tm.getLocations(a.getTarget(), le))
 		{
 			BlockState bs = l.getBlock().getState();
 			MaterialData md = bs.getData();

@@ -1,19 +1,20 @@
 package me.coldandtired.mobs.enums;
 
-public enum Mobs_target 
+public enum MTarget 
 {
 	AREA,
+	AROUND,
 	BLOCK,
-	NEAR,
 	NEAREST,
 	PLAYER,
 	RANDOM,
+	SECONDARY_MOB,
 	SELF;
 	
 	public static String getXpath()
 	{
 		String s = "";
-		for (Mobs_target t : values()) s = s + " | " + t.toString().toLowerCase();
+		for (MTarget t : values()) s = s + " | " + t.toString().toLowerCase();
 		return s.substring(3);
 	}
 }

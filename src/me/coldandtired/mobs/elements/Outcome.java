@@ -6,14 +6,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+
+import me.coldandtired.mobs.Mobs;
 
 import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public class Outcome 
+public class Outcome extends Param
 {
 	private int interval = 300;
 	private int remaining;
@@ -26,7 +27,7 @@ public class Outcome
 	private List<String> affected_worlds = null;
 	private List<String> unaffected_worlds = null;
 	
-	public Outcome(XPath xpath, Element element)
+	public Outcome(Element element)
 	{
 		if (element.hasAttribute("interval")) interval = Integer.parseInt(element.getAttribute("interval"));
 		if (element.hasAttribute("name")) name = element.getAttribute("name");
@@ -39,21 +40,24 @@ public class Outcome
 	
 		try
 		{
-			NodeList list = (NodeList)xpath.evaluate("conditions", element, XPathConstants.NODESET);
+			Map<Integer, Object> temp;
+			int count;
+			
+			NodeList list = (NodeList)Mobs.getXPath().evaluate("conditions", element, XPathConstants.NODESET);
 			for (int i = 0; i < list.getLength(); i++)
 			{
-				List<Condition> temp = new ArrayList<Condition>();
-				NodeList list2 = (NodeList)xpath.evaluate("*", list.item(i), XPathConstants.NODESET);
+				List<Condition> temp2 = new ArrayList<Condition>();
+				NodeList list2 = (NodeList)Mobs.getXPath().evaluate("*", list.item(i), XPathConstants.NODESET);
 				for (int j = 0; j < list2.getLength(); j++)
 				{
-					temp.add(new Condition(xpath, (Element)list2.item(j)));
+					temp2.add(new Condition((Element)list2.item(j)));
 				}
-				conditions.add(temp);
+				conditions.add(temp2);
 			}
 			
-			Map<Integer, Object> temp = new HashMap<Integer, Object>();
-			int count = 0;
-			list = (NodeList)xpath.evaluate("actions", element, XPathConstants.NODESET);
+			temp = new HashMap<Integer, Object>();
+			count = 0;
+			list = (NodeList)Mobs.getXPath().evaluate("actions", element, XPathConstants.NODESET);
 			for (int i = 0; i < list.getLength(); i++)
 			{
 				Element el = (Element)list.item(i);
@@ -61,12 +65,12 @@ public class Outcome
 				int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
 				count += ratio;
 				if (list.getLength() == 1) count = 1;
-				NodeList list2 = (NodeList)xpath.evaluate("*", el, XPathConstants.NODESET);
+				NodeList list2 = (NodeList)Mobs.getXPath().evaluate("*", el, XPathConstants.NODESET);
 				List<Action> actions = new ArrayList<Action>();
 				for (int j = 0; j < list2.getLength(); j++)
 				{
 					Element el2 = (Element)list2.item(j);
-					actions.add(new Action(xpath, el2));
+					actions.add(new Action(el2));
 				}
 				if(actions.size() > 0) temp.put(count, actions);
 			}

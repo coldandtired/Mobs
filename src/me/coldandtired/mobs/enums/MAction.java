@@ -1,9 +1,10 @@
 package me.coldandtired.mobs.enums;
 
-public enum Mobs_action 
+public enum MAction 
 {
 	BROADCAST, 
 	CANCEL_EVENT,
+	CLEAR_DATA,
 	CLEAR_DROPS,
 	CLEAR_EXP,
 	CLEAR_ITEMS,
@@ -114,7 +115,9 @@ public enum Mobs_action
 	SET_FRIENDLY_YES,
 	SET_HP,
 	SET_LEVEL,
+	SET_MAX_HP,
 	SET_MAX_LIFE,
+	SET_MONEY,
 	SET_NAME,
 	SET_OWNER,
 	SET_POWERED_NO,

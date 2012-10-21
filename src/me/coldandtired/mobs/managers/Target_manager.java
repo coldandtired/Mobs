@@ -14,20 +14,23 @@ import javax.xml.xpath.XPathConstants;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
-import me.coldandtired.mobs.elements.Action;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.subelements.Area;
-import me.coldandtired.mobs.subelements.Mobs_number;
 import me.coldandtired.mobs.subelements.Nearby_mob;
 import me.coldandtired.mobs.subelements.Target;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -35,10 +38,17 @@ import org.w3c.dom.NodeList;
 public class Target_manager 
 {
 	private Map<String, Area> areas = new HashMap<String, Area>();
+	private static Target_manager tm;
 	
-	public Target_manager(XPath xpath, NodeList list)
+	private Target_manager()
 	{
-		importAreas(xpath, list);
+		// empty for singleton
+	}
+	
+	public static Target_manager get()
+	{
+		if (tm == null) tm = new Target_manager();
+		return tm;
 	}
 	
 	Collection<Area> getAreas()
@@ -46,29 +56,14 @@ public class Target_manager
 		return areas.values();
 	}
 				
-	@SuppressWarnings("unchecked")
 	private List<LivingEntity> getNearest(List<Entity> entities, Target t, LivingEntity le)
 	{
-		List<Nearby_mob> mobs = new ArrayList<Nearby_mob>();
+		List<LivingEntity> targets = filter(entities, t.getMob());
 		Location loc = le.getLocation();
-		String[] mob = t.hasParam(Mobs_const.MOB) ? ((String)(t.getAlternative(Mobs_const.MOB))).split(":") : null;
-
-		for (Entity e : entities)
+		List<Nearby_mob> mobs = new ArrayList<Nearby_mob>();
+		for (LivingEntity l : targets)
 		{
-			if (!(e instanceof LivingEntity)) continue;
-			if (mob != null)
-			{
-				if (!e.getType().equals(EntityType.valueOf(mob[0]))) continue;
-				if (mob.length == 2)
-				{
-					if (!e.hasMetadata("mobs_data")) continue;
-					Map<String, Object> temp = (Map<String, Object>)e.getMetadata("mobs_data").get(0).value();
-						
-					String s = (String)temp.get("NAME");
-					if (s == null || !s.equalsIgnoreCase(mob[1])) continue;
-				}
-			}
-			mobs.add(new Nearby_mob(e, e.getLocation().distance(loc)));
+			mobs.add(new Nearby_mob(l, l.getLocation().distance(loc)));
 		}
 		
 		Collections.sort(mobs, new Comparator<Nearby_mob>() 
@@ -79,9 +74,8 @@ public class Target_manager
 		    }
 		});
 		
-		List<LivingEntity> targets = new ArrayList<LivingEntity>();
-		Mobs_number number = t.getMobs_number();
-		int count = number == null ? 1 : number.getAbsolute_value(1);
+		targets = new ArrayList<LivingEntity>();
+		int count = t.getAmount(1);
 		for (int i = 0; i < count; i++)
 		{
 			if (mobs.size() <= i) return targets;
@@ -90,9 +84,8 @@ public class Target_manager
 		return targets;
 	}
 	
-	private List<LivingEntity> getNearby(List<Entity> entities, Target t)
-	{		
-		String[] mob = t.hasParam(Mobs_const.MOB) ? ((String)(t.getAlternative(Mobs_const.MOB))).split(":") : null;
+	public List<LivingEntity> filter(List<Entity> entities, String[] mob)
+	{
 		List<LivingEntity> targets = new ArrayList<LivingEntity>();
 		for (Entity e : entities)
 		{
@@ -100,42 +93,41 @@ public class Target_manager
 			if (mob != null)
 			{
 				if (!e.getType().equals(EntityType.valueOf(mob[0]))) continue;
-				if (mob.length == 2)
+				String name = mob.length > 1 ? mob[1] : null;
+				if (name != null)
 				{
-					if (!e.hasMetadata("mobs_data")) continue;
-					@SuppressWarnings("unchecked")
-					Map<String, Object> temp = (Map<String, Object>)e.getMetadata("mobs_data").get(0).value();
-						
-					String s = (String)temp.get("NAME");
-					if (s == null || !s.equalsIgnoreCase(mob[1])) continue;
+					String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, MParam.NAME);
+					if (s == null || !s.equalsIgnoreCase(name)) continue;
 				}
 			}
 			targets.add((LivingEntity)e);
 		}
+		return targets;
+	}
+	
+	public List<LivingEntity> getNearby(List<Entity> entities, Target t)
+	{	
+		List<LivingEntity> targets = filter(entities, t.getMob());
 		
 		Collections.shuffle(targets);
-		Mobs_number number = t.getMobs_number();
-		int count = number == null ? targets.size() : number.getAbsolute_value(1);
+		int count = t.getAmount(1);
 		if (count > targets.size()) count = targets.size();
 		return targets.subList(0, count);
 	}
 	
-	public World getWorld(Action a, LivingEntity le)
-	{
-		if (a.hasParam(Mobs_const.WORLD)) return Bukkit.getWorld(a.getString_alt(Mobs_const.WORLD));
-		else if (le != null) return le.getWorld();
-		return null;
-	}
-		
 	public List<LivingEntity> getTargets(Target t, LivingEntity le)
 	{
 		List<LivingEntity> targets = new ArrayList<LivingEntity>();
-		if (t == null) return targets;
-		
+		if (t == null)
+		{
+			targets.add(le);
+			return targets;
+		}
+
 		switch (t.getTarget_type())
 		{
 			case PLAYER:
-				targets.add(Bukkit.getPlayer(t.getString(Mobs_const.VALUE)));
+				targets.add(Bukkit.getPlayer(t.getPlayer()));
 				break;
 			case NEAREST:
 				targets = getNearest(le.getNearbyEntities(50, 10, 50), t, le);
@@ -143,18 +135,19 @@ public class Target_manager
 			case RANDOM:
 				targets = getNearby(le.getWorld().getEntities(), t);
 				break;
-			case SELF:
+			default:
 				if (le != null) targets.add(le);
 				break;
 		}
 		return targets;
 	}
 	
-	public List<Location> getLocations(Action a, LivingEntity le)
+	
+	
+	public List<Location> getLocations(Target t, LivingEntity le)
 	{
 		List<Location> locs = new ArrayList<Location>();
-		Target t = (Target)a.getAlternative(Mobs_const.TARGET);
-		World w = getWorld(a, le);
+		World w = t == null ? le.getWorld() : t.getWorld(le);
 		if (w == null) return locs;
 		// no world, can't continue
 		
@@ -167,10 +160,9 @@ public class Target_manager
 		{
 			case AREA:
 				Area area = null;
-				if (t.hasParam(Mobs_const.VALUE))
+				String s = t.getArea_name();
+				if (s != null)
 				{
-					String s = t.getString(Mobs_const.VALUE).toUpperCase();
-				
 					if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
 					area = areas.get(s);
 					if (area == null)
@@ -179,14 +171,14 @@ public class Target_manager
 						break;
 					}
 				}
-				else if (t.hasParam(Mobs_const.AREA)) area = (Area)t.getObject(Mobs_const.AREA);
+				else area = t.getArea();
 				locs.add(area.getLocation(w));
 				break;
 			case BLOCK:
-				int[] temp = t.getInt_array(Mobs_const.BLOCK);
-				locs.add(w.getBlockAt(temp[0], temp[1], temp[2]).getLocation());
+				locs.add(w.getBlockAt(Integer.parseInt(t.getX()), Integer.parseInt(t.getY()), 
+						Integer.parseInt(t.getZ())).getLocation());
 				break;
-			case NEAR:
+			case AROUND:
 				List<LivingEntity> targets = getNearby(w.getEntities(), t);
 				for (LivingEntity l : targets) locs.add(getOffset(t, l.getLocation()));
 				break;
@@ -198,35 +190,43 @@ public class Target_manager
 	}
 
 	private Location getOffset(Target t, Location loc)
-	{
+	{Mobs.log(1);
 		Random r = new Random();
-		int start = loc.getBlockX();		
-		String[] temp = t.getString(Mobs_const.X).split(":");
+		int start = loc.getBlockX();
+		Mobs.log(start);
+		String s = t.getX() == null ? "0:0" : t.getX();
+		String[] temp = s.split(":");
 		int rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
 		int safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
 		int i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
-		if (r.nextBoolean()) loc.setX(start - i); else loc.setX(start + i);		
+		if (r.nextBoolean()) loc.setX(start - i); else loc.setX(start + i);
+		Mobs.log(loc.getBlockX());		
 
-		start = loc.getBlockY();		
-		temp = t.getString(Mobs_const.Y).split(":");
+		start = loc.getBlockZ();	
+		s = t.getZ() == null ? "0:0" : t.getZ();
+		temp = s.split(":");
+		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
+		if (r.nextBoolean()) loc.setZ(start - i); else loc.setX(start + i);	
+
+		start = loc.getBlockY();
+		s = t.getY() == null ? "0:0" : t.getY();
+		temp = s.split(":");
 		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
 		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
 		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;		
 		rad = r.nextBoolean() ? start - i : start + i;
+		Block b = loc.getWorld().getBlockAt(loc.getBlockX(), rad, loc.getBlockZ());
+		while (b.getType() != Material.AIR && b.getY() < loc.getWorld().getMaxHeight()) b = b.getRelative(BlockFace.UP);
+		rad = b.getY();
 		if (rad > loc.getWorld().getMaxHeight()) rad = loc.getWorld().getMaxHeight();
-		loc.setY(rad);		
-
-		start = loc.getBlockZ();		
-		temp = t.getString(Mobs_const.Z).split(":");
-		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
-		if (r.nextBoolean()) loc.setZ(start - i); else loc.setX(start + i);
+		loc.setY(rad);	
 
 		return loc;
 	}
 	
- 	private void importAreas(XPath xpath, NodeList list)
+ 	public void importAreas(XPath xpath, NodeList list)
 	{
 		Plugin p = Bukkit.getServer().getPluginManager().getPlugin("WorldGuard");
 		if (p != null && p instanceof WorldGuardPlugin)

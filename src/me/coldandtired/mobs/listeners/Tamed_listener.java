@@ -1,14 +1,14 @@
 package me.coldandtired.mobs.listeners;
 
 import java.util.List;
-import java.util.Map;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityTameEvent;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 
 public class Tamed_listener extends Base_listener
 {
@@ -20,8 +20,9 @@ public class Tamed_listener extends Base_listener
 	@EventHandler
 	public void mob_tamed(EntityTameEvent event)
 	{
-		performActions(Mobs_event.TAMED, event.getEntity(), event);
-		Map<String, Object> data = getData(event.getEntity());
-		if (data != null && data.containsKey(Mobs_const.NO_TAMED)) event.setCancelled(true);
+		performActions(MEvent.TAMED, event.getEntity(), event);
+		if (event.isCancelled()) return;
+		
+		if (Data.hasData(event.getEntity(), MParam.NO_TAMED)) event.setCancelled(true);
 	}
 }

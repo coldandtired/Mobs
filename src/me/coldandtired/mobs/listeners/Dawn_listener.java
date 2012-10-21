@@ -5,7 +5,7 @@ import java.util.List;
 import org.bukkit.event.EventHandler;
 
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
+import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.events.Dawn_event;
 
 public class Dawn_listener extends Base_listener
@@ -18,6 +18,6 @@ public class Dawn_listener extends Base_listener
 	@EventHandler
 	public void dawn(Dawn_event event)
 	{
-		performActions(Mobs_event.DAWN, null, event);
+		performActions(MEvent.DAWN, null, event);
 	}
 }

@@ -1,6 +1,6 @@
 package me.coldandtired.mobs.enums;
 
-public enum Mobs_event 
+public enum MEvent 
 {
 	//ATTACKED,
 	APPROACHED,

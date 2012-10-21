@@ -70,17 +70,29 @@ public class Area
 	public Location getLocation(World world)
 	{
 		Random r = new Random();
-		int x = r.nextInt(x_length);
-		if (x_offset > 0 && x >= (x_length / 2)) x += x_offset;
+		int x = 0;
+		if (x_length > 0)
+		{
+			x = r.nextInt(x_length);
+			if (x_offset > 0 && x >= (x_length / 2)) x += x_offset;
+		}
 		x += x_start;
 		
-		int y = r.nextInt(y_length);
-		if (y_offset > 0 && y >= (y_length / 2)) y += y_offset;
+		int y = 0;
+		if (y_length > 0)
+		{
+			y = r.nextInt(y_length);
+			if (y_offset > 0 && y >= (y_length / 2)) y += y_offset;
+		}
 		y += y_start;
 		if (y > world.getMaxHeight()) y = world.getMaxHeight();
 		
-		int z = r.nextInt(z_length);
-		if (z_offset > 0 && z >= (z_length / 2)) z += z_offset;
+		int z = 0;
+		if (z_length > 0)
+		{
+			z = r.nextInt(z_length);
+			if (z_offset > 0 && z >= (z_length / 2)) z += z_offset;
+		}
 		z += z_start;
 		return world.getBlockAt(x, y, z).getLocation();
 	}

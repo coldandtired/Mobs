@@ -4,12 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -18,20 +20,18 @@ import org.bukkit.metadata.FixedMetadataValue;
 
 public class Spawns_listener extends Base_listener
 {	
-	private boolean active;
 	private String mob_name = null;
 	private String spawn_reason = null;
 	
-	public Spawns_listener(List<Outcome> outcomes, boolean active)
+	public Spawns_listener(List<Outcome> outcomes)
 	{
 		super(outcomes);
-		this.active = active;
 	}
 
-	public void setMob_name(String[] mob)
+	public void setMob_name(String name)
 	{
-		spawn_reason = mob[0];
-		mob_name = mob.length == 2 ? mob[1] : null;
+		spawn_reason = "SPAWNED";
+		mob_name = name;
 	}
 	
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -39,22 +39,21 @@ public class Spawns_listener extends Base_listener
 	{
 		LivingEntity le = event.getEntity();
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
-		if (le.hasMetadata("mobs_data")) Mobs.log("has");
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(Mobs_const.SPAWN_REASON.toString(), spawn_reason);
-		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
+		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
+		if (mob_name != null) data.put(MParam.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (active) performActions(Mobs_event.SPAWNS, le, event);
+		performActions(MEvent.SPAWNS, le, event);
+		mob_name = null;
+		spawn_reason = null;
 	}
 	
 	@EventHandler
 	public void player_respawns(PlayerRespawnEvent event)
 	{
-		LivingEntity le = event.getPlayer();
-		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(Mobs_const.SPAWN_REASON.toString(), "NATURAL");
-		if (mob_name != null) data.put(Mobs_const.NAME.toString(), mob_name);
-		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (active) performActions(Mobs_event.SPAWNS, le, event);	
+		Player p = event.getPlayer();
+		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
+		Data.putData(p, MParam.NAME, p.getName());
+		performActions(MEvent.SPAWNS, p, event);	
 	}
 }

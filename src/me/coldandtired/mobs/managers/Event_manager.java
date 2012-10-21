@@ -1,16 +1,16 @@
 package me.coldandtired.mobs.managers;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Condition;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.subelements.Area;
-import org.bukkit.Bukkit;
+
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.AnimalTamer;
@@ -26,12 +26,20 @@ import org.bukkit.event.Event;
 
 public class Event_manager 
 {
-	public Event_manager()
+	private static Event_manager em;
+	
+	private Event_manager()
 	{
-		
+		// private for singleton
 	}
 	
-	public void start_actions(List<Outcome> outcomes, Mobs_event event, LivingEntity le, Event orig_event, boolean single_outcome, String name)
+	public static Event_manager get()
+	{
+		if (em == null) em = new Event_manager();
+		return em;
+	}
+	
+	public void start_actions(List<Outcome> outcomes, MEvent event, LivingEntity le, Event orig_event, boolean single_outcome, String name)
 	{		
 		Mobs.debug("------------------");
 		Mobs.debug("Event - " + event.toString());
@@ -67,7 +75,7 @@ public class Event_manager
 			
 			if (perform)
 			{
-				boolean b = Mobs.getInstance().getAction_manager().performActions(o, event, le, orig_event);
+				boolean b = Action_manager.get().performActions(o, event, le, orig_event);
 				if (!b) single_outcome = false;
 				if (single_outcome) return;
 			}
@@ -76,7 +84,6 @@ public class Event_manager
 		Mobs.debug("------------------");
 	}	
 	
-	@SuppressWarnings("unchecked")
 	boolean check_condition(Condition c, LivingEntity le, Event event)
 	{
 		switch (c.getCondition_type())
@@ -89,17 +96,25 @@ public class Event_manager
 				else if (le instanceof PigZombie) return ((PigZombie)le).isAngry();
 				break;
 			case AREA:
-				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return true;
+				for (Area a : Target_manager.get().getAreas()) if (a.containsLocation(le.getLocation())) return true;
 				break;
 			case BIOME:
 				return matchesString(c, le.getLocation().getBlock().getBiome().name());
+			case CHUNK_MOB_COUNT:
+				List<Location> list = Target_manager.get().getLocations(c.getTarget(), le);
+				for (Location loc : list)
+				{
+					int i = Target_manager.get().filter(Arrays.asList(loc.getChunk().getEntities()), c.getMob()).size();
+					return c.matches(i);
+				}
+				break;
 			case DEATH_CAUSE:
 				if (!le.isDead()) return false;
 				return matchesString(c, le.getLastDamageCause().toString());
 			case KILLED_BY_PLAYER:
 				if (le.isDead()) return le.getKiller() instanceof Player;
 				break;
-			case LIGHT_LEVEL: return matchesInt(c, le.getLocation().getBlock().getLightLevel());
+			case LIGHT_LEVEL: return c.matches(le.getLocation().getBlock().getLightLevel());
 			case NAME:
 				if (le instanceof Player)
 				{
@@ -107,7 +122,7 @@ public class Event_manager
 				}
 				else if (le.hasMetadata("mobs_data"))
 				{
-					String name = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.NAME.toString());
+					String name = (String)Data.getData(le, MParam.NAME);
 					if (name == null) return false;
 					return matchesString(c, name);
 				}
@@ -120,8 +135,8 @@ public class Event_manager
 				}
 				break;
 			case RAINING:
-				World w = getWorld(c, le);
-				return w == null ? false : w.hasStorm();
+				World w = c.getWorld(le);
+				return w.hasStorm();
 			case POWERED:
 				if (le instanceof Creeper) return ((Creeper)le).isPowered();
 				break;
@@ -134,7 +149,7 @@ public class Event_manager
 			case SPAWN_REASON:
 				if (le.hasMetadata("mobs_data"))
 				{
-					String spawn_reason = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.SPAWN_REASON.toString());
+					String spawn_reason = (String)Data.getData(le, MParam.SPAWN_REASON);
 					if (spawn_reason == null) return false;
 					return matchesString(c, spawn_reason);
 				}
@@ -143,19 +158,17 @@ public class Event_manager
 				if (le instanceof Wolf) return ((Wolf)le).isTamed();
 				break;
 			case THUNDERING: 
-				w = getWorld(c, le);
-				return w == null ? false : w.isThundering();
+				w = c.getWorld(le);
+				return w.isThundering();
 			case WORLD_NAME:
-				w = getWorld(c, le);
-				if (w == null) return false;
+				w = c.getWorld(le);
 				return matchesString(c, w.getName());
 			case WORLD_TIME: 
-				w = getWorld(c, le);
-				if (w == null) return false;
-				return (matchesInt(c, (int)w.getTime()));
-			case X: return matchesInt(c, le.getLocation().getBlockX());
-			case Y: return matchesInt(c, le.getLocation().getBlockY());
-			case Z: return matchesInt(c, le.getLocation().getBlockZ());
+				w = c.getWorld(le);
+				return c.matches((int)w.getTime());
+			case X: return c.matches(le.getLocation().getBlockX());
+			case Y: return c.matches(le.getLocation().getBlockY());
+			case Z: return c.matches(le.getLocation().getBlockZ());
 						
 			case NOT_ADULT:
 				if (le instanceof Ageable) return !((Ageable)le).isAdult();
@@ -165,7 +178,7 @@ public class Event_manager
 				else if (le instanceof PigZombie) return !((PigZombie)le).isAngry();
 				break;
 			case NOT_AREA:
-				for (Area a : Mobs.getInstance().getAction_manager().getTarget_manager().getAreas()) if (a.containsLocation(le.getLocation())) return false;
+				for (Area a : Target_manager.get().getAreas()) if (a.containsLocation(le.getLocation())) return false;
 				return true;				
 			case NOT_BIOME:
 				return !matchesString(c, le.getLocation().getBlock().getBiome().name());
@@ -182,7 +195,7 @@ public class Event_manager
 				}
 				else if (le.hasMetadata("mobs_data"))
 				{
-					String name = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.NAME.toString());
+					String name = (String)Data.getData(le, MParam.NAME);
 					if (name == null) return true;
 					return !matchesString(c, name);
 				}
@@ -198,8 +211,8 @@ public class Event_manager
 				if (le instanceof Creeper) return !((Creeper)le).isPowered();
 				break;
 			case NOT_RAINING: 
-				w = getWorld(c, le);
-				return w == null ? false : !w.hasStorm();
+				w = c.getWorld(le);
+				return !w.hasStorm();
 			case NOT_SADDLED:
 				if (le instanceof Pig) return !((Pig)le).hasSaddle();
 				break;
@@ -209,7 +222,7 @@ public class Event_manager
 			case NOT_SPAWN_REASON:
 				if (le.hasMetadata("mobs_data"))
 				{
-					String spawn_reason = (String) ((Map<String, Object>)le.getMetadata("mobs_data").get(0).value()).get(Mobs_const.SPAWN_REASON.toString());
+					String spawn_reason = (String)Data.getData(le, MParam.SPAWN_REASON);
 					if (spawn_reason == null) return true;
 					return !matchesString(c, spawn_reason);
 				}
@@ -218,20 +231,19 @@ public class Event_manager
 				if (le instanceof Wolf) return !((Wolf)le).isTamed();
 				break;
 			case NOT_THUNDERING: 
-				w = getWorld(c, le);
-				return w == null ? false : !w.isThundering();
+				w = c.getWorld(le);
+				return !w.isThundering();
 			case NOT_WORLD_NAME:
-				w = getWorld(c, le);
-				if (w == null) return false;
+				w = c.getWorld(le);
 				return !matchesString(c, w.getName());
 		}
 		return false;
 	}
 	
-	public boolean matchesInt(Condition c, int orig)
+	/*public boolean matchesInt(Condition c, int orig)
 	{
 		List<Integer> temp = new ArrayList<Integer>();
-		for (String s : c.getString(Mobs_const.VALUE).split(","))
+		for (String s : pm.getString(c, MParam.VALUE).split(","))
 		{
 			s = s.replace(" ", "");
 			if (s.startsWith("above"))
@@ -254,19 +266,12 @@ public class Event_manager
 			else temp.add(Integer.parseInt(s));
 		}
 		return temp.contains(orig);
-	}
+	}*/
 
 	public boolean matchesString(Condition c, String orig)
 	{
-		String name = c.getString(Mobs_const.VALUE);
-		for (String s : name.split(",")) if (s.trim().equalsIgnoreCase(orig)) return true;
+		//String name = pm.getString(c, MParam.VALUE);
+		//for (String s : name.split(",")) if (s.trim().equalsIgnoreCase(orig)) return true;
 		return false;
-	}
-	
-	public World getWorld(Condition c, LivingEntity le)
-	{
-		if (c.hasParam(Mobs_const.WORLD)) return Bukkit.getWorld(c.getString_alt(Mobs_const.WORLD));
-		else if (le != null) return le.getWorld();
-		return null;
 	}
 }

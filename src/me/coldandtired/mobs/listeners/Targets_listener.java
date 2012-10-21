@@ -1,15 +1,14 @@
 package me.coldandtired.mobs.listeners;
 
 import java.util.List;
-import java.util.Map;
-
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.entity.EntityCombustEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 
+import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.Mobs_event;
-import me.coldandtired.mobs.enums.Mobs_const;
+import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.enums.MParam;
 
 public class Targets_listener extends Base_listener
 {
@@ -19,14 +18,14 @@ public class Targets_listener extends Base_listener
 	}
 
 	@EventHandler
-	public void targets(EntityCombustEvent event)
+	public void targets(EntityTargetLivingEntityEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		performActions(Mobs_event.TARGETS, le, event);
-		//targeted event!
-		Map<String, Object> data = getData(le);
-		if (data != null && data.containsKey(Mobs_const.FRIENDLY)) event.setCancelled(true);
+		performActions(MEvent.TARGETS, le, event);
+		if (event.isCancelled()) return;
+		//targetd event!
+		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
 	}
 }

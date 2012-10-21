@@ -1,12 +1,13 @@
 package me.coldandtired.mobs.enums;
 
-public enum Mobs_condition 
+public enum MCcondition 
 {
 	ADULT, 
 	ANGRY,
 	AREA,
 	//ATTACKER_TYPE
 	BIOME,
+	CHUNK_MOB_COUNT,
 	//CAN_BREED,
 	//CHUNK_MOB_COUNT,
 	DEATH_CAUSE,
@@ -70,7 +71,7 @@ public enum Mobs_condition
 	public static String getXpath()
 	{
 		String s = "";
-		for (Mobs_condition c : values()) s = s + " | " + c.toString().toLowerCase();
+		for (MCcondition c : values()) s = s + " | " + c.toString().toLowerCase();
 		return s.substring(3);
 	}
 }
