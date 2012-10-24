@@ -12,6 +12,7 @@ import me.coldandtired.mobs.enums.MTarget;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Target;
 
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
@@ -27,6 +28,7 @@ public class Action
 	private boolean locked = false;
 	private Text_value value;
 	private Text_value message;
+	private Text_value world;
 	
 	public Action(Element element) throws XPathExpressionException 
 	{
@@ -49,15 +51,18 @@ public class Action
 		if (el != null) message = new Text_value(el);
 			
 		el = (Element)Mobs.getXPath().evaluate("mob", element, XPathConstants.NODE);
-		if (el != null) mob = new Text_value(el);
-			
-		el = (Element)Mobs.getXPath().evaluate("target", element, XPathConstants.NODE);
-		if (el != null) fillTargets(el);	
+		if (el != null) mob = new Text_value(el);	
 		
-		fillItems(element);	
+		fillItems(element);
+		
+		el = (Element)Mobs.getXPath().evaluate("target/world | world", element, XPathConstants.NODE);
+		if (el != null) world = new Text_value(el);
+		
+		el = (Element)Mobs.getXPath().evaluate("target", element, XPathConstants.NODE);
+		if (el != null) fillTargets(el, world);
 	}
 	
-	private void fillTargets(Element element) throws XPathExpressionException
+	private void fillTargets(Element element, Text_value world) throws XPathExpressionException
 	{
 		NodeList list = (NodeList)Mobs.getXPath().evaluate(MTarget.getXpath(), element, XPathConstants.NODESET);		
 		if (list.getLength() > 0)
@@ -70,7 +75,7 @@ public class Action
 				int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
 				count += ratio;
 				if (list.getLength() == 1) count = 1;						
-				temp.put(count, new Target(el));	
+				temp.put(count, new Target(el, world));	
 			}
 			targets = new Alternatives(count, temp);
 		}
@@ -134,8 +139,8 @@ public class Action
 	
 	public World getWorld(LivingEntity le)
 	{
-		Target t = getTarget();
-		return t == null ? le.getWorld() : t.getWorld(le);
+		if (world == null) return le.getWorld();
+		return Bukkit.getWorld(world.getValue());
 	}
 	
 	public Item_drop getItem()

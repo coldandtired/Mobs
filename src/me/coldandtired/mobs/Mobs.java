@@ -131,7 +131,7 @@ public class Mobs extends JavaPlugin
 		xpath = XPathFactory.newInstance().newXPath();
 		error("This is a Beta version of the plugin.  Make sure you have backups!");
 		File f = new File(getDataFolder(), "config.txt");
-		InputSource input;
+		InputSource input = null;
 		try
 		{
 			input = new InputSource(f.getPath());
@@ -290,7 +290,6 @@ public class Mobs extends JavaPlugin
 				Integer life = (Integer)Data.getData(le, MParam.MAX_LIFE);
 				if (life == null) continue;
 				life--;
-				log(life);
 				if (life < 0) le.remove();	
 				else Data.putData(le, MParam.MAX_LIFE, life);
 			}

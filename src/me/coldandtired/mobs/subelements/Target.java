@@ -26,8 +26,9 @@ public class Target extends Param
 	private Text_value amount;
 	private Text_value world;
 	
-	public Target(Element element) throws XPathExpressionException
+	public Target(Element element, Text_value world) throws XPathExpressionException
 	{	
+		this.world = world;
 		target_type = MTarget.valueOf(element.getLocalName().toUpperCase());
 		Element el;
 		switch (target_type)
@@ -45,7 +46,7 @@ public class Target extends Param
 				if (el != null) z = new Text_value(el);
 				break;
 			case AREA:
-				if (element.getChildNodes().getLength() == 0) area_name = new Text_value(element);
+				if (element.getChildNodes().getLength() == 1) area_name = new Text_value(element);
 				else area = new Area(element); 
 				break;				
 		}
@@ -54,10 +55,7 @@ public class Target extends Param
 		if (el != null) amount = new Text_value(el);
 		
 		el = (Element)Mobs.getXPath().evaluate("mob", element, XPathConstants.NODE);
-		if (el != null) mob = new Text_value(el);
-		
-		el = (Element)Mobs.getXPath().evaluate("world", element, XPathConstants.NODE);
-		if (el != null) world = new Text_value(el);
+		if (el != null) mob = new Text_value(el);		
 	}
 	
 	public MTarget getTarget_type()
@@ -71,27 +69,30 @@ public class Target extends Param
 		return area_name.getValue();
 	}
 
+	public World getWorld(LivingEntity le)
+	{
+		if (world == null) return le.getWorld();
+		return Bukkit.getWorld(world.getValue());
+	}
+	
 	public Area getArea()
 	{
 		return area;
 	}
 	
-	public String getX()
+	public Text_value getX()
 	{
-		if (x == null) return null;
-		return x.getValue();
+		return x;
 	}
 	
-	public String getY()
+	public Text_value getY()
 	{
-		if (y == null) return null;
-		return x.getValue();
+		return y;
 	}
 	
-	public String getZ()
+	public Text_value getZ()
 	{
-		if (z == null) return null;
-		return z.getValue();
+		return z;
 	}
 	
 	public String getPlayer()
@@ -99,13 +100,7 @@ public class Target extends Param
 		if (player == null) return null;
 		return player.getValue();
 	}
-	
-	public World getWorld(LivingEntity le)
-	{
-		if (world == null) return le.getWorld();
-		return Bukkit.getWorld(world.getValue());
-	}
-	
+		
 	public String[] getMob()
 	{
 		if (mob == null) return null;

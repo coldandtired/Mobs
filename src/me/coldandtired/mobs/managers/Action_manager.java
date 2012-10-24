@@ -87,6 +87,75 @@ public class Action_manager
 		//Hp = default
 		switch (a.getAction_type())
 		{
+			case SET_CUSTOM_FLAG_1:
+			case SET_CUSTOM_FLAG_2:
+			case SET_CUSTOM_FLAG_3:
+			case SET_CUSTOM_FLAG_4:
+			case SET_CUSTOM_FLAG_5:
+			case SET_CUSTOM_FLAG_6:
+			case SET_CUSTOM_FLAG_7:
+			case SET_CUSTOM_FLAG_8:
+			case SET_CUSTOM_FLAG_9:
+			case SET_CUSTOM_FLAG_10:
+				setCustom_flag(a, le);
+				break;
+		
+			case SET_CUSTOM_INT_1:
+			case SET_CUSTOM_INT_2:
+			case SET_CUSTOM_INT_3:
+			case SET_CUSTOM_INT_4:
+			case SET_CUSTOM_INT_5:
+			case SET_CUSTOM_INT_6:
+			case SET_CUSTOM_INT_7:
+			case SET_CUSTOM_INT_8:
+			case SET_CUSTOM_INT_9:
+			case SET_CUSTOM_INT_10:
+			case SET_CUSTOM_STRING_1:
+			case SET_CUSTOM_STRING_2:
+			case SET_CUSTOM_STRING_3:
+			case SET_CUSTOM_STRING_4:
+			case SET_CUSTOM_STRING_5:
+			case SET_CUSTOM_STRING_6:
+			case SET_CUSTOM_STRING_7:
+			case SET_CUSTOM_STRING_8:
+			case SET_CUSTOM_STRING_9:
+			case SET_CUSTOM_STRING_10:
+				setCustom_value(a, le);
+				break;
+		
+			case REMOVE_CUSTOM_FLAG_1:
+			case REMOVE_CUSTOM_FLAG_2:
+			case REMOVE_CUSTOM_FLAG_3:
+			case REMOVE_CUSTOM_FLAG_4:
+			case REMOVE_CUSTOM_FLAG_5:
+			case REMOVE_CUSTOM_FLAG_6:
+			case REMOVE_CUSTOM_FLAG_7:
+			case REMOVE_CUSTOM_FLAG_8:
+			case REMOVE_CUSTOM_FLAG_9:
+			case REMOVE_CUSTOM_FLAG_10:
+			case REMOVE_CUSTOM_INT_1:
+			case REMOVE_CUSTOM_INT_2:
+			case REMOVE_CUSTOM_INT_3:
+			case REMOVE_CUSTOM_INT_4:
+			case REMOVE_CUSTOM_INT_5:
+			case REMOVE_CUSTOM_INT_6:
+			case REMOVE_CUSTOM_INT_7:
+			case REMOVE_CUSTOM_INT_8:
+			case REMOVE_CUSTOM_INT_9:
+			case REMOVE_CUSTOM_INT_10:
+			case REMOVE_CUSTOM_STRING_1:
+			case REMOVE_CUSTOM_STRING_2:
+			case REMOVE_CUSTOM_STRING_3:
+			case REMOVE_CUSTOM_STRING_4:
+			case REMOVE_CUSTOM_STRING_5:
+			case REMOVE_CUSTOM_STRING_6:
+			case REMOVE_CUSTOM_STRING_7:
+			case REMOVE_CUSTOM_STRING_8:
+			case REMOVE_CUSTOM_STRING_9:
+			case REMOVE_CUSTOM_STRING_10:
+				removeCustom_value(a, le);
+				break;
+				
 			case CONTINUE: return true;
 			case DROP_ITEM:
 				drop_item(a, le);
@@ -200,6 +269,24 @@ public class Action_manager
 				break;
 		}
 		return false;
+	}
+	
+	private void removeCustom_value(Action a, LivingEntity live)
+	{
+		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
+			Data.removeData(le, MParam.valueOf(a.getAction_type().toString().substring(7)));
+	}
+	
+	private void setCustom_flag(Action a, LivingEntity live)
+	{
+		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
+			Data.putData(le, MParam.valueOf(a.getAction_type().toString().substring(4)));
+	}
+	
+	private void setCustom_value(Action a, LivingEntity live)
+	{
+		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
+			Data.putData(le, MParam.valueOf(a.getAction_type().toString().substring(4)), a.getValue());
 	}
 	
 	private void clearData(Action a, LivingEntity live)
@@ -396,6 +483,67 @@ public class Action_manager
 					if (hp > max_hp) hp = max_hp;
 					Data.putData(le, MParam.HP, hp);
 					Data.putData(le, MParam.MAX_HP, max_hp);
+					break;
+				case SET_ATTACK_POWER:
+					Data.putData(le, MParam.ATTACK, a.getValue());
+					break;
+					
+				case SET_DAMAGE_TAKEN_FROM_BLOCK_EXPLOSION:
+					Data.putData(le, MParam.BLOCK_EXPLOSION_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_CONTACT:
+					Data.putData(le, MParam.CONTACT_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_CUSTOM:
+					Data.putData(le, MParam.CUSTOM_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_DROWNING:
+					Data.putData(le, MParam.DROWNING_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_ATTACK:
+					Data.putData(le, MParam.ATTACK_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_ENTITY_EXPLOSION:
+					Data.putData(le, MParam.ENTITY_EXPLOSION_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_FALL:
+					Data.putData(le, MParam.FALL_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_FIRE:
+					Data.putData(le, MParam.FIRE_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_FIRE_TICK:
+					Data.putData(le, MParam.FIRE_TICK_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_LAVA:
+					Data.putData(le, MParam.LAVA_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_LIGHTNING:
+					Data.putData(le, MParam.LIGHTNING_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_MAGIC:
+					Data.putData(le, MParam.MAGIC_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_MELTING:
+					Data.putData(le, MParam.MELTING_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_POISON:
+					Data.putData(le, MParam.POISON_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_PROJECTILE:
+					Data.putData(le, MParam.PROJECTILE_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_STARVATION:
+					Data.putData(le, MParam.STARVATION_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_SUFFOCATION:
+					Data.putData(le, MParam.SUFFOCATION_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_SUICIDE:
+					Data.putData(le, MParam.SUICIDE_DAMAGE, a.getValue());
+					break;
+				case SET_DAMAGE_TAKEN_FROM_VOID:
+					Data.putData(le, MParam.VOID_DAMAGE, a.getValue());
 					break;
 			}
 		}
@@ -950,7 +1098,6 @@ public class Action_manager
 		name = mob.length > 1 ? mob[1] : null;
 		int amount = a.getAmount(1);
 		List<Location> list = tm.getLocations(a.getTarget(), le);
-		if (list.size() == 0) Mobs.log("empty list");
 		for (int i = 0; i < amount; i++)
 		{
 			Mobs.getInstance().setMob_name(name);

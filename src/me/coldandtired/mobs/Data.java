@@ -85,4 +85,38 @@ public class Data
 	{
 		m.removeMetadata("mobs_data", Mobs.getInstance());
 	}
+	
+	public static int adjustInt(Metadatable m, MParam param, int orig)
+	{
+		String ad = (String)getData(m, param);
+		if (ad == null) return orig;
+		
+		String[] value = ad.split(":");
+		
+		String s = value[0].replace(" ", "");
+		int a = 0;
+		if (s.contains("to"))
+		{
+			String[] temp = s.split("to");
+			a = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+			int b = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
+			a = new Random().nextInt((b - a) + 1) + a;
+		}
+		else a = Integer.parseInt(s);
+		
+		if (value.length == 1) return a;
+		
+		if (value[1].contains("%"))
+		{
+			if (value[1].contains("+")) return ((orig * a) / 100) + orig;
+			else if (value[1].contains("-")) return orig - ((orig * a) / 100);
+			else return (orig * a) / 100;
+		}
+		else
+		{
+			if (value[1].contains("+")) return orig + a;
+			else if (value[1].contains("-")) return orig - a;
+		}
+		return orig;
+	}
 }

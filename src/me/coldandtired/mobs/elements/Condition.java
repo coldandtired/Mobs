@@ -11,6 +11,7 @@ import me.coldandtired.mobs.enums.MCcondition;
 import me.coldandtired.mobs.enums.MTarget;
 import me.coldandtired.mobs.subelements.Target;
 
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
@@ -23,6 +24,7 @@ public class Condition extends Param
 	private Alternatives targets;
 	private String mob;
 	private String amount;
+	private Text_value world;
 	
 	public Condition(Element element) throws XPathExpressionException 
 	{
@@ -43,14 +45,15 @@ public class Condition extends Param
 			
 		el = (Element)Mobs.getXPath().evaluate("mob", element, XPathConstants.NODE);
 		if (el != null) mob = el.getTextContent();
-			
-		el = (Element)Mobs.getXPath().evaluate("target", element, XPathConstants.NODE);
-		if (el != null) fillTargets(el);	
 		
-		Mobs.log(getValue());
+		el = (Element)Mobs.getXPath().evaluate("target/world | world", element, XPathConstants.NODE);
+		if (el != null) world = new Text_value(el);
+		
+		el = (Element)Mobs.getXPath().evaluate("target", element, XPathConstants.NODE);
+		if (el != null) fillTargets(el, world);
 	}
 	
-	private void fillTargets(Element element) throws XPathExpressionException
+	private void fillTargets(Element element, Text_value world) throws XPathExpressionException
 	{
 		NodeList list = (NodeList)Mobs.getXPath().evaluate(MTarget.getXpath(), element, XPathConstants.NODESET);		
 		if (list.getLength() > 0)
@@ -63,7 +66,7 @@ public class Condition extends Param
 				int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
 				count += ratio;
 				if (list.getLength() == 1) count = 1;						
-				temp.put(count, new Target(el));	
+				temp.put(count, new Target(el, world));	
 			}
 			targets = new Alternatives(count, temp);
 		}
@@ -71,8 +74,8 @@ public class Condition extends Param
 	
 	public World getWorld(LivingEntity le)
 	{
-		Target t = getTarget();
-		return t == null ? le.getWorld() : t.getWorld(le);
+		if (world == null) return le.getWorld();
+		return Bukkit.getWorld(world.getValue());
 	}
 
 	public Target getTarget()
@@ -111,6 +114,16 @@ public class Condition extends Param
 					orig <= Math.max(Integer.parseInt(temp2[0]), Integer.parseInt(temp2[1]))) return true;
 			}
 			else if (Integer.parseInt(s) == orig) return true;
+		}
+		return false;
+	}
+
+	public boolean matches(String orig)
+	{
+		if (value == null) return false;
+		for (String s : value.split(","))
+		{
+			if (s.trim().equalsIgnoreCase(orig)) return true;
 		}
 		return false;
 	}

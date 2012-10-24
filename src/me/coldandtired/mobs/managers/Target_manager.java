@@ -16,6 +16,7 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.elements.Text_value;
 import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.subelements.Area;
 import me.coldandtired.mobs.subelements.Nearby_mob;
@@ -175,8 +176,8 @@ public class Target_manager
 				locs.add(area.getLocation(w));
 				break;
 			case BLOCK:
-				locs.add(w.getBlockAt(Integer.parseInt(t.getX()), Integer.parseInt(t.getY()), 
-						Integer.parseInt(t.getZ())).getLocation());
+				locs.add(w.getBlockAt(Integer.parseInt(t.getX().getValue()), Integer.parseInt(t.getY().getValue()), 
+						Integer.parseInt(t.getZ().getValue())).getLocation());
 				break;
 			case AROUND:
 				List<LivingEntity> targets = getNearby(w.getEntities(), t);
@@ -190,39 +191,28 @@ public class Target_manager
 	}
 
 	private Location getOffset(Target t, Location loc)
-	{Mobs.log(1);
+	{
 		Random r = new Random();
+		
 		int start = loc.getBlockX();
-		Mobs.log(start);
-		String s = t.getX() == null ? "0:0" : t.getX();
-		String[] temp = s.split(":");
-		int rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		int safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		int i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
-		if (r.nextBoolean()) loc.setX(start - i); else loc.setX(start + i);
-		Mobs.log(loc.getBlockX());		
-
-		start = loc.getBlockZ();	
-		s = t.getZ() == null ? "0:0" : t.getZ();
-		temp = s.split(":");
-		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;	
-		if (r.nextBoolean()) loc.setZ(start - i); else loc.setX(start + i);	
-
+		Text_value tv = t.getX();
+		int i = tv == null ? 1 : tv.getInt_value(start);
+		if (r.nextBoolean()) loc.setX(start - i); else loc.setX(start + i);	
+		
+		start = loc.getBlockZ();
+		tv = t.getZ();
+		i = tv == null ? 1 : tv.getInt_value(start);
+		if (r.nextBoolean()) loc.setZ(start - i); else loc.setZ(start + i);	
+		
 		start = loc.getBlockY();
-		s = t.getY() == null ? "0:0" : t.getY();
-		temp = s.split(":");
-		rad = Math.max(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		safe = Math.min(Integer.parseInt(temp[0]), Integer.parseInt(temp[1]));
-		i = rad - safe > 0 ? r.nextInt(rad - safe) + 1 : 1;		
-		rad = r.nextBoolean() ? start - i : start + i;
-		Block b = loc.getWorld().getBlockAt(loc.getBlockX(), rad, loc.getBlockZ());
+		tv = t.getY();
+		i = tv == null ? 1 : tv.getInt_value(start);
+		if (r.nextBoolean()) i = (start - i); else i = (start + i);
+		Block b = loc.getWorld().getBlockAt(loc.getBlockX(), i, loc.getBlockZ());
 		while (b.getType() != Material.AIR && b.getY() < loc.getWorld().getMaxHeight()) b = b.getRelative(BlockFace.UP);
-		rad = b.getY();
-		if (rad > loc.getWorld().getMaxHeight()) rad = loc.getWorld().getMaxHeight();
-		loc.setY(rad);	
-
+		i = b.getY();
+		if (i > loc.getWorld().getMaxHeight()) i = loc.getWorld().getMaxHeight();
+		loc.setY(i);
 		return loc;
 	}
 	
