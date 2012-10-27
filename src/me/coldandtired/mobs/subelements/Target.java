@@ -71,7 +71,11 @@ public class Target extends Param
 
 	public World getWorld(LivingEntity le)
 	{
-		if (world == null) return le.getWorld();
+		if (world == null)
+		{
+			if (le == null) return null;
+			return le.getWorld();
+		}
 		return Bukkit.getWorld(world.getValue());
 	}
 	

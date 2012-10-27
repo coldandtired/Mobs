@@ -29,15 +29,12 @@ public class Condition extends Param
 	public Condition(Element element) throws XPathExpressionException 
 	{
 		condition_type = MCcondition.valueOf(element.getLocalName().toUpperCase());
-		NodeList list = (NodeList)Mobs.getXPath().evaluate("value", element, XPathConstants.NODESET);
+		Element el = (Element)Mobs.getXPath().evaluate("value", element, XPathConstants.NODE);
 		
-		if (element.getChildNodes().getLength() == 1 || list.getLength() > 0)
-		{
-			value = element.getTextContent();
-			//return;
-		}
+		if (element.getChildNodes().getLength() == 1) value = element.getTextContent();		
+		else if (el != null) value = el.getTextContent();
 		
-		Element el = (Element)Mobs.getXPath().evaluate("amount", element, XPathConstants.NODE);
+		el = (Element)Mobs.getXPath().evaluate("amount", element, XPathConstants.NODE);
 		if (el != null) amount = el.getTextContent();
 			
 		//el = (Element)Mobs.getXPath().evaluate("message", element, XPathConstants.NODE);

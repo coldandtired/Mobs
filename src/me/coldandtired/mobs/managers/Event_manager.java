@@ -27,10 +27,12 @@ import org.bukkit.event.Event;
 public class Event_manager 
 {
 	private static Event_manager em;
+	private Target_manager tm;
 	
 	private Event_manager()
 	{
 		// private for singleton
+		tm = Target_manager.get();
 	}
 	
 	public static Event_manager get()
@@ -84,8 +86,9 @@ public class Event_manager
 		Mobs.debug("------------------");
 	}	
 	
-	boolean check_condition(Condition c, LivingEntity le, Event event)
-	{
+	boolean check_condition(Condition c, LivingEntity live, Event event)
+	{		
+		for (LivingEntity le : tm.getTargets(c.getTarget(), live))
 		switch (c.getCondition_type())
 		{
 			case ADULT:
@@ -118,7 +121,7 @@ public class Event_manager
 			case CUSTOM_FLAG_8:
 			case CUSTOM_FLAG_9:
 			case CUSTOM_FLAG_10:
-				return Data.hasData(le, MParam.valueOf(c.getCondition_type().toString().substring(4)));	
+				return Data.hasData(le, MParam.valueOf(c.getCondition_type().toString()));	
 			case CUSTOM_INT_1:
 			case CUSTOM_INT_2:
 			case CUSTOM_INT_3:
@@ -171,12 +174,22 @@ public class Event_manager
 					if (tamer != null) return c.matches(tamer.getName());
 				}
 				break;
-			case RAINING:
-				World w = c.getWorld(le);
-				return w.hasStorm();
+			case PLAYER_HAS_PERMISSION:
+				if (!(le instanceof Player)) return false;
+				for (String ss : c.getValue().split(","))
+				{
+					if (((Player)le).hasPermission(ss.trim())) return true;
+				}
+				break;
+			case PLAYER_IS_OP:
+				if (le instanceof Player) return ((Player)le).isOp();
+				break;
 			case POWERED:
 				if (le instanceof Creeper) return ((Creeper)le).isPowered();
 				break;
+			case RAINING:
+				World w = c.getWorld(le);
+				return w.hasStorm();
 			case SADDLED:
 				if (le instanceof Pig) return ((Pig)le).hasSaddle();
 				break;
@@ -264,6 +277,16 @@ public class Event_manager
 					if (tamer != null) return !c.matches(tamer.getName());
 				}
 				return true;
+			case NOT_PLAYER_HAS_PERMISSION:
+				if (!(le instanceof Player)) return true;
+				for (String ss : c.getValue().split(","))
+				{
+					if (((Player)le).hasPermission(ss.trim())) return false;
+				}
+				break;
+			case NOT_PLAYER_IS_OP:
+				if (le instanceof Player) return !((Player)le).isOp();
+				break;
 			case NOT_POWERED:
 				if (le instanceof Creeper) return !((Creeper)le).isPowered();
 				break;

@@ -2,8 +2,15 @@ package me.coldandtired.mobs.subelements;
 
 import java.util.Random;
 
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+
+import me.coldandtired.mobs.Mobs;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.w3c.dom.DOMException;
 import org.w3c.dom.Element;
 
 import com.sk89q.worldedit.BlockVector;
@@ -20,20 +27,23 @@ public class Area
 	private int z_start;
 	private int z_length;
 	private int z_offset = 0;
+	private String world;
 	
-	public Area(Element element)
+	public Area(Element element) throws DOMException, XPathExpressionException
 	{
-		String[] temp = element.getElementsByTagName("x").item(0).getTextContent().split(":");
+		Element el = (Element)Mobs.getXPath().evaluate("world", element, XPathConstants.NODE);
+		if (el != null) world = el.getTextContent();
+		String[] temp = ((Element)Mobs.getXPath().evaluate("x", element, XPathConstants.NODE)).getTextContent().split(":");
 		if (temp.length == 2)
 		{
 			x_start = Integer.parseInt(temp[0]);
 			x_length = Integer.parseInt(temp[1]) + 1;
 			
-			temp = element.getElementsByTagName("y").item(0).getTextContent().split(":");
+			temp = ((Element)Mobs.getXPath().evaluate("y", element, XPathConstants.NODE)).getTextContent().split(":");
 			y_start = Integer.parseInt(temp[0]);
 			y_length = Integer.parseInt(temp[1]) + 1;
 			
-			temp = element.getElementsByTagName("z").item(0).getTextContent().split(":");
+			temp = ((Element)Mobs.getXPath().evaluate("z", element, XPathConstants.NODE)).getTextContent().split(":");
 			z_start = Integer.parseInt(temp[0]);
 			z_length = Integer.parseInt(temp[1]) + 1;
 		}
@@ -45,13 +55,13 @@ public class Area
 			x_offset = (Integer.parseInt(temp[2]) * 2) + 1;
 			x_length = (i * 2) - x_offset + 1;
 
-			temp = element.getElementsByTagName("y").item(0).getTextContent().split(":");
+			temp = ((Element)Mobs.getXPath().evaluate("y", element, XPathConstants.NODE)).getTextContent().split(":");
 			i = Integer.parseInt(temp[1]);
 			y_start = Integer.parseInt(temp[0]) - i;			
 			y_offset = (Integer.parseInt(temp[2]) * 2) + 1;
 			y_length = (i * 2) - y_offset + 1;
 
-			temp = element.getElementsByTagName("z").item(0).getTextContent().split(":");
+			temp = ((Element)Mobs.getXPath().evaluate("z", element, XPathConstants.NODE)).getTextContent().split(":");
 			i = Integer.parseInt(temp[1]);
 			z_start = Integer.parseInt(temp[0]) - i;			
 			z_offset = (Integer.parseInt(temp[2]) * 2) + 1;
@@ -59,17 +69,25 @@ public class Area
 		}	
 }
 	
-	public Area(ProtectedRegion pr)
+	public Area(ProtectedRegion pr, String world)
 	{
+		this.world = world;
 		BlockVector bv = pr.getMinimumPoint();
 		x_start = bv.getBlockX();
 		bv = pr.getMaximumPoint();
 		x_length = bv.getBlockX() - x_start + 1;
 	}
 	
+	public World getWorld()
+	{
+		if (world == null) return null;
+		return Bukkit.getWorld(world);
+	}
+	
 	public Location getLocation(World world)
 	{
 		Random r = new Random();
+		World w = world == null ? getWorld() : world;
 		int x = 0;
 		if (x_length > 0)
 		{
@@ -85,7 +103,7 @@ public class Area
 			if (y_offset > 0 && y >= (y_length / 2)) y += y_offset;
 		}
 		y += y_start;
-		if (y > world.getMaxHeight()) y = world.getMaxHeight();
+		if (y > w.getMaxHeight()) y = w.getMaxHeight();
 		
 		int z = 0;
 		if (z_length > 0)
@@ -94,7 +112,7 @@ public class Area
 			if (z_offset > 0 && z >= (z_length / 2)) z += z_offset;
 		}
 		z += z_start;
-		return world.getBlockAt(x, y, z).getLocation();
+		return w.getBlockAt(x, y, z).getLocation();
 	}
 	
 	public boolean containsLocation(Location loc)

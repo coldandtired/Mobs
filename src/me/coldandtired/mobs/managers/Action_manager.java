@@ -87,16 +87,36 @@ public class Action_manager
 		//Hp = default
 		switch (a.getAction_type())
 		{
-			case SET_CUSTOM_FLAG_1:
-			case SET_CUSTOM_FLAG_2:
-			case SET_CUSTOM_FLAG_3:
-			case SET_CUSTOM_FLAG_4:
-			case SET_CUSTOM_FLAG_5:
-			case SET_CUSTOM_FLAG_6:
-			case SET_CUSTOM_FLAG_7:
-			case SET_CUSTOM_FLAG_8:
-			case SET_CUSTOM_FLAG_9:
-			case SET_CUSTOM_FLAG_10:
+			case SET_CUSTOM_FLAG_1_NO:
+			case SET_CUSTOM_FLAG_2_NO:
+			case SET_CUSTOM_FLAG_3_NO:
+			case SET_CUSTOM_FLAG_4_NO:
+			case SET_CUSTOM_FLAG_5_NO:
+			case SET_CUSTOM_FLAG_6_NO:
+			case SET_CUSTOM_FLAG_7_NO:
+			case SET_CUSTOM_FLAG_8_NO:
+			case SET_CUSTOM_FLAG_9_NO:
+			case SET_CUSTOM_FLAG_10_NO:
+			case SET_CUSTOM_FLAG_1_RANDOM:
+			case SET_CUSTOM_FLAG_2_RANDOM:
+			case SET_CUSTOM_FLAG_3_RANDOM:
+			case SET_CUSTOM_FLAG_4_RANDOM:
+			case SET_CUSTOM_FLAG_5_RANDOM:
+			case SET_CUSTOM_FLAG_6_RANDOM:
+			case SET_CUSTOM_FLAG_7_RANDOM:
+			case SET_CUSTOM_FLAG_8_RANDOM:
+			case SET_CUSTOM_FLAG_9_RANDOM:
+			case SET_CUSTOM_FLAG_10_RANDOM:
+			case SET_CUSTOM_FLAG_1_YES:
+			case SET_CUSTOM_FLAG_2_YES:
+			case SET_CUSTOM_FLAG_3_YES:
+			case SET_CUSTOM_FLAG_4_YES:
+			case SET_CUSTOM_FLAG_5_YES:
+			case SET_CUSTOM_FLAG_6_YES:
+			case SET_CUSTOM_FLAG_7_YES:
+			case SET_CUSTOM_FLAG_8_YES:
+			case SET_CUSTOM_FLAG_9_YES:
+			case SET_CUSTOM_FLAG_10_YES:
 				setCustom_flag(a, le);
 				break;
 		
@@ -154,6 +174,19 @@ public class Action_manager
 			case REMOVE_CUSTOM_STRING_9:
 			case REMOVE_CUSTOM_STRING_10:
 				removeCustom_value(a, le);
+				break;
+				
+			case TOGGLE_CUSTOM_FLAG_1:
+			case TOGGLE_CUSTOM_FLAG_2:
+			case TOGGLE_CUSTOM_FLAG_3:
+			case TOGGLE_CUSTOM_FLAG_4:
+			case TOGGLE_CUSTOM_FLAG_5:
+			case TOGGLE_CUSTOM_FLAG_6:
+			case TOGGLE_CUSTOM_FLAG_7:
+			case TOGGLE_CUSTOM_FLAG_8:
+			case TOGGLE_CUSTOM_FLAG_9:
+			case TOGGLE_CUSTOM_FLAG_10:
+				toggleCustom_flag(a, le);
 				break;
 				
 			case CONTINUE: return true;
@@ -271,6 +304,11 @@ public class Action_manager
 		return false;
 	}
 	
+	private void toggleCustom_flag(Action a, LivingEntity live)
+	{
+		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) Data.toggleData(le, MParam.valueOf(a.getAction_type().toString().substring(7)));
+	}
+	
 	private void removeCustom_value(Action a, LivingEntity live)
 	{
 		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
@@ -279,8 +317,26 @@ public class Action_manager
 	
 	private void setCustom_flag(Action a, LivingEntity live)
 	{
-		for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
-			Data.putData(le, MParam.valueOf(a.getAction_type().toString().substring(4)));
+		String s = a.getAction_type().toString().substring(4);
+		String temp = s.substring(s.lastIndexOf("_"));
+		s = s.substring(0, s.lastIndexOf("_"));
+		
+		if (temp.endsWith("YES"))
+		{
+			for (LivingEntity le : tm.getTargets(a.getTarget(), live)) Data.putData(le, MParam.valueOf(s));
+			return;
+		}
+		else if (temp.endsWith("NO"))
+		{
+			for (LivingEntity le : tm.getTargets(a.getTarget(), live)) Data.removeData(le, MParam.valueOf(s));
+			return;
+		}
+		else if (temp.endsWith("RANDOM"))
+		{
+			for (LivingEntity le : tm.getTargets(a.getTarget(), live)) 
+			if (new Random().nextBoolean())	Data.putData(le, MParam.valueOf(s)); else Data.removeData(le, MParam.valueOf(s));
+			return;
+		}
 	}
 	
 	private void setCustom_value(Action a, LivingEntity live)

@@ -63,7 +63,7 @@ public class Mobs extends JavaPlugin
 	private Spawns_listener spawns_listener;
 	private List<Outcome> repeating_outcomes = null;
 	private static XPath xpath;
-	private static int log_level = 1;
+	private static int log_level = 2;
 	private boolean approached = false;
 	private boolean near = false;
 	private boolean disabled_timer = false;
@@ -436,6 +436,7 @@ public class Mobs extends JavaPlugin
 			repeating_outcomes = null;
 			spawns_listener = null;
 			HandlerList.unregisterAll(this);
+			checkConfig();
 			load_config();
 			sender.sendMessage("Config reloaded!");
 			return true;

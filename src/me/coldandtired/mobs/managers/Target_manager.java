@@ -10,14 +10,13 @@ import java.util.Map;
 import java.util.Random;
 
 import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Text_value;
 import me.coldandtired.mobs.enums.MParam;
+import me.coldandtired.mobs.enums.MTarget;
 import me.coldandtired.mobs.subelements.Area;
 import me.coldandtired.mobs.subelements.Nearby_mob;
 import me.coldandtired.mobs.subelements.Target;
@@ -149,7 +148,7 @@ public class Target_manager
 	{
 		List<Location> locs = new ArrayList<Location>();
 		World w = t == null ? le.getWorld() : t.getWorld(le);
-		if (w == null) return locs;
+		if (w == null  && !t.getTarget_type().equals(MTarget.AREA)) return locs;
 		// no world, can't continue
 		
 		if (t == null)
@@ -164,13 +163,15 @@ public class Target_manager
 				String s = t.getArea_name();
 				if (s != null)
 				{
-					if (!s.contains(":")) s = w.getName().toUpperCase() + ":" + s;
-					area = areas.get(s);
+					area = areas.get(s.toUpperCase());
 					if (area == null)
 					{
 						Mobs.warn("No area called " + s + " found!");
-						break;
+						return locs;
 					}
+					if (s.contains(":")) locs.add(area.getLocation(null));
+					else locs.add(area.getLocation(w));
+					return locs;
 				}
 				else area = t.getArea();
 				locs.add(area.getLocation(w));
@@ -228,7 +229,9 @@ public class Target_manager
 				String world_name = w.getName().toUpperCase();
 				for (String s : wgp.getRegionManager(w).getRegions().keySet())
 				{
-					areas.put(world_name + ":" + s.toUpperCase(), new Area(wgp.getRegionManager(w).getRegion(s)));
+					Area a = new Area(wgp.getRegionManager(w).getRegion(s), world_name);
+					areas.put(world_name + ":" + s.toUpperCase(), a);
+					if (!areas.containsKey(s)) areas.put(s.toUpperCase(), a);
 				}
 			}
 		}
@@ -236,14 +239,15 @@ public class Target_manager
 		if (list.getLength() == 0) return;
 		for (int i = 0; i < list.getLength(); i++)
 		{
-			String world = list.item(i).getLocalName();
 			try
 			{
-				NodeList list2 = (NodeList)xpath.evaluate("*", list.item(i), XPathConstants.NODESET);
-				for (int j = 0; j < list2.getLength(); j++)
+				for (int j = 0; j < list.getLength(); j++)
 				{
-					Element el = (Element)list2.item(j);
-					areas.put(world.toUpperCase() + ":" + el.getLocalName().toUpperCase(), new Area(el));
+					Element el = (Element)list.item(j);
+					Area a = new Area(el);
+					areas.put(el.getLocalName().toUpperCase(), a);
+					World w = a.getWorld();
+					if (w != null) areas.put(w.getName().toUpperCase() + ":" + el.getLocalName().toUpperCase(), a);
 				}
 			}
 			catch (Exception e) {e.printStackTrace();}
