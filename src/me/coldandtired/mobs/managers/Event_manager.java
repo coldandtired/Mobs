@@ -103,6 +103,7 @@ public class Event_manager
 				break;
 			case BIOME:
 				return c.matches(le.getLocation().getBlock().getBiome().name());
+			case BLOCK_LIGHT_LEVEL: return c.matches(le.getLocation().getBlock().getLightFromBlocks());
 			case CHUNK_MOB_COUNT:
 				List<Location> list = Target_manager.get().getLocations(c.getTarget(), le);
 				for (Location loc : list)
@@ -155,6 +156,11 @@ public class Event_manager
 				if (le.isDead()) return le.getKiller() instanceof Player;
 				break;
 			case LIGHT_LEVEL: return c.matches(le.getLocation().getBlock().getLightLevel());
+			case LUNAR_PHASE: 
+				World w = c.getWorld(le);
+				long days = w.getFullTime()/24000;
+				long phase= days % 8;
+				return c.matches((int)phase);
 			case NAME:
 				if (le instanceof Player)
 				{
@@ -188,7 +194,7 @@ public class Event_manager
 				if (le instanceof Creeper) return ((Creeper)le).isPowered();
 				break;
 			case RAINING:
-				World w = c.getWorld(le);
+				w = c.getWorld(le);
 				return w.hasStorm();
 			case SADDLED:
 				if (le instanceof Pig) return ((Pig)le).hasSaddle();
@@ -196,6 +202,7 @@ public class Event_manager
 			case SHEARED:
 				if (le instanceof Sheep) return ((Sheep)le).isSheared();
 				break;
+			case SKY_LIGHT_LEVEL: return c.matches(le.getLocation().getBlock().getLightFromSky());
 			case SPAWN_REASON:
 				String spawn_reason = (String)Data.getData(le, MParam.SPAWN_REASON);
 				if (spawn_reason == null) return false;
@@ -206,6 +213,14 @@ public class Event_manager
 			case THUNDERING: 
 				w = c.getWorld(le);
 				return w.isThundering();
+			case WORLD_MOB_COUNT:
+				list = Target_manager.get().getLocations(c.getTarget(), le);
+				for (Location loc : list)
+				{
+					int i = Target_manager.get().filter(loc.getWorld().getEntities(), c.getMob()).size();
+					return c.matches(i);
+				}
+				break;
 			case WORLD_NAME:
 				w = c.getWorld(le);
 				return c.matches(w.getName());

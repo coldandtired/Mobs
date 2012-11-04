@@ -74,8 +74,13 @@ public class Area
 		this.world = world;
 		BlockVector bv = pr.getMinimumPoint();
 		x_start = bv.getBlockX();
+		y_start = bv.getBlockY();
+		z_start = bv.getBlockZ();
+		
 		bv = pr.getMaximumPoint();
 		x_length = bv.getBlockX() - x_start + 1;
+		y_length = bv.getBlockY() - y_start + 1;
+		z_length = bv.getBlockZ() - z_start + 1;
 	}
 	
 	public World getWorld()

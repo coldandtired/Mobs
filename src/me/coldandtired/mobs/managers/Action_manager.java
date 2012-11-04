@@ -13,6 +13,7 @@ import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Target;
+import net.minecraft.server.EntityWolf;
 
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
@@ -20,10 +21,13 @@ import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
+import org.bukkit.craftbukkit.entity.CraftLivingEntity;
+import org.bukkit.craftbukkit.entity.CraftWolf;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Enderman;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.LivingEntity;
@@ -793,13 +797,13 @@ public class Action_manager
 				wolf.setAngry(false);
 				return;
 			case SET_ANGRY_RANDOM:
-				wolf.setAngry(rng.nextBoolean());
+				if (rng.nextBoolean()) setAngry(wolf); else wolf.setAngry(false);
 				return;
 			case SET_ANGRY_YES:
-				wolf.setAngry(true);
+				setAngry(wolf);
 				return;
 			case TOGGLE_ANGRY:
-				wolf.setAngry(!wolf.isAngry());
+				if (!wolf.isAngry()) setAngry(wolf); else wolf.setAngry(false);
 				return;
 				
 			case SET_TAMED_NO:
@@ -814,6 +818,16 @@ public class Action_manager
 			case TOGGLE_TAMED:
 				wolf.setTamed(!wolf.isTamed());
 				return;
+		}
+	}
+	
+	private void setAngry(Wolf wolf)
+	{
+		for (Entity e : wolf.getNearbyEntities(50, 50, 50)) if (e instanceof Player)
+		{
+			EntityWolf cw = ((CraftWolf)wolf).getHandle();
+			cw.b(((CraftLivingEntity)e).getHandle());
+			return;
 		}
 	}
 	
