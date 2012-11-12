@@ -1,6 +1,6 @@
 package me.coldandtired.mobs.enums;
 
-public enum MCcondition 
+public enum MCondition 
 {
 	ADULT, 
 	ANGRY,
@@ -126,7 +126,7 @@ public enum MCcondition
 	public static String getXpath()
 	{
 		String s = "";
-		for (MCcondition c : values()) s = s + " | " + c.toString().toLowerCase();
+		for (MCondition c : values()) s = s + " | " + c.toString().toLowerCase();
 		return s.substring(3);
 	}
 }

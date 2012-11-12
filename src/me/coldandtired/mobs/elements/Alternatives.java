@@ -2,13 +2,14 @@ package me.coldandtired.mobs.elements;
 
 import java.util.Map;
 import java.util.Random;
+import java.util.SortedMap;
 
 public class Alternatives 
 {
 	private int total;
-	private Map<Integer, Object> choices;
+	private SortedMap<Integer, Object> choices;
 	
-	public Alternatives(int total, Map<Integer, Object> choices)
+	public Alternatives(int total, SortedMap<Integer, Object> choices)
 	{
 		this.total = total;
 		this.choices = choices;

@@ -4,11 +4,11 @@ public enum MTarget
 {
 	AREA,
 	AROUND,
+	AUX_MOB,
 	BLOCK,
 	NEAREST,
 	PLAYER,
 	RANDOM,
-	SECONDARY_MOB,
 	SELF;
 	
 	public static String getXpath()

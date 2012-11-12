@@ -2,33 +2,37 @@ package me.coldandtired.mobs.elements;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.enums.MEvent;
 
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.event.Event;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public class Outcome extends Param
+public class Outcome extends Config_element
 {
-	private int interval = 300;
+	private int interval = -1;
 	private int remaining;
 	private String name = null;
 	private boolean enabled = true;
-	private List<List<Condition>> conditions = new ArrayList<List<Condition>>();
-	private Alternatives actions;
 	private List<String> affected_mobs = null;
 	private List<String> unaffected_mobs = null;
 	private List<String> affected_worlds = null;
 	private List<String> unaffected_worlds = null;
+	private Alternatives actions;
+	private List<Conditions> conditions = new ArrayList<Conditions>();
 	
-	public Outcome(Element element)
+	public Outcome(Element element, Config_element parent) throws XPathExpressionException 
 	{
+		super(element, parent);
 		if (element.hasAttribute("interval")) interval = Integer.parseInt(element.getAttribute("interval"));
 		if (element.hasAttribute("name")) name = element.getAttribute("name");
 		if (element.hasAttribute("enabled")) enabled = Boolean.parseBoolean(element.getAttribute("enabled"));
@@ -37,57 +41,66 @@ public class Outcome extends Param
 		if (element.hasAttribute("unaffected_mobs")) unaffected_mobs = Arrays.asList(element.getAttribute("unaffected_mobs").replace(" ", "").toUpperCase().split(","));
 		if (element.hasAttribute("affected_worlds")) affected_worlds = Arrays.asList(element.getAttribute("affected_worlds").replace(" ", "").toUpperCase().split(","));
 		if (element.hasAttribute("unaffected_worlds")) unaffected_worlds = Arrays.asList(element.getAttribute("unaffected_worlds").replace(" ", "").toUpperCase().split(","));
-	
-		try
+		
+		SortedMap<Integer, Object> temp = new TreeMap<Integer, Object>();
+		int count = 0;
+		NodeList list = (NodeList)Mobs.getXPath().evaluate("actions", element, XPathConstants.NODESET);
+		for (int i = 0; i < list.getLength(); i++)
 		{
-			Map<Integer, Object> temp;
-			int count;
+			Element el = (Element)list.item(i);
 			
-			NodeList list = (NodeList)Mobs.getXPath().evaluate("conditions", element, XPathConstants.NODESET);
-			for (int i = 0; i < list.getLength(); i++)
-			{
-				List<Condition> temp2 = new ArrayList<Condition>();
-				NodeList list2 = (NodeList)Mobs.getXPath().evaluate("*", list.item(i), XPathConstants.NODESET);
-				for (int j = 0; j < list2.getLength(); j++)
-				{
-					temp2.add(new Condition((Element)list2.item(j)));
-				}
-				conditions.add(temp2);
-			}
-			
-			temp = new HashMap<Integer, Object>();
-			count = 0;
-			list = (NodeList)Mobs.getXPath().evaluate("actions", element, XPathConstants.NODESET);
-			for (int i = 0; i < list.getLength(); i++)
-			{
-				Element el = (Element)list.item(i);
-				
-				int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
-				count += ratio;
-				if (list.getLength() == 1) count = 1;
-				NodeList list2 = (NodeList)Mobs.getXPath().evaluate("*", el, XPathConstants.NODESET);
-				List<Action> actions = new ArrayList<Action>();
-				for (int j = 0; j < list2.getLength(); j++)
-				{
-					Element el2 = (Element)list2.item(j);
-					actions.add(new Action(el2));
-				}
-				if(actions.size() > 0) temp.put(count, actions);
-			}
-			if (temp.size() > 0) actions = new Alternatives(count, temp);
+			int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
+			count += ratio;
+			if (list.getLength() == 1) count = 1;			
+			Actions a = Actions.get(el, this);			
+			if (a != null) temp.put(count, a);
 		}
-		catch (Exception e) {e.printStackTrace();}
-		if (conditions.size() == 0) conditions = null;
+		if (temp.size() > 0) actions = new Alternatives(count, temp);
+		
+		list = (NodeList)Mobs.getXPath().evaluate("conditions", element, XPathConstants.NODESET);
+		for (int i = 0; i < list.getLength(); i++)
+		{
+			Conditions c = Conditions.get((Element)list.item(i), this);			
+			if (c != null) conditions.add(c);
+		}
+		if (conditions.size() == 0) conditions = null;	
 	}
 	
-	public boolean canTick()
+	public boolean passedConditions_check(LivingEntity le, Event orig_event, boolean override)
 	{
+		if (!override && (!isAffected(le) || !canTick() || !enabled)) return false;
+		if (conditions == null)
+		{
+			Mobs.debug("No condition groups");
+			return true;
+		}
+		
+		Mobs.debug("Condition groups - " + conditions.size());
+		Mobs.debug("------------------");
+		for (Conditions c : conditions)
+		{
+			Mobs.debug("Checking condition group");
+			if (c.passedConditions_check(le, orig_event)) return true;
+		}
+		Mobs.debug("All condition groups failed - not performing any actions");
+		return false;
+	}
+	
+	public boolean performActions(LivingEntity le, MEvent event, Event orig_event)
+	{
+		if (actions == null) return false;
+		return ((Actions)actions.get_alternative()).performActions(le, event, orig_event);
+	}
+	
+	private boolean canTick()
+	{
+		if (interval < 0) return true;
 		remaining--;
-		if (remaining == 0) remaining = interval;
+		if (remaining < 1) remaining = interval;
 		return remaining == interval;
 	}
 	
-	public boolean isAffected(LivingEntity le)
+	private boolean isAffected(LivingEntity le)
 	{ 
 		if ((unaffected_mobs != null && unaffected_mobs.contains(le.getType().toString())) || 
 				(unaffected_worlds != null && unaffected_worlds.contains(le.getWorld().getName().toUpperCase()))) return false;
@@ -119,6 +132,7 @@ public class Outcome extends Param
 	
 	public boolean checkName(String s)
 	{
+		if (s == null) return true;
 		if (name == null) return false;
 		return name.equalsIgnoreCase(s);
 	}
@@ -128,7 +142,7 @@ public class Outcome extends Param
 		return name;
 	}
 	
-	public List<List<Condition>> getConditions()
+	public List<Conditions> getConditions()
 	{
 		return conditions;
 	}
@@ -138,10 +152,9 @@ public class Outcome extends Param
 		return interval;
 	}
 	
-	@SuppressWarnings("unchecked")
 	public List<Action> getActions()
 	{
 		if (actions == null) return null;
-		return (List<Action>)actions.get_alternative();
+		return ((Actions)actions.get_alternative()).getActions();
 	}
 }

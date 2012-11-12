@@ -14,9 +14,11 @@ import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.elements.Config_element;
 import me.coldandtired.mobs.elements.Text_value;
 import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.enums.MTarget;
+import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.subelements.Area;
 import me.coldandtired.mobs.subelements.Nearby_mob;
 import me.coldandtired.mobs.subelements.Target;
@@ -31,6 +33,13 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityTameEvent;
+import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.plugin.Plugin;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -51,7 +60,7 @@ public class Target_manager
 		return tm;
 	}
 	
-	Collection<Area> getAreas()
+	public Collection<Area> getAreas()
 	{
 		return areas.values();
 	}
@@ -115,17 +124,45 @@ public class Target_manager
 		return targets.subList(0, count);
 	}
 	
-	public List<LivingEntity> getTargets(Target t, LivingEntity le)
+	public List<LivingEntity> getTargets(Target t, LivingEntity le, Event orig_event)
 	{
 		List<LivingEntity> targets = new ArrayList<LivingEntity>();
 		if (t == null)
 		{
-			targets.add(le);
+			if (le != null) targets.add(le);
 			return targets;
 		}
 
 		switch (t.getTarget_type())
 		{
+			case AUX_MOB:
+				if (orig_event instanceof EntityDamageByEntityEvent)
+				{
+					Entity ee = ((EntityDamageByEntityEvent)orig_event).getDamager();
+					if (ee instanceof LivingEntity) targets.add((LivingEntity)ee);
+				}
+				else if (orig_event instanceof PlayerApproachLivingEntityEvent)
+					targets.add(((PlayerApproachLivingEntityEvent)orig_event).getPlayer());
+				else if (orig_event instanceof PlayerLeaveLivingEntityEvent)
+					targets.add(((PlayerLeaveLivingEntityEvent)orig_event).getPlayer());
+				else if (orig_event instanceof PlayerNearLivingEntityEvent)
+					targets.add(((PlayerNearLivingEntityEvent)orig_event).getPlayer());
+				else if (orig_event instanceof LivingEntityBlockEvent)
+					targets.add(((LivingEntityBlockEvent)orig_event).getAttacker());
+				else if (orig_event instanceof LivingEntityDamageEvent)
+					targets.add(((LivingEntityDamageEvent)orig_event).getAttacker());
+				else if (orig_event instanceof EntityTargetLivingEntityEvent)
+					targets.add(((EntityTargetLivingEntityEvent)orig_event).getTarget());
+				else if (orig_event instanceof EntityTameEvent)
+					targets.add((LivingEntity) ((EntityTameEvent)orig_event).getOwner());
+				else if (orig_event instanceof PlayerShearEntityEvent)
+					targets.add(((PlayerShearEntityEvent)orig_event).getPlayer());
+				else if (orig_event instanceof EntityDeathEvent)
+					targets.add(((EntityDeathEvent)orig_event).getEntity().getKiller());
+				else if (orig_event instanceof PlayerDeathEvent)
+					targets.add(((PlayerDeathEvent)orig_event).getEntity().getKiller());
+			
+				break;			
 			case PLAYER:
 				targets.add(Bukkit.getPlayer(t.getPlayer()));
 				break;
@@ -144,10 +181,11 @@ public class Target_manager
 	
 	
 	
-	public List<Location> getLocations(Target t, LivingEntity le)
+	public List<Location> getLocations(Config_element oe, LivingEntity le, Event orig_event)
 	{
 		List<Location> locs = new ArrayList<Location>();
-		World w = t == null ? le.getWorld() : t.getWorld(le);
+		World w = oe.getWorld(le);
+		Target t = oe.getTarget();
 		if (w == null  && !t.getTarget_type().equals(MTarget.AREA)) return locs;
 		// no world, can't continue
 		
@@ -185,7 +223,7 @@ public class Target_manager
 				for (LivingEntity l : targets) locs.add(getOffset(t, l.getLocation()));
 				break;
 			default:
-				for (LivingEntity l : getTargets(t, le)) locs.add(l.getLocation());
+				for (LivingEntity l : getTargets(t, le, orig_event)) locs.add(l.getLocation());
 				break;
 		}
 		return locs;

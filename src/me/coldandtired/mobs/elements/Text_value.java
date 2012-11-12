@@ -1,8 +1,8 @@
 package me.coldandtired.mobs.elements;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.xml.xpath.XPathConstants;
 
@@ -27,7 +27,7 @@ public class Text_value
 				return;
 			}
 			
-			Map<Integer, Object> temp = new HashMap<Integer, Object>();
+			SortedMap<Integer, Object> temp = new TreeMap<Integer, Object>();
 			int count = 0;
 			for (int i = 0; i < list.getLength(); i++)
 			{

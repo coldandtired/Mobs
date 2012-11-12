@@ -1,9 +1,11 @@
 name: Mobs
-version: Beta13
+version: Beta16
 author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
+website: coldandtired.binhoster.com
 softdepend: [Vault, WorldGuard, TerrainControl, Heroes, SpoutPlugin]
+depend: [Extra Events]
 commands:
     reload_mobs:
         description: Reload the config without reloading the plugin itself
@@ -13,7 +15,7 @@ commands:
     repeating_outcomes:
         description: Adjust the repeating part of the plugin
         aliases: ro
-        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval|activate] [seconds] [name]"
+        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval|activate|force] [seconds] [name]"
         permission: mobs.can_change_repeating_outcomes
 permissions:
     mobs.can_reload_mobs:

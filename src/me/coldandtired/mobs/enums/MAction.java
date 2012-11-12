@@ -296,4 +296,11 @@ public enum MAction
 	TOGGLE_SHEARED,
 	TOGGLE_TAMED,
 	TOGGLE_TRAPDOOR;
+	
+	public static String getXpath()
+	{
+		String s = "";
+		for (MAction a : values()) s = s + " | " + a.toString().toLowerCase();
+		return s.substring(3);
+	}
 }

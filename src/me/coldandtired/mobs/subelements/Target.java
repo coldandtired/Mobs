@@ -1,19 +1,17 @@
+
 package me.coldandtired.mobs.subelements;
 
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.mobs.Mobs;
-import me.coldandtired.mobs.elements.Param;
+import me.coldandtired.mobs.elements.Config_element;
 import me.coldandtired.mobs.elements.Text_value;
 import me.coldandtired.mobs.enums.MTarget;
 
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.entity.LivingEntity;
 import org.w3c.dom.Element;
 
-public class Target extends Param
+public class Target extends Config_element
 {
 	private MTarget target_type;
 	private Text_value player;
@@ -24,11 +22,10 @@ public class Target extends Param
 	private Text_value z;
 	private Text_value mob;
 	private Text_value amount;
-	private Text_value world;
 	
-	public Target(Element element, Text_value world) throws XPathExpressionException
+	public Target(Element element, Config_element parent) throws XPathExpressionException
 	{	
-		this.world = world;
+		super(element, parent);
 		target_type = MTarget.valueOf(element.getLocalName().toUpperCase());
 		Element el;
 		switch (target_type)
@@ -67,16 +64,6 @@ public class Target extends Param
 	{
 		if (area_name == null) return null;
 		return area_name.getValue();
-	}
-
-	public World getWorld(LivingEntity le)
-	{
-		if (world == null)
-		{
-			if (le == null) return null;
-			return le.getWorld();
-		}
-		return Bukkit.getWorld(world.getValue());
 	}
 	
 	public Area getArea()

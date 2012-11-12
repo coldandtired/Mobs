@@ -5,11 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -18,15 +15,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
-import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.enums.MParam;
-import me.coldandtired.mobs.events.Dawn_event;
-import me.coldandtired.mobs.events.Dusk_event;
-import me.coldandtired.mobs.events.Midday_event;
-import me.coldandtired.mobs.events.Midnight_event;
-import me.coldandtired.mobs.events.Mob_approached_event;
-import me.coldandtired.mobs.events.Mob_near_event;
 import me.coldandtired.mobs.listeners.*;
 import me.coldandtired.mobs.managers.*;
 import net.milkbowl.vault.economy.Economy;
@@ -35,12 +24,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
@@ -60,13 +44,9 @@ public class Mobs extends JavaPlugin
 	private static Logger logger = Logger.getLogger("Minecraft");
 	private static Mobs instance;
 	public static Economy economy = null;
-	private Spawns_listener spawns_listener;
-	private List<Outcome> repeating_outcomes = null;
+	private Event_listener event_listener;
 	private static XPath xpath;
 	private static int log_level = 2;
-	private boolean approached = false;
-	private boolean near = false;
-	private boolean disabled_timer = false;
 	
 	@Override
 	public void onEnable()
@@ -135,25 +115,14 @@ public class Mobs extends JavaPlugin
 		try
 		{
 			input = new InputSource(f.getPath());
-			loadSettings((Element)xpath.evaluate("mobs/settings", input, XPathConstants.NODE));
+			Element main = (Element)xpath.evaluate("mobs", input, XPathConstants.NODE);
+			loadSettings((Element)xpath.evaluate("settings", main, XPathConstants.NODE));
 			
 			Target_manager.get().importAreas(xpath, (NodeList)xpath.evaluate("mobs/areas/*", input, XPathConstants.NODESET));
-			boolean needs_timer = setupListeners(input);
-			NodeList list = getList(xpath, input, "repeating_outcomes");
-			if (list.getLength() > 0)
-			{
-				repeating_outcomes = new ArrayList<Outcome>();
-				for (int i = 0; i < list.getLength(); i++) repeating_outcomes.add(new Outcome((Element)list.item(i)));
-				needs_timer = true;
-			} else disabled_timer = true;
-			if (needs_timer)
-			{
-				getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() 
-				{			 
-					public void run() {timerTick();}
-				}, 20, 20);
-			}
 			
+			event_listener = new Event_listener(main);
+
+			getServer().getPluginManager().registerEvents(event_listener, this);		
 		}
 		catch (Exception e) {error("Something went wrong loading the config - stopping!"); e.printStackTrace(); return false;}
 		return true;
@@ -195,246 +164,14 @@ public class Mobs extends JavaPlugin
 		
 		//if (!disable_check && !is_latest_version()) log("There's a newer version of Mobs available!");
 	}
-	
-	private void timerTick()
-	{
-		checkNearby_Players();
-		checkMax_life();
-		checkTime();
-		//fire attack
-		if (!disabled_timer && repeating_outcomes != null)
-		{
-			for (Outcome o : repeating_outcomes)
-			{
-				if (o.isEnabled() && o.canTick()) Event_manager.get().start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, null);
-			}
-		}
-	}
-	
-	private void checkTime()
-	{
-		for (World w : Bukkit.getWorlds())
-		{
-			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
-			
-			long l = w.getTime();
-			if (l > 0 && l <= 19) getServer().getPluginManager().callEvent(new Dawn_event(w));
-			if (l > 6000 && l <= 6019) getServer().getPluginManager().callEvent(new Midday_event(w));
-			if (l > 12000 && l <= 12019) getServer().getPluginManager().callEvent(new Dusk_event(w));
-			if (l > 18000 && l <= 18019) getServer().getPluginManager().callEvent(new Midnight_event(w));
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
- 	private void checkNearby_Players()
-	{
-		for (World w : Bukkit.getWorlds())
-		{
-			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
-			
-			for (Player p : w.getEntitiesByClass(Player.class))
-			{
-				List<Entity> all = p.getNearbyEntities(10, 4, 10);
-				List<Entity> temp = new ArrayList<Entity>(all);
-				if (approached)
-				{
-					if (p.hasMetadata("mobs_data"))
-					{
-						Map<String, Object> data = (Map<String, Object>) p.getMetadata("mobs_data").get(0).value();
-						if (data.containsKey(MParam.NEARBY_MOBS.toString()))
-						{
-							all.removeAll((List<Entity>) data.get(MParam.NEARBY_MOBS.toString()));
-							data.put(MParam.NEARBY_MOBS.toString(), temp);						
-						}
-					}
-					else
-					{
-						Map<String, Object> data = new HashMap<String, Object>();
-						data.put(MParam.NEARBY_MOBS.toString(), all);
-						p.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data)); 
-					}
-					
-					for (Entity e : all)
-					{
-						if (e instanceof LivingEntity)
-						{
-							getServer().getPluginManager().callEvent(new Mob_approached_event((LivingEntity)e, p));
-						}
-					}
-				}
-				
-				if (near)
-				{
-					for (Entity e :temp)
-					{
-						if (e instanceof LivingEntity)
-						{
-							getServer().getPluginManager().callEvent(new Mob_near_event((LivingEntity)e, p));
-						}
-					}
-				}
-			}
-		}
-	}
-	
-	private void checkMax_life()
-	{
-		for (World w : Bukkit.getWorlds())
-		{
-			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
-			
-			for (LivingEntity le : w.getEntitiesByClass(LivingEntity.class))
-			{
-				if (le instanceof Player) continue;
-				
-				Integer life = (Integer)Data.getData(le, MParam.MAX_LIFE);
-				if (life == null) continue;
-				life--;
-				if (life < 0) le.remove();	
-				else Data.putData(le, MParam.MAX_LIFE, life);
-			}
-		}
-	}
-	
-	private boolean setupListeners(InputSource input)
-	{
-		boolean needs_timer = false;
-		PluginManager pm = getServer().getPluginManager();
-		NodeList list = getList(xpath, input, "spawns");
-		spawns_listener = new Spawns_listener(getEvent_outcomes(list));
-		pm.registerEvents(spawns_listener, this);
 		
-		list = getList(xpath, input, "burns");
-		pm.registerEvents(new Burns_listener(getEvent_outcomes(list)), this);
-		
-		list = getList(xpath, input, "changes_block");
-		pm.registerEvents(new Changes_block_listener(getEvent_outcomes(list)), this);
-		
-		list = getList(xpath, input, "creates_portal");
-		pm.registerEvents(new Creates_portal_listener(getEvent_outcomes(list)), this);
-		
-		list = getList(xpath, input, "dies");
-		pm.registerEvents(new Dies_listener(getEvent_outcomes(list)), this);
-		
-		list = getList(xpath, input, "dyed");
-		pm.registerEvents(new Dyed_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "evolves");
-		pm.registerEvents(new Evolves_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "explodes");
-		pm.registerEvents(new Explodes_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "grows_wool");
-		pm.registerEvents(new Grows_wool_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "heals");
-		pm.registerEvents(new Heals_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "picks_up_item");
-		pm.registerEvents(new Picks_up_item_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "sheared");
-		pm.registerEvents(new Sheared_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "splits");
-		pm.registerEvents(new Splits_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "tamed");
-		pm.registerEvents(new Tamed_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "targets");
-		pm.registerEvents(new Targets_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "teleports");
-		pm.registerEvents(new Teleports_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "damaged");
-		pm.registerEvents(new Damaged_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "blocks");
-		if (list.getLength() > 0) pm.registerEvents(new Blocks_listener(getEvent_outcomes(list)), this);
-
-		list = getList(xpath, input, "hit");
-		pm.registerEvents(new Hit_listener(getEvent_outcomes(list)), this);
-			
-		list = getList(xpath, input, "dawn");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Dawn_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		}
-		
-		list = getList(xpath, input, "midday");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Midday_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		}
-		
-		list = getList(xpath, input, "dusk");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Dusk_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		}
-		
-		list = getList(xpath, input, "midnight");
-		if (list.getLength() > 0)
-		{
-			pm.registerEvents(new Midnight_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		}
-		
-		list = getList(xpath, input, "approached");
-		if (list.getLength() > 0) 
-		{
-			approached = true;
-			pm.registerEvents(new Approached_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		} else approached = false;
-		
-		list = getList(xpath, input, "near");
-		if (list.getLength() > 0)
-		{
-			near = true;
-			pm.registerEvents(new Near_listener(getEvent_outcomes(list)), this);
-			needs_timer = true;
-		} else near = false;
-
-		list = getList(xpath, input, "joins");
-		if (list.getLength() > 0) pm.registerEvents(new Joins_listener(getEvent_outcomes(list)), this);
-		
-		return needs_timer;
-	}
-	
-	private NodeList getList(XPath xpath, InputSource input, String s)
-	{
-		try
-		{
-			return (NodeList)xpath.evaluate("mobs/" + s + "/outcome", input, XPathConstants.NODESET);
-		}
-		catch (Exception e){return null;}
-	}
-	
-	public List<Outcome> getEvent_outcomes(NodeList list)
-	{
-		List<Outcome> temp = new ArrayList<Outcome>();
-		for (int i = 0; i < list.getLength(); i++)
-		{
-			temp.add(new Outcome((Element)list.item(i)));
-		}
-		return temp;
-	}
-	
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args)
 	{
 		if (cmd.getName().equalsIgnoreCase("reload_mobs"))
 		{
 			getServer().getScheduler().cancelTasks(this);
-			repeating_outcomes = null;
-			spawns_listener = null;
+			event_listener = null;
 			HandlerList.unregisterAll(this);
 			checkConfig();
 			load_config();
@@ -443,161 +180,14 @@ public class Mobs extends JavaPlugin
 		}
 		else if (cmd.getName().equalsIgnoreCase("repeating_outcomes"))
 		{
-			if (args.length == 0)
-			{
-				sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
-				return true;
-			}
-			if (repeating_outcomes == null)
-			{
-				sender.sendMessage("There are no repeating outcomes!");
-				sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
-				return true;
-			}
-			if (args[0].equalsIgnoreCase("enable"))
-			{
-				if (args.length == 1)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						o.setEnabled(true);
-					}
-					sender.sendMessage("Enabled all repeating outcomes!");
-					return true;
-				}
-				else if (args.length == 2)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						if (o.checkName(args[1]))
-						{
-							o.setEnabled(true);
-							sender.sendMessage("Enabled repeating outcome " + args[1] + "!");
-							return true;
-						}
-					}
-				}
-			}
-			else if (args[0].equalsIgnoreCase("disable"))
-			{
-				if (args.length == 1)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						o.setEnabled(false);
-					}
-					sender.sendMessage("Disabled all repeating outcomes!");
-					return true;
-				}
-				else if (args.length == 2)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						if (o.checkName(args[1]))
-						{
-							o.setEnabled(false);
-							sender.sendMessage("Disabled repeating outcome " + args[1] + "!");
-							return true;
-						}
-					}
-				}
-			}
-			if (args[0].equalsIgnoreCase("activate"))
-			{
-				Event_manager event_manager = Event_manager.get();
-				if (args.length == 1)
-				{					
-					sender.sendMessage("Activated all repeating outcomes!");
-					event_manager.start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, null);
-					return true;
-				}
-				else if (args.length == 2)
-				{
-					sender.sendMessage("Activated repeating outcome " + args[1] + "!");
-					event_manager.start_actions(repeating_outcomes, MEvent.AUTO, null, null, false, args[1]);
-					return true;
-				}
-			}
-			else if (args[0].equalsIgnoreCase("unpause"))
-			{
-				if (args.length == 1)
-				{
-					disabled_timer = false;
-					sender.sendMessage("Repeating outcomes are now running!");
-					return true;
-				}
-				return false;
-			}
-			else if (args[0].equalsIgnoreCase("pause"))
-			{
-				if (args.length == 1)
-				{
-					disabled_timer = true;
-					sender.sendMessage("Repeating outcomes are now paused!");
-					return true;
-				}
-				return false;
-			}
-			else if (args[0].equalsIgnoreCase("check"))
-			{
-				if (args.length == 1)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						String s = o.getName() == null ? "No name set" : o.getName();
-						sender.sendMessage("Outcome " + s + " is " + (o.isEnabled() ? "enabled, " : "disabled, ")
-								+ o.getInterval() + " second interval (" + o.getRemaining() + " seconds left)");
-					}
-					sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
-					return true;
-				}
-				else if (args.length == 2)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						if (o.checkName(args[1]))
-						{
-							sender.sendMessage("Outcome " + o.getName() + " is " + (o.isEnabled() ? "enabled, " : "disabled, ")
-									+ o.getInterval() + " second interval (" + o.getRemaining() + " seconds left)");
-							sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
-							return true;
-						}
-					}
-				}
-			}
-			else if (args[0].equalsIgnoreCase("set_interval"))
-			{
-				if (args.length == 1) return false;
-				int i = Integer.parseInt(args[1]);
-				if (args.length == 2)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						o.setInterval(i);
-					}
-					sender.sendMessage("All outcome intervals set to " + i + "!");
-					return true;
-				}
-				else if (args.length == 3)
-				{
-					for (Outcome o : repeating_outcomes)
-					{
-						if (o.checkName(args[2]))
-						{
-							o.setInterval(i);
-							sender.sendMessage("Outcome " + o.getName() + " interval set to " + i + "!");
-							return true;
-						}
-					}
-				}
-			}
+			return event_listener.adjustRepeating_outcomes(sender, args);
 		}
 		return false;
 	}
 				
 	public void setMob_name(String name)
 	{
-		spawns_listener.setMob_name(name);
+		event_listener.setMob_name(name);
 	}
 	
 	public int getLog_level()
@@ -614,11 +204,9 @@ public class Mobs extends JavaPlugin
 	@Override
 	public void onDisable()
 	{
-		getServer().getScheduler().cancelTasks(this);
-		repeating_outcomes = null;
 		logger = null;
 		instance = null;
-		spawns_listener = null;
+		event_listener = null;
 	}
 
 	public static void log(Object message)
