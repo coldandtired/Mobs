@@ -2,11 +2,13 @@ package me.coldandtired.mobs.listeners;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.Data;
+import me.coldandtired.mobs.Event_report;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Config_event;
 import me.coldandtired.mobs.elements.Outcome;
@@ -46,7 +48,6 @@ import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.metadata.FixedMetadataValue;
-import org.w3c.dom.Element;
 
 public class Event_listener implements Listener
 {
@@ -62,19 +63,23 @@ public class Event_listener implements Listener
 	private Config_event dies;
 	private Config_event dusk;
 	private Config_event dyed;
+	private Config_event enters_area;
 	private Config_event evolves;
 	private Config_event explodes;
 	private Config_event grows_wool;
 	private Config_event heals;
 	private Config_event hit;
 	private Config_event hour_change;
+	private Config_event in_area;
 	private Config_event joins;
 	private Config_event leaves;
+	private Config_event leaves_area;
 	private Config_event midday;
 	private Config_event midnight;
 	private Config_event near;
+	private Config_event night;
 	private Config_event picks_up_item;
-	private Config_event repeating_outcomes;
+	private Config_event repeating;
 	private Config_event sheared;
 	private Config_event spawns;
 	private Config_event splits;
@@ -83,37 +88,41 @@ public class Event_listener implements Listener
 	private Config_event teleports;
 	private boolean disabled_timer = false;	
 	
-	public Event_listener(Element element) throws XPathExpressionException
+	public Event_listener(Set<String> events_to_debug) throws XPathExpressionException
 	{
-		approached = Config_event.get(element, MEvent.APPROACHED);
-		blocks = Config_event.get(element, MEvent.BLOCKS);
-		burns = Config_event.get(element, MEvent.BURNS);
-		changes_block = Config_event.get(element, MEvent.CHANGES_BLOCK);
-		creates_portal = Config_event.get(element, MEvent.CREATES_PORTAL);
-		damaged = Config_event.get(element, MEvent.DAMAGED);
-		dawn = Config_event.get(element, MEvent.DAWN);
-		dies = Config_event.get(element, MEvent.DIES);
-		dusk = Config_event.get(element, MEvent.DUSK);
-		dyed = Config_event.get(element, MEvent.DYED);
-		evolves = Config_event.get(element, MEvent.EVOLVES);
-		explodes = Config_event.get(element, MEvent.EXPLODES);
-		grows_wool = Config_event.get(element, MEvent.GROWS_WOOL);
-		heals = Config_event.get(element, MEvent.HEALS);
-		hit = Config_event.get(element, MEvent.HIT);
-		hour_change = Config_event.get(element, MEvent.HOUR_CHANGE);
-		joins = Config_event.get(element, MEvent.JOINS);
-		leaves = Config_event.get(element, MEvent.LEAVES);
-		midday = Config_event.get(element, MEvent.MIDDAY);
-		midnight = Config_event.get(element, MEvent.MIDNIGHT);
-		near = Config_event.get(element, MEvent.NEAR);
-		picks_up_item = Config_event.get(element, MEvent.PICKS_UP_ITEM);
-		repeating_outcomes = Config_event.get(element, MEvent.REPEATING_OUTCOMES);
-		sheared = Config_event.get(element, MEvent.SHEARED);
-		spawns = Config_event.get(element, MEvent.SPAWNS);
-		splits = Config_event.get(element, MEvent.SPLITS);
-		tamed = Config_event.get(element, MEvent.TAMED);
-		targets = Config_event.get(element, MEvent.TARGETS);
-		teleports = Config_event.get(element, MEvent.TELEPORTS);
+		approached = Config_event.get(MEvent.APPROACHED, events_to_debug);
+		blocks = Config_event.get(MEvent.BLOCKS, events_to_debug);
+		burns = Config_event.get(MEvent.BURNS, events_to_debug);
+		changes_block = Config_event.get(MEvent.CHANGES_BLOCK, events_to_debug);
+		creates_portal = Config_event.get(MEvent.CREATES_PORTAL, events_to_debug);
+		damaged = Config_event.get(MEvent.DAMAGED, events_to_debug);
+		dawn = Config_event.get(MEvent.DAWN, events_to_debug);
+		dies = Config_event.get(MEvent.DIES, events_to_debug);
+		dusk = Config_event.get(MEvent.DUSK, events_to_debug);
+		dyed = Config_event.get(MEvent.DYED, events_to_debug);
+		enters_area = Config_event.get(MEvent.ENTERS_AREA, events_to_debug);
+		evolves = Config_event.get(MEvent.EVOLVES, events_to_debug);
+		explodes = Config_event.get(MEvent.EXPLODES, events_to_debug);
+		grows_wool = Config_event.get(MEvent.GROWS_WOOL, events_to_debug);
+		heals = Config_event.get(MEvent.HEALS, events_to_debug);
+		hit = Config_event.get(MEvent.HIT, events_to_debug);
+		hour_change = Config_event.get(MEvent.HOUR_CHANGE, events_to_debug);
+		in_area = Config_event.get(MEvent.IN_AREA, events_to_debug);
+		joins = Config_event.get(MEvent.JOINS, events_to_debug);
+		leaves = Config_event.get(MEvent.LEAVES, events_to_debug);
+		leaves_area = Config_event.get(MEvent.LEAVES_AREA, events_to_debug);
+		midday = Config_event.get(MEvent.MIDDAY, events_to_debug);
+		midnight = Config_event.get(MEvent.MIDNIGHT, events_to_debug);
+		near = Config_event.get(MEvent.NEAR, events_to_debug);
+		night = Config_event.get(MEvent.NIGHT, events_to_debug);
+		picks_up_item = Config_event.get(MEvent.PICKS_UP_ITEM, events_to_debug);
+		repeating = Config_event.get(MEvent.REPEATING, events_to_debug);
+		sheared = Config_event.get(MEvent.SHEARED, events_to_debug);
+		spawns = Config_event.get(MEvent.SPAWNS, events_to_debug);
+		splits = Config_event.get(MEvent.SPLITS, events_to_debug);
+		tamed = Config_event.get(MEvent.TAMED, events_to_debug);
+		targets = Config_event.get(MEvent.TARGETS, events_to_debug);
+		teleports = Config_event.get(MEvent.TELEPORTS, events_to_debug);
 	}	
 	
 	@EventHandler
@@ -313,6 +322,12 @@ public class Event_listener implements Listener
 	}
 	
 	@EventHandler
+	public void enters_area(PlayerEnterAreaEvent event)
+	{
+		if (enters_area != null) enters_area.performActions(event.getPlayer(), event);
+	}
+	
+	@EventHandler
 	public void explodes(EntityExplodeEvent event)
 	{
 		Entity entity = event.getEntity();		
@@ -395,6 +410,12 @@ public class Event_listener implements Listener
 	}
 	
 	@EventHandler
+	public void in_area(PlayerInAreaEvent event)
+	{
+		if (in_area != null) in_area.performActions(event.getPlayer(), event);
+	}
+	
+	@EventHandler
 	public void joins(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
@@ -407,6 +428,12 @@ public class Event_listener implements Listener
 	public void leaves(PlayerLeaveLivingEntityEvent event)
 	{
 		if (leaves != null) leaves.performActions(event.getEntity(), event);
+	}
+	
+	@EventHandler
+	public void leaves_area(PlayerLeaveAreaEvent event)
+	{
+		if (leaves_area != null) leaves_area.performActions(event.getPlayer(), event);
 	}
 	
 	@EventHandler
@@ -427,6 +454,13 @@ public class Event_listener implements Listener
 		if (near != null) near.performActions(event.getEntity(), event);
 	}
 	
+	@EventHandler
+	public void night(NightEvent event)
+	{
+		if (night != null) night.performActions(null, event);
+	}
+	
+	@EventHandler
 	public void picks_up_item(PlayerPickupItemEvent event)
 	{
 		if (picks_up_item != null) picks_up_item.performActions(event.getPlayer(), event);
@@ -531,7 +565,7 @@ public class Event_listener implements Listener
 			}
 		}
 		
-		if (!disabled_timer && repeating_outcomes != null) repeating_outcomes.performActions(null, event);
+		if (!disabled_timer && repeating != null) repeating.performActions(null, event);
 	}
 	
  	public void setMob_name(String name)
@@ -547,7 +581,7 @@ public class Event_listener implements Listener
 			sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
 			return true;
 		}
-		if (repeating_outcomes == null)
+		if (repeating == null)
 		{
 			sender.sendMessage("There are no repeating outcomes!");
 			sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
@@ -557,7 +591,7 @@ public class Event_listener implements Listener
 		{
 			if (args.length == 1)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					o.setEnabled(true);
 				}
@@ -566,7 +600,7 @@ public class Event_listener implements Listener
 			}
 			else if (args.length == 2)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					if (o.checkName(args[1]))
 					{
@@ -581,7 +615,7 @@ public class Event_listener implements Listener
 		{
 			if (args.length == 1)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					o.setEnabled(false);
 				}
@@ -590,7 +624,7 @@ public class Event_listener implements Listener
 			}
 			else if (args.length == 2)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					if (o.checkName(args[1]))
 					{
@@ -603,21 +637,22 @@ public class Event_listener implements Listener
 		}
 		if (args[0].equalsIgnoreCase("activate"))
 		{
+			Event_report er = new Event_report(MEvent.REPEATING);
 			if (args.length == 1)
 			{					
 				sender.sendMessage("Activated all repeating outcomes!");
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.passedConditions_check(null, null, true)) o.performActions(null, MEvent.REPEATING_OUTCOMES, null);
+					if (o.passedConditions_check(er, null, null, true)) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}
 			else if (args.length == 2)
 			{
 				sender.sendMessage("Activated repeating outcome " + args[1] + "!");
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.checkName(args[1]) && o.passedConditions_check(null, null, true)) o.performActions(null, MEvent.REPEATING_OUTCOMES, null);
+					if (o.checkName(args[1]) && o.passedConditions_check(er, null, null, true)) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}
@@ -627,15 +662,15 @@ public class Event_listener implements Listener
 			if (args.length == 1)
 			{					
 				sender.sendMessage("Forced all repeating outcomes!");
-				for (Outcome o : repeating_outcomes.getOutcomes()) o.performActions(null, MEvent.REPEATING_OUTCOMES, null);
+				for (Outcome o : repeating.getOutcomes()) o.performActions(null, MEvent.REPEATING, null);
 				return true;
 			}
 			else if (args.length == 2)
 			{
 				sender.sendMessage("Forced repeating outcome " + args[1] + "!");
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.checkName(args[1])) o.performActions(null, MEvent.REPEATING_OUTCOMES, null);
+					if (o.checkName(args[1])) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}
@@ -664,7 +699,7 @@ public class Event_listener implements Listener
 		{
 			if (args.length == 1)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					String s = o.getName() == null ? "No name set" : o.getName();
 					sender.sendMessage("Outcome " + s + " is " + (o.isEnabled() ? "enabled, " : "disabled, ")
@@ -675,7 +710,7 @@ public class Event_listener implements Listener
 			}
 			else if (args.length == 2)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					if (o.checkName(args[1]))
 					{
@@ -693,7 +728,7 @@ public class Event_listener implements Listener
 			int i = Integer.parseInt(args[1]);
 			if (args.length == 2)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					o.setInterval(i);
 				}
@@ -702,7 +737,7 @@ public class Event_listener implements Listener
 			}
 			else if (args.length == 3)
 			{
-				for (Outcome o : repeating_outcomes.getOutcomes())
+				for (Outcome o : repeating.getOutcomes())
 				{
 					if (o.checkName(args[2]))
 					{

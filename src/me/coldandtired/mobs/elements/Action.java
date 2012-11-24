@@ -26,6 +26,7 @@ import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.craftbukkit.entity.CraftLivingEntity;
 import org.bukkit.craftbukkit.entity.CraftWolf;
+import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.EnderDragon;
@@ -41,6 +42,7 @@ import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.Tameable;
+import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -286,7 +288,6 @@ public class Action extends Config_element
 				if (orig_event instanceof Cancellable)
 				{
 					((Cancellable)orig_event).setCancelled(true);
-					Mobs.debug("CANCEL_EVENT");
 				}
 				break;	
 			case PLAY_BLAZE_EFFECT:
@@ -309,7 +310,6 @@ public class Action extends Config_element
 				break;
 			default:		
 				setProperty(le, orig_event);
-				Mobs.debug(getAction_type().toString());
 				break;
 		}
 		return false;
@@ -361,7 +361,6 @@ public class Action extends Config_element
 		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) 
 		{
 			Data.clearData(le);
-			Mobs.debug("CLEAR_DATA, " + le.getType().toString());
 		}
 	}
 	
@@ -384,7 +383,6 @@ public class Action extends Config_element
 			int am = value.getInt_value((int)amount);
 			Mobs.economy.depositPlayer(p.getName(), am);
 			if (!isLocked() && list.size() > 1) value = getPure_amount();
-			Mobs.debug("SET_MONEY " + p.getName() + ", " + am);
 		}
 	}
 	
@@ -452,6 +450,7 @@ public class Action extends Config_element
 		for (LivingEntity le : list)
 		{
 			if (le == null) le = live;
+			if (le instanceof Ageable) setAgeable_property((Ageable)le);
 			if (le instanceof Player) setPlayer_property((Player)le);
 			if (le instanceof Animals) setAnimal_property((Animals)le);
 			if (le instanceof Monster) setMonster_property((Monster)le);
@@ -612,10 +611,33 @@ public class Action extends Config_element
 				case SET_DAMAGE_TAKEN_FROM_VOID:
 					Data.putData(le, MParam.VOID_DAMAGE, getValue());
 					break;
+					
+				case SET_VILLAGER_TYPE:
+					((Villager)le).setProfession(Villager.Profession.valueOf(getValue().toUpperCase()));
+					break;
 			}
 		}
 	}
 		
+	private void setAgeable_property(Ageable a)
+	{
+		switch (action_type)
+		{
+			case SET_ADULT_NO:
+				a.setBaby();
+				return;
+			case SET_ADULT_RANDOM:
+				if (new Random().nextBoolean()) a.setAdult(); else a.setBaby();
+				return;
+			case SET_ADULT_YES:
+				a.setAdult();
+				return;
+			case TOGGLE_ADULT:
+				if (a.isAdult()) a.setBaby(); else a.setAdult();
+				return;
+		}
+	}
+	
 	private void setPlayer_property(Player p)
 	{
 		switch (getAction_type())
@@ -639,20 +661,7 @@ public class Action extends Config_element
 	{
 		// Chicken, Cow, MushroomCow, Ocelot, Pig, Sheep, Wolf
 		switch (getAction_type())
-		{
-			case SET_ADULT_NO:
-				animal.setBaby();
-				return;
-			case SET_ADULT_RANDOM:
-				if (new Random().nextBoolean()) animal.setAdult(); else animal.setBaby();
-				return;
-			case SET_ADULT_YES:
-				animal.setAdult();
-				return;
-			case TOGGLE_ADULT:
-				if (animal.isAdult()) animal.setBaby(); else animal.setAdult();
-				return;
-			
+		{			
 			case SET_OWNER:
 				if (animal instanceof Tameable)
 				{
@@ -941,7 +950,7 @@ public class Action extends Config_element
 		
 		switch (action_type)
 		{
-			//sitting, cattype
+			//sitting
 				
 			case SET_TAMED_NO:
 				ocelot.setTamed(false);
@@ -954,6 +963,9 @@ public class Action extends Config_element
 				return;
 			case TOGGLE_TAMED:
 				ocelot.setTamed(!ocelot.isTamed());
+				return;
+			case SET_OCELOT_TYPE:
+				ocelot.setCatType(Ocelot.Type.valueOf(getValue().toUpperCase()));
 				return;
 		}
 	}
@@ -1153,7 +1165,6 @@ public class Action extends Config_element
 				}
 			}
 			else Data.putData(le, MParam.valueOf(getAction_type().toString()));
-			Mobs.debug(getAction_type().toString());
 		}
 	}
 		
@@ -1171,7 +1182,6 @@ public class Action extends Config_element
 			for (Location loc : list)
 			{
 				loc.getWorld().spawnEntity(loc, EntityType.valueOf(mob[0]));
-				Mobs.debug("SPAWN_MOB, " + get_string_from_loc(loc) + ", " + name);
 			}
 			if (!isLocked())
 			{
@@ -1195,11 +1205,9 @@ public class Action extends Config_element
 				{
 					Player p = (Player)l;
 					p.sendMessage(s);
-					Mobs.debug("SEND_MESSAGE, " + ((Player)p).getName() + ", MESSAGE = " + s);
 				}
 				else 
 				{
-					Mobs.debug("SEND_MESSAGE, failed - target isn't a player or is offline!");
 					continue;
 				}
 				if (!isLocked())
@@ -1213,7 +1221,6 @@ public class Action extends Config_element
 		else if (getAction_type().equals(MAction.BROADCAST))
 		{
 			Bukkit.getServer().broadcastMessage(s);
-			Mobs.debug("BROADCAST, MESSAGE = " + s);
 		}
 		else Mobs.log(s);
 	}
@@ -1232,7 +1239,6 @@ public class Action extends Config_element
 			for (Location loc : locs)
 			{
 				loc.getBlock().setTypeIdAndData(id, (byte) data, false);
-				Mobs.debug("SET_BLOCK, " + get_string_from_loc(loc) + ", ITEM = " + id + ":" + data);
 			}
 		}
 		else
@@ -1240,7 +1246,6 @@ public class Action extends Config_element
 			for (Location loc : locs)
 			{
 				loc.getBlock().breakNaturally();
-				Mobs.debug("DESTROY_BLOCK, " + get_string_from_loc(loc));
 			}
 		}
 	}
@@ -1252,7 +1257,6 @@ public class Action extends Config_element
 			World w = loc.getWorld();
 			if (getAction_type() == MAction.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
 			else w.strikeLightning(loc);
-			Mobs.debug(getAction_type().toString() + ", " + get_string_from_loc(loc));
 		}
 	}
 	
@@ -1262,7 +1266,6 @@ public class Action extends Config_element
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{
 			loc.getWorld().createExplosion(loc, p, getAction_type() == MAction.FIERY_EXPLOSION);
-			Mobs.debug(getAction_type().toString() + ", POWER = " + p + ", " + get_string_from_loc(loc));
 		}
 	}
 	
@@ -1275,18 +1278,15 @@ public class Action extends Config_element
 			if (getAction_type().equals(MAction.KILL))
 			{
 				l.damage(10000);
-				Mobs.debug("KILL, " + l.getType().toString());
 			}
 			else if (getAction_type().equals(MAction.DAMAGE))
 			{
 				q = getInt_value(0);
 				l.damage(q);
-				Mobs.debug("DAMAGE, " + l.getType().toString() + ", AMOUNT = " + q);
 			}
 			else if (!(l instanceof Player))
 			{
 				l.remove();
-				Mobs.debug("REMOVE, " + l.getType().toString());
 			}
 		}
 	}
@@ -1296,7 +1296,7 @@ public class Action extends Config_element
 		World w = getWorld(le);
 		if (w == null) return;
 		
-		String s2 = getAction_type().toString();
+		//String s2 = getAction_type().toString();
 		switch (getAction_type())
 		{
 			case SUN:
@@ -1316,11 +1316,10 @@ public class Action extends Config_element
 
 		if (i != null)
 		{
-			s2 += ", DURATION = " + i + " seconds";
+			//s2 += ", DURATION = " + i + " seconds";
 			w.setWeatherDuration(i * 20);
 		}
-		else s2 += ", DEFAULT DURATION";
-		Mobs.debug(s2 + ", " + w.getName());
+		//else s2 += ", DEFAULT DURATION";
 	}
 	
 	private void change_time(LivingEntity le)
@@ -1331,7 +1330,6 @@ public class Action extends Config_element
 		long time = getInt_value((int)w.getTime()) % 24000;
 		if (time < 0) time += 24000;
 		w.setTime(time);
-		Mobs.debug("SET_TIME " + Long.toString(time) + ", " + w.getName());
 	}
 	
 	private void drop_item(LivingEntity le, Event orig_event)
@@ -1344,7 +1342,6 @@ public class Action extends Config_element
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{
 			loc.getWorld().dropItem(loc, is);
-			Mobs.debug("DROP_ITEM, " + get_string_from_loc(loc) + ", ITEM = " + id + ":" + data);
 		}
 	}
 	
@@ -1353,7 +1350,6 @@ public class Action extends Config_element
 		Target t = getTarget();
 		if (t == null)
 		{
-			Mobs.debug(getAction_type() + " failed - no target set!");
 			return;
 		}
 		
@@ -1365,8 +1361,7 @@ public class Action extends Config_element
 			{		
 				if (!(l instanceof Player)) continue;
 				Player p = (Player)l;
-				p.getInventory().clear();
-				Mobs.debug("CLEAR_ITEMS, " + p.getName());					
+				p.getInventory().clear();				
 			}
 			return;
 		}
@@ -1402,7 +1397,6 @@ public class Action extends Config_element
 				amount = getAmount(1);
 				stack = new ItemStack(id, amount, data);
 			}
-			Mobs.debug(getAction_type() + ", " + p.getName() + ", ITEM = " + id + ":" + data);	
 		}
 	}
 	
@@ -1415,7 +1409,6 @@ public class Action extends Config_element
 		{	
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
 			orb.setExperience(q);
-			Mobs.debug("DROP_EXP, " + get_string_from_loc(loc) + ", AMOUNT = " + q);
 		}
 	}
 	
@@ -1454,12 +1447,10 @@ public class Action extends Config_element
 					p.setExp((float)d);
 				}
 				p.setTotalExperience(q);
-				Mobs.debug("SET_EXP, " + p.getName() + ", AMOUNT = " + q);
 			}
 			else
 			{
 				p.setLevel(q);	
-				Mobs.debug("SET_LEVEL, " + p.getName() + ", AMOUNT = " + q);
 			}
 		}
 	}
@@ -1539,15 +1530,13 @@ public class Action extends Config_element
 				bs.setData(md);
 				bs.update(true);
 			}
-			
-			Mobs.debug(getAction_type().toString());
 		}
 	}
 
-	private String get_string_from_loc(Location loc)
-	{
-		return "loc = " + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ() + ", " + loc.getWorld().getName();
-	}
+	//private String get_string_from_loc(Location loc)
+	//{
+	//	return "loc = " + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ() + ", " + loc.getWorld().getName();
+	//}
 	
 	private String replace_constants(String s, LivingEntity le)
 	{

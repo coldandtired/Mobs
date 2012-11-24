@@ -5,7 +5,9 @@ import java.util.List;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
+import me.coldandtired.mobs.Condition_report;
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.Outcome_report;
 import me.coldandtired.mobs.enums.MCondition;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.Event;
@@ -33,15 +35,20 @@ public class Conditions extends Config_element
 		return c;
 	}
 	
-	public boolean passedConditions_check(LivingEntity live, Event orig_event)
+	public boolean passedConditions_check(Outcome_report or, LivingEntity live, Event orig_event)
 	{
-		for (Condition c : conditions) if (c.passes(live, orig_event))
+		for (Condition c : conditions)
 		{
-			Mobs.debug("Passed");
-			return true;
-		} else Mobs.debug("Failed");
+			Condition_report cr = new Condition_report();
+			if (c.passes(cr, live, orig_event)) or.addPassed_condition(cr);
+			else
+			{
+				or.addFailed_condition(cr);
+				return false;
+			}
+		}
 		
-		return false;
+		return true;
 	}
 	
 	public List<Condition> getConditions()

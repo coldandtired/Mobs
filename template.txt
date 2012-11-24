@@ -1,0 +1,5 @@
+<event>
+	<outcome affected_mobs="">
+	<!-- see coldandtired.binhoster.com to learn how to edit this file -->
+	</outcome>
+</event>

@@ -15,7 +15,6 @@ public class Target extends Config_element
 {
 	private MTarget target_type;
 	private Text_value player;
-	private Area area;
 	private Text_value area_name;
 	private Text_value x;
 	private Text_value y;
@@ -44,7 +43,6 @@ public class Target extends Config_element
 				break;
 			case AREA:
 				if (element.getChildNodes().getLength() == 1) area_name = new Text_value(element);
-				else area = new Area(element); 
 				break;				
 		}
 		
@@ -64,11 +62,6 @@ public class Target extends Config_element
 	{
 		if (area_name == null) return null;
 		return area_name.getValue();
-	}
-	
-	public Area getArea()
-	{
-		return area;
 	}
 	
 	public Text_value getX()

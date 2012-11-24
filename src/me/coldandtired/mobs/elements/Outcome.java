@@ -9,7 +9,9 @@ import java.util.TreeMap;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
+import me.coldandtired.mobs.Event_report;
 import me.coldandtired.mobs.Mobs;
+import me.coldandtired.mobs.Outcome_report;
 import me.coldandtired.mobs.enums.MEvent;
 
 import org.bukkit.entity.LivingEntity;
@@ -66,23 +68,27 @@ public class Outcome extends Config_element
 		if (conditions.size() == 0) conditions = null;	
 	}
 	
-	public boolean passedConditions_check(LivingEntity le, Event orig_event, boolean override)
+	public boolean passedConditions_check(Event_report er, LivingEntity le, Event orig_event, boolean override)
 	{
+		Outcome_report or = new Outcome_report();
 		if (!override && (!isAffected(le) || !canTick() || !enabled)) return false;
 		if (conditions == null)
 		{
-			Mobs.debug("No condition groups");
+			or.setPassed();
+			er.addOutcome_report(or);
 			return true;
 		}
 		
-		Mobs.debug("Condition groups - " + conditions.size());
-		Mobs.debug("------------------");
 		for (Conditions c : conditions)
-		{
-			Mobs.debug("Checking condition group");
-			if (c.passedConditions_check(le, orig_event)) return true;
+		{			
+			if (c.passedConditions_check(or, le, orig_event))
+			{
+				or.setPassed();
+				er.addOutcome_report(or);
+				return true;
+			}
 		}
-		Mobs.debug("All condition groups failed - not performing any actions");
+		er.addOutcome_report(or);
 		return false;
 	}
 	

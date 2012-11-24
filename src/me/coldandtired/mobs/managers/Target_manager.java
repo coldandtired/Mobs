@@ -1,16 +1,10 @@
 package me.coldandtired.mobs.managers;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-
-import javax.xml.xpath.XPath;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 
 import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
@@ -19,7 +13,6 @@ import me.coldandtired.mobs.elements.Text_value;
 import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.enums.MTarget;
 import me.coldandtired.extra_events.*;
-import me.coldandtired.mobs.subelements.Area;
 import me.coldandtired.mobs.subelements.Nearby_mob;
 import me.coldandtired.mobs.subelements.Target;
 
@@ -40,13 +33,9 @@ import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
-import org.bukkit.plugin.Plugin;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 public class Target_manager 
 {
-	private Map<String, Area> areas = new HashMap<String, Area>();
 	private static Target_manager tm;
 	
 	private Target_manager()
@@ -58,11 +47,6 @@ public class Target_manager
 	{
 		if (tm == null) tm = new Target_manager();
 		return tm;
-	}
-	
-	public Collection<Area> getAreas()
-	{
-		return areas.values();
 	}
 				
 	private List<LivingEntity> getNearest(List<Entity> entities, Target t, LivingEntity le)
@@ -201,18 +185,17 @@ public class Target_manager
 				String s = t.getArea_name();
 				if (s != null)
 				{
-					area = areas.get(s.toUpperCase());
+					String s2 = s.contains(":") ? "" : le.getWorld().getName() + ":";
+					s2 += s;
+					area = Mobs.extra_events.getArea(s2);
 					if (area == null)
 					{
-						Mobs.warn("No area called " + s + " found!");
+						Mobs.warn("No area called " + s2 + " found!");
 						return locs;
 					}
-					if (s.contains(":")) locs.add(area.getLocation(null));
-					else locs.add(area.getLocation(w));
+					locs.add(area.getRandom_location());
 					return locs;
 				}
-				else area = t.getArea();
-				locs.add(area.getLocation(w));
 				break;
 			case BLOCK:
 				locs.add(w.getBlockAt(Integer.parseInt(t.getX().getValue()), Integer.parseInt(t.getY().getValue()), 
@@ -253,42 +236,5 @@ public class Target_manager
 		if (i > loc.getWorld().getMaxHeight()) i = loc.getWorld().getMaxHeight();
 		loc.setY(i);
 		return loc;
-	}
-	
- 	public void importAreas(XPath xpath, NodeList list)
-	{
-		Plugin p = Bukkit.getServer().getPluginManager().getPlugin("WorldGuard");
-		if (p != null && p instanceof WorldGuardPlugin)
-		{
-			WorldGuardPlugin wgp = (WorldGuardPlugin)p;
-			
-			for (World w : Bukkit.getWorlds())
-			{
-				String world_name = w.getName().toUpperCase();
-				for (String s : wgp.getRegionManager(w).getRegions().keySet())
-				{
-					Area a = new Area(wgp.getRegionManager(w).getRegion(s), world_name);
-					areas.put(world_name + ":" + s.toUpperCase(), a);
-					if (!areas.containsKey(s)) areas.put(s.toUpperCase(), a);
-				}
-			}
-		}
-		
-		if (list.getLength() == 0) return;
-		for (int i = 0; i < list.getLength(); i++)
-		{
-			try
-			{
-				for (int j = 0; j < list.getLength(); j++)
-				{
-					Element el = (Element)list.item(j);
-					Area a = new Area(el);
-					areas.put(el.getLocalName().toUpperCase(), a);
-					World w = a.getWorld();
-					if (w != null) areas.put(w.getName().toUpperCase() + ":" + el.getLocalName().toUpperCase(), a);
-				}
-			}
-			catch (Exception e) {e.printStackTrace();}
-		}
 	}
 }
