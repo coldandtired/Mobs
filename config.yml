@@ -6,3 +6,4 @@ debug:
   enabled: false
   include_failed: true
   events_to_debug: []
+  mobs_to_debug: []

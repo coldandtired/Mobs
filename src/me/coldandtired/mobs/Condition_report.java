@@ -1,5 +1,7 @@
 package me.coldandtired.mobs;
 
+import java.util.List;
+
 public class Condition_report 
 {
 	private String name;
@@ -14,6 +16,13 @@ public class Condition_report
 	public void setCheck_value(String value)
 	{
 		check_value = value;
+	}
+	
+	public void setCheck_value(List<String> values, boolean reversed)
+	{
+		String ss = reversed ? "" : "NOT ";
+		for (String s : values) ss += s + "/";
+		check_value = ss.substring(0, ss.length() - 1);
 	}
 	
 	public void setActual_value(Object value)

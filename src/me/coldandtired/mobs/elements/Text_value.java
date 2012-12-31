@@ -37,7 +37,7 @@ public class Text_value
 				if (list.getLength() == 1) count = 1;
 				temp.put(count, el.getTextContent());
 			}
-			values = new Alternatives(count, temp);
+			//values = new Alternatives(count, temp);
 		}
 		catch (Exception e) {e.printStackTrace();}
 	}
@@ -45,7 +45,7 @@ public class Text_value
 	public String getValue()
 	{
 		if (simple_value != null) return simple_value;
-		return (String)values.get_alternative();
+		return (String)values.getAlternative();
 	}
 	
 	public int getInt_value(int orig)

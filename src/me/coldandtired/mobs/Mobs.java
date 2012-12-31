@@ -162,7 +162,8 @@ public class Mobs extends JavaPlugin
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
 		
-		event_listener = new Event_listener(new HashSet<String>((Collection<? extends String>)config.getList("debug.events_to_debug")));
+		event_listener = new Event_listener(new HashSet<String>((Collection<? extends String>)config.getList("debug.events_to_debug")),
+				new HashSet<String>((Collection<? extends String>)config.getList("debug.mobs_to_debug")));
 		getServer().getPluginManager().registerEvents(event_listener, this);		
 		return true;
 	}
@@ -185,12 +186,16 @@ public class Mobs extends JavaPlugin
 		}
 		else if (cmd.getName().equalsIgnoreCase("repeating_outcomes"))
 		{
-			return event_listener.adjustRepeating_outcomes(sender, args);
+			try
+			{
+				return event_listener.adjustRepeating_outcomes(sender, args);
+			}
+			catch (Exception e) {}
 		}
 		return false;
 	}
 				
-	public void setMob_name(String name)
+	public void setMob_name(String name) throws XPathExpressionException
 	{
 		event_listener.setMob_name(name);
 	}
@@ -218,8 +223,8 @@ public class Mobs extends JavaPlugin
 
 	public void debug(Event_report report)
 	{
-		if (!debug_mode) return;
-		
+		if (!debug_mode || report.getOutcomes().size() == 0) return;
+
 		logger.info("");
 		debug(report.getName() + " - " + report.getOutcomes().size() + " outcome(s)");
 		debug("-------------");
@@ -250,7 +255,23 @@ public class Mobs extends JavaPlugin
 						debug(cr.getCheck_value());
 						debug(cr.getActual_value());
 					}
-				}	
+				}
+			}	
+			if (include_failed && or.getFailed_actions().size() > 0)
+			{
+				debug("Failed actions", Ansi.Color.MAGENTA);
+				for (Action_report ar : or.getFailed_actions())
+				{
+					debug(ar.getProperty());
+				}
+			}
+			if (or.getPerformed_actions().size() > 0)
+			{
+				debug("Performed actions", Ansi.Color.GREEN);
+				for (Action_report ar : or.getPerformed_actions())
+				{
+					debug(ar.getProperty());
+				}
 			}
 			debug("-------------");
 		}
