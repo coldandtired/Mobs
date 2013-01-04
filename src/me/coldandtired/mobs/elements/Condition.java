@@ -24,6 +24,7 @@ import org.bukkit.entity.Ocelot;
 import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
@@ -57,7 +58,7 @@ public class Condition extends Config_element
 		if (el != null) mob = el.getTextContent();
 	}
 
-	public boolean passes(Condition_report cr, LivingEntity live, Event orig_event)
+	public boolean passes(Condition_report cr, LivingEntity live, Projectile projectile, Event orig_event)
 	{
 		cr.setName(condition_type.toString());
 		boolean b;
@@ -338,6 +339,16 @@ public class Condition extends Config_element
 			case NOT_POWERED:
 				if (le instanceof Creeper) return !((Creeper)le).isPowered();
 				break;
+			case PROJECTILE:
+				return projectile != null;
+			case NOT_PROJECTILE:
+				return projectile == null;
+			case PROJECTILE_TYPE:
+				if (projectile == null) break;
+				return matches(cr, projectile.getType().toString());
+			case NOT_PROJECTILE_TYPE:
+				if (projectile == null) break;
+				return !matches(cr, projectile.getType().toString());
 			case NOT_RAINING: 
 				w = getWorld(le);
 				return !w.hasStorm();
@@ -378,6 +389,23 @@ public class Condition extends Config_element
 	{
 		if (mob == null) return null;
 		return mob.toUpperCase().split(":");
+	}
+	
+	public boolean matches(Condition_report cr, boolean orig, MCondition cond)
+	{
+		boolean b = condition_type.equals(cond);
+		cr.setCheck_value(Boolean.toString(!b));
+		cr.setActual_value(orig);
+		return orig == b;
+	}
+	
+	public boolean matches(Condition_report cr, String orig, MCondition cond)
+	{
+		boolean b = condition_type.equals(cond);
+		cr.setCheck_value(value);
+		cr.setActual_value(orig);
+		if (value == null) return !b;
+		return value.contains(orig) == b;
 	}
 	
 	public boolean matches(int orig)

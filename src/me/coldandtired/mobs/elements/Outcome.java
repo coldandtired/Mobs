@@ -15,6 +15,7 @@ import me.coldandtired.mobs.Outcome_report;
 import me.coldandtired.mobs.enums.MEvent;
 
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.Event;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -45,30 +46,32 @@ public class Outcome extends Config_element
 		if (element.hasAttribute("unaffected_worlds")) unaffected_worlds = Arrays.asList(element.getAttribute("unaffected_worlds").replace(" ", "").toUpperCase().split(","));
 		
 		SortedMap<Integer, Object> temp = new TreeMap<Integer, Object>();
-		int count = 0;
-		NodeList list = (NodeList)Mobs.getXPath().evaluate("actions", element, XPathConstants.NODESET);
-		for (int i = 0; i < list.getLength(); i++)
-		{
-			Element el = (Element)list.item(i);
-			
-			int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
-			count += ratio;
-			if (list.getLength() == 1) count = 1;			
-			Actions a = Actions.get(el, this);			
-			if (a != null) temp.put(count, a);
-		}
-		if (temp.size() > 0) actions = new Alternatives(count, temp);
-		
-		list = (NodeList)Mobs.getXPath().evaluate("conditions", element, XPathConstants.NODESET);
-		for (int i = 0; i < list.getLength(); i++)
-		{
-			Conditions c = Conditions.get((Element)list.item(i), this);			
-			if (c != null) conditions.add(c);
-		}
-		if (conditions.size() == 0) conditions = null;	
+	    int count = 0;
+	    NodeList list = (NodeList)Mobs.getXPath().evaluate("action_group", element, XPathConstants.NODESET);
+	    for (int i = 0; i < list.getLength(); i++)
+	    {
+	      Element el = (Element)list.item(i);
+
+	      int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
+	      count += ratio;
+	      if (list.getLength() == 1) count = 1;
+	      el = (Element)Mobs.getXPath().evaluate("actions", el, XPathConstants.NODE);
+	      Actions a = Actions.get(el, this);
+	      if (a == null) continue; temp.put(Integer.valueOf(count), a);
+	    }
+	    if (temp.size() > 0) this.actions = new Alternatives(count, temp);
+
+	    list = (NodeList)Mobs.getXPath().evaluate("condition_group", element, XPathConstants.NODESET);
+	    for (int i = 0; i < list.getLength(); i++)
+	    {
+	      Element el = (Element)Mobs.getXPath().evaluate("conditions", list.item(i), XPathConstants.NODE);
+	      Conditions c = Conditions.get(el, this);
+	      if (c == null) continue; this.conditions.add(c);
+	    }
+	    if (this.conditions.size() == 0) this.conditions = null;
 	}
 	
-	public boolean passedConditions_check(Event_report er, LivingEntity le, Event orig_event, boolean override)
+	public boolean passedConditions_check(Event_report er, LivingEntity le, Projectile projectile, Event orig_event, boolean override)
 	{
 		Outcome_report or = new Outcome_report();
 		if (!override && (!isAffected(le) || !canTick() || !enabled)) return false;
@@ -81,7 +84,7 @@ public class Outcome extends Config_element
 		
 		for (Conditions c : conditions)
 		{			
-			if (c.passedConditions_check(or, le, orig_event))
+			if (c.passedConditions_check(or, le, projectile, orig_event))
 			{
 				or.setPassed();
 				er.addOutcome_report(or);

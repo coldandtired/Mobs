@@ -10,6 +10,7 @@ import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.Outcome_report;
 import me.coldandtired.mobs.enums.MCondition;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.Event;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -35,12 +36,12 @@ public class Conditions extends Config_element
 		return c;
 	}
 	
-	public boolean passedConditions_check(Outcome_report or, LivingEntity live, Event orig_event)
+	public boolean passedConditions_check(Outcome_report or, LivingEntity live, Projectile projectile, Event orig_event)
 	{
 		for (Condition c : conditions)
 		{
 			Condition_report cr = new Condition_report();
-			if (c.passes(cr, live, orig_event)) or.addPassed_condition(cr);
+			if (c.passes(cr, live, projectile, orig_event)) or.addPassed_condition(cr);
 			else
 			{
 				or.addFailed_condition(cr);

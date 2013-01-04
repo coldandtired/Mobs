@@ -12,6 +12,7 @@ import me.coldandtired.mobs.Event_report;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.enums.MEvent;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.Event;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -51,12 +52,12 @@ public class Config_event extends Config_element
 		return ce;
 	}
 	
-	public void performActions(LivingEntity le, Event orig_event)
+	public void performActions(LivingEntity le, Projectile projectile, Event orig_event)
 	{
 		Event_report er = new Event_report(event_name);
 		for (Outcome o : outcomes)
 		{
-			boolean perform = o.passedConditions_check(er, le, orig_event, false);
+			boolean perform = o.passedConditions_check(er, le, projectile, orig_event, false);
 			if (perform)
 			{
 				if (!o.performActions(le, event_name, orig_event)) break;

@@ -16,7 +16,7 @@ import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.managers.Target_manager;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Target;
-import net.minecraft.server.EntityWolf;
+import net.minecraft.server.v1_4_6.EntityWolf;
 
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
@@ -24,8 +24,8 @@ import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
-import org.bukkit.craftbukkit.entity.CraftLivingEntity;
-import org.bukkit.craftbukkit.entity.CraftWolf;
+import org.bukkit.craftbukkit.v1_4_6.entity.CraftLivingEntity;
+import org.bukkit.craftbukkit.v1_4_6.entity.CraftWolf;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Creeper;
@@ -59,6 +59,7 @@ import org.getspout.spoutapi.player.EntitySkinType;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+@SuppressWarnings("deprecation")
 public class Action extends Config_element
 {
 	private MAction action_type;
@@ -532,23 +533,16 @@ public class Action extends Config_element
 					Data.putData(le, MParam.NAME, getValue());
 				break;
 				case SET_MAX_HP:
-					i = (Integer)Data.getData(le, MParam.MAX_HP);
-					if (i == null) i = 0;
-					Integer max_hp = getInt_value(i);
-					Integer hp = (Integer)Data.getData(le, MParam.HP);
-					if (hp == null || hp > max_hp) hp = max_hp;
-					Data.putData(le, MParam.HP, hp);
-					Data.putData(le, MParam.MAX_HP, max_hp);
+					int max_hp = getInt_value(le.getMaxHealth());
+					int hp = le.getHealth();
+					if (hp > max_hp) hp = max_hp;
+					le.setMaxHealth(max_hp);
 					break;
 				case SET_HP:
-					i = (Integer)Data.getData(le, MParam.HP);
-					if (i == null) i = 0;
-					hp = getInt_value(i);
-					max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
-					if (max_hp == null) max_hp = hp;
+					hp = getInt_value(le.getHealth());
+					max_hp = le.getMaxHealth();
 					if (hp > max_hp) hp = max_hp;
-					Data.putData(le, MParam.HP, hp);
-					Data.putData(le, MParam.MAX_HP, max_hp);
+					le.setHealth(hp);
 					break;
 				case SET_ATTACK_POWER:
 					Data.putData(le, MParam.ATTACK, getValue());
