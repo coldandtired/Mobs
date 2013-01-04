@@ -3,13 +3,18 @@ package me.coldandtired.mobs.elements;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
+import me.coldandtired.mobs.Event_report;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.Outcome_report;
+import me.coldandtired.mobs.enums.MEvent;
+
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.Event;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -24,13 +29,8 @@ public class Outcome extends Config_element
 	private List<String> unaffected_mobs = null;
 	private List<String> affected_worlds = null;
 	private List<String> unaffected_worlds = null;
-	private Outcome_report or;
-	private List<Condition_group> conditions = new ArrayList<Condition_group>();
-	
-	public Outcome_report getOutcome_report()
-	{
-		return or;
-	}
+	private Alternatives actions;
+	private List<Conditions> conditions = new ArrayList<Conditions>();
 	
 	public Outcome(Element element, Config_element parent) throws XPathExpressionException 
 	{
@@ -43,48 +43,59 @@ public class Outcome extends Config_element
 		if (element.hasAttribute("unaffected_mobs")) unaffected_mobs = Arrays.asList(element.getAttribute("unaffected_mobs").replace(" ", "").toUpperCase().split(","));
 		if (element.hasAttribute("affected_worlds")) affected_worlds = Arrays.asList(element.getAttribute("affected_worlds").replace(" ", "").toUpperCase().split(","));
 		if (element.hasAttribute("unaffected_worlds")) unaffected_worlds = Arrays.asList(element.getAttribute("unaffected_worlds").replace(" ", "").toUpperCase().split(","));
-
 		
-		NodeList list = (NodeList)Mobs.getXPath().evaluate("condition_group", element, XPathConstants.NODESET);
+		SortedMap<Integer, Object> temp = new TreeMap<Integer, Object>();
+		int count = 0;
+		NodeList list = (NodeList)Mobs.getXPath().evaluate("actions", element, XPathConstants.NODESET);
 		for (int i = 0; i < list.getLength(); i++)
 		{
-			Element el = (Element)Mobs.getXPath().evaluate("conditions", list.item(i), XPathConstants.NODE);
-			Condition_group c = Condition_group.get(el, this);			
+			Element el = (Element)list.item(i);
+			
+			int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
+			count += ratio;
+			if (list.getLength() == 1) count = 1;			
+			Actions a = Actions.get(el, this);			
+			if (a != null) temp.put(count, a);
+		}
+		if (temp.size() > 0) actions = new Alternatives(count, temp);
+		
+		list = (NodeList)Mobs.getXPath().evaluate("conditions", element, XPathConstants.NODESET);
+		for (int i = 0; i < list.getLength(); i++)
+		{
+			Conditions c = Conditions.get((Element)list.item(i), this);			
 			if (c != null) conditions.add(c);
 		}
 		if (conditions.size() == 0) conditions = null;	
 	}
 	
-	public boolean passedConditions_check(LivingEntity le, Projectile projectile, Event orig_event, boolean override) 
+	public boolean passedConditions_check(Event_report er, LivingEntity le, Event orig_event, boolean override)
 	{
-		or = new Outcome_report();
+		Outcome_report or = new Outcome_report();
 		if (!override && (!isAffected(le) || !canTick() || !enabled)) return false;
 		if (conditions == null)
 		{
 			or.setPassed();
+			er.addOutcome_report(or);
 			return true;
 		}
 		
-		for (Condition_group c : conditions)
+		for (Conditions c : conditions)
 		{			
-			if (c.passedConditions_check(or, le, projectile, orig_event))
+			if (c.passedConditions_check(or, le, orig_event))
 			{
 				or.setPassed();
+				er.addOutcome_report(or);
 				return true;
 			}
 		}
+		er.addOutcome_report(or);
 		return false;
 	}
 	
-	public boolean performActions(LivingEntity le, Event orig_event) 
+	public boolean performActions(LivingEntity le, MEvent event, Event orig_event)
 	{
-		if (action_groups == null) return false;
-		boolean b = false;
-		for (Action_group ag : getAction_groups())
-		{
-			if (ag.performActions(or, le, orig_event)) b = true;
-		}
-		return b;
+		if (actions == null) return false;
+		return ((Actions)actions.get_alternative()).performActions(le, event, orig_event);
 	}
 	
 	private boolean canTick()
@@ -97,7 +108,6 @@ public class Outcome extends Config_element
 	
 	private boolean isAffected(LivingEntity le)
 	{ 
-		if (le == null) return true;
 		if ((unaffected_mobs != null && unaffected_mobs.contains(le.getType().toString())) || 
 				(unaffected_worlds != null && unaffected_worlds.contains(le.getWorld().getName().toUpperCase()))) return false;
 		if (affected_mobs != null && !affected_mobs.contains(le.getType().toString())) return false;
@@ -138,7 +148,7 @@ public class Outcome extends Config_element
 		return name;
 	}
 	
-	public List<Condition_group> getConditions()
+	public List<Conditions> getConditions()
 	{
 		return conditions;
 	}
@@ -146,5 +156,11 @@ public class Outcome extends Config_element
 	public int getInterval()
 	{
 		return interval;
+	}
+	
+	public List<Action> getActions()
+	{
+		if (actions == null) return null;
+		return ((Actions)actions.get_alternative()).getActions();
 	}
 }

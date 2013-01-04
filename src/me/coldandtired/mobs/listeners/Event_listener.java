@@ -8,19 +8,21 @@ import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.Data;
+import me.coldandtired.mobs.Event_report;
 import me.coldandtired.mobs.Mobs;
 import me.coldandtired.mobs.elements.Config_event;
 import me.coldandtired.mobs.elements.Outcome;
 import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.enums.MParam;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -67,7 +69,6 @@ public class Event_listener implements Listener
 	private Config_event grows_wool;
 	private Config_event heals;
 	private Config_event hit;
-	private Config_event hit_by_projectile;
 	private Config_event hour_change;
 	private Config_event in_area;
 	private Config_event joins;
@@ -87,97 +88,96 @@ public class Event_listener implements Listener
 	private Config_event teleports;
 	private boolean disabled_timer = false;	
 	
-	public Event_listener(Set<String> events_to_debug, Set<String> mobs_to_debug) throws XPathExpressionException
+	public Event_listener(Set<String> events_to_debug) throws XPathExpressionException
 	{
-		approached = Config_event.get(MEvent.APPROACHED, events_to_debug, mobs_to_debug);
-		blocks = Config_event.get(MEvent.BLOCKS, events_to_debug, mobs_to_debug);
-		burns = Config_event.get(MEvent.BURNS, events_to_debug, mobs_to_debug);
-		changes_block = Config_event.get(MEvent.CHANGES_BLOCK, events_to_debug, mobs_to_debug);
-		creates_portal = Config_event.get(MEvent.CREATES_PORTAL, events_to_debug, mobs_to_debug);
-		damaged = Config_event.get(MEvent.DAMAGED, events_to_debug, mobs_to_debug);
-		dawn = Config_event.get(MEvent.DAWN, events_to_debug, mobs_to_debug);
-		dies = Config_event.get(MEvent.DIES, events_to_debug, mobs_to_debug);
-		dusk = Config_event.get(MEvent.DUSK, events_to_debug, mobs_to_debug);
-		dyed = Config_event.get(MEvent.DYED, events_to_debug, mobs_to_debug);
-		enters_area = Config_event.get(MEvent.ENTERS_AREA, events_to_debug, mobs_to_debug);
-		evolves = Config_event.get(MEvent.EVOLVES, events_to_debug, mobs_to_debug);
-		explodes = Config_event.get(MEvent.EXPLODES, events_to_debug, mobs_to_debug);
-		grows_wool = Config_event.get(MEvent.GROWS_WOOL, events_to_debug, mobs_to_debug);
-		heals = Config_event.get(MEvent.HEALS, events_to_debug, mobs_to_debug);
-		hit = Config_event.get(MEvent.HIT, events_to_debug, mobs_to_debug);
-		hit_by_projectile = Config_event.get(MEvent.HIT_BY_PROJECTILE, events_to_debug, mobs_to_debug);
-		hour_change = Config_event.get(MEvent.HOUR_CHANGE, events_to_debug, mobs_to_debug);
-		in_area = Config_event.get(MEvent.IN_AREA, events_to_debug, mobs_to_debug);
-		joins = Config_event.get(MEvent.JOINS, events_to_debug, mobs_to_debug);
-		leaves = Config_event.get(MEvent.LEAVES, events_to_debug, mobs_to_debug);
-		leaves_area = Config_event.get(MEvent.LEAVES_AREA, events_to_debug, mobs_to_debug);
-		midday = Config_event.get(MEvent.MIDDAY, events_to_debug, mobs_to_debug);
-		midnight = Config_event.get(MEvent.MIDNIGHT, events_to_debug, mobs_to_debug);
-		near = Config_event.get(MEvent.NEAR, events_to_debug, mobs_to_debug);
-		night = Config_event.get(MEvent.NIGHT, events_to_debug, mobs_to_debug);
-		picks_up_item = Config_event.get(MEvent.PICKS_UP_ITEM, events_to_debug, mobs_to_debug);
-		repeating = Config_event.get(MEvent.REPEATING, events_to_debug, mobs_to_debug);
-		sheared = Config_event.get(MEvent.SHEARED, events_to_debug, mobs_to_debug);
-		spawns = Config_event.get(MEvent.SPAWNS, events_to_debug, mobs_to_debug);
-		splits = Config_event.get(MEvent.SPLITS, events_to_debug, mobs_to_debug);
-		tamed = Config_event.get(MEvent.TAMED, events_to_debug, mobs_to_debug);
-		targets = Config_event.get(MEvent.TARGETS, events_to_debug, mobs_to_debug);
-		teleports = Config_event.get(MEvent.TELEPORTS, events_to_debug, mobs_to_debug);
+		approached = Config_event.get(MEvent.APPROACHED, events_to_debug);
+		blocks = Config_event.get(MEvent.BLOCKS, events_to_debug);
+		burns = Config_event.get(MEvent.BURNS, events_to_debug);
+		changes_block = Config_event.get(MEvent.CHANGES_BLOCK, events_to_debug);
+		creates_portal = Config_event.get(MEvent.CREATES_PORTAL, events_to_debug);
+		damaged = Config_event.get(MEvent.DAMAGED, events_to_debug);
+		dawn = Config_event.get(MEvent.DAWN, events_to_debug);
+		dies = Config_event.get(MEvent.DIES, events_to_debug);
+		dusk = Config_event.get(MEvent.DUSK, events_to_debug);
+		dyed = Config_event.get(MEvent.DYED, events_to_debug);
+		enters_area = Config_event.get(MEvent.ENTERS_AREA, events_to_debug);
+		evolves = Config_event.get(MEvent.EVOLVES, events_to_debug);
+		explodes = Config_event.get(MEvent.EXPLODES, events_to_debug);
+		grows_wool = Config_event.get(MEvent.GROWS_WOOL, events_to_debug);
+		heals = Config_event.get(MEvent.HEALS, events_to_debug);
+		hit = Config_event.get(MEvent.HIT, events_to_debug);
+		hour_change = Config_event.get(MEvent.HOUR_CHANGE, events_to_debug);
+		in_area = Config_event.get(MEvent.IN_AREA, events_to_debug);
+		joins = Config_event.get(MEvent.JOINS, events_to_debug);
+		leaves = Config_event.get(MEvent.LEAVES, events_to_debug);
+		leaves_area = Config_event.get(MEvent.LEAVES_AREA, events_to_debug);
+		midday = Config_event.get(MEvent.MIDDAY, events_to_debug);
+		midnight = Config_event.get(MEvent.MIDNIGHT, events_to_debug);
+		near = Config_event.get(MEvent.NEAR, events_to_debug);
+		night = Config_event.get(MEvent.NIGHT, events_to_debug);
+		picks_up_item = Config_event.get(MEvent.PICKS_UP_ITEM, events_to_debug);
+		repeating = Config_event.get(MEvent.REPEATING, events_to_debug);
+		sheared = Config_event.get(MEvent.SHEARED, events_to_debug);
+		spawns = Config_event.get(MEvent.SPAWNS, events_to_debug);
+		splits = Config_event.get(MEvent.SPLITS, events_to_debug);
+		tamed = Config_event.get(MEvent.TAMED, events_to_debug);
+		targets = Config_event.get(MEvent.TARGETS, events_to_debug);
+		teleports = Config_event.get(MEvent.TELEPORTS, events_to_debug);
 	}	
 	
 	@EventHandler
-	public void approached(PlayerApproachLivingEntityEvent event) 
+	public void approached(PlayerApproachLivingEntityEvent event)
 	{
-		if (approached != null) approached.performActions(event.getEntity(), null, event);
+		if (approached != null) approached.performActions(event.getEntity(), event);
 	}
 	
 	@EventHandler
-	public void blocks(LivingEntityBlockEvent event) throws XPathExpressionException
+	public void blocks(LivingEntityBlockEvent event)
 	{
-		if (blocks != null) blocks.performActions(event.getEntity(), event.getProjectile(), event);
+		if (blocks != null) blocks.performActions(event.getEntity(), event);
 	}
 	
 	@EventHandler
-	public void burns(EntityCombustEvent event) throws XPathExpressionException
+	public void burns(EntityCombustEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (burns != null) burns.performActions(le, null, event);
+		if (burns != null) burns.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_BURN)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void changes_block(EntityChangeBlockEvent event) throws XPathExpressionException
+	public void changes_block(EntityChangeBlockEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (changes_block != null) changes_block.performActions(le, null, event);
+		if (changes_block != null) changes_block.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_MOVE_BLOCKS) || Data.hasData(le, MParam.NO_GRAZE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void mob_creates_portal(EntityCreatePortalEvent event) throws XPathExpressionException
+	public void mob_creates_portal(EntityCreatePortalEvent event)
 	{
-		if (creates_portal != null) creates_portal.performActions(event.getEntity(), null, event);
+		if (creates_portal != null) creates_portal.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_CREATE_PORTALS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void damaged(LivingEntityDamageEvent event) throws XPathExpressionException
+	public void damaged(LivingEntityDamageEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		if (event.getDamage() == 1000) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (damaged != null) damaged.performActions(le, event.getProjectile(), event);
+		if (damaged != null) damaged.performActions(le, event);
 		if (event.isCancelled())
 		{
 			event.setCancelled(true);
@@ -249,86 +249,95 @@ public class Event_listener implements Listener
 				damage = Data.adjustInt(le, MParam.VOID_DAMAGE, damage);
 				break;
 		}
-		event.setDamage(damage);	
+		event.setDamage(damage);
+		Integer i = (Integer)Data.getData(le, MParam.HP);
+		if (i != null)
+		{
+			i -= damage;
+			int max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
+			if (event.getEntity() instanceof Player) le.setHealth((int) (20.0 * (i * 1.0 / max_hp)));
+			else event.setDamage(0);
+			if (i <= 0)
+			{
+				le.setHealth(0);
+				return;
+			}
+			Data.putData(le, MParam.HP, i);
+		}		
 	}
 	
 	@EventHandler
-	public void dawn(DawnEvent event) throws XPathExpressionException
+	public void dawn(DawnEvent event)
 	{
-		if (dawn != null) dawn.performActions(null, null, event);
+		if (dawn != null) dawn.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void dies(EntityDeathEvent event) throws XPathExpressionException
+	public void dies(EntityDeathEvent event)
 	{
-		if (dies != null) dies.performActions(event.getEntity(), null, event);
+		if (dies != null) dies.performActions(event.getEntity(), event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
 	
 	@EventHandler
-	public void player_dies(PlayerDeathEvent event) throws XPathExpressionException
+	public void player_dies(PlayerDeathEvent event)
 	{
-		if (dies != null) dies.performActions(event.getEntity(), null, event);
+		if (dies != null) dies.performActions(event.getEntity(), event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
 	
 	@EventHandler
-	public void dusk(DuskEvent event) throws XPathExpressionException
+	public void dusk(DuskEvent event)
 	{
-		if (dusk != null) dusk.performActions(null, null, event);
+		if (dusk != null) dusk.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void dyed(SheepDyeWoolEvent event) throws XPathExpressionException
+	public void dyed(SheepDyeWoolEvent event)
 	{
-		if (dyed != null) dyed.performActions(event.getEntity(), null, event);
+		if (dyed != null) dyed.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_DYED)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void creeper_evolves(CreeperPowerEvent event) throws XPathExpressionException
+	public void creeper_evolves(CreeperPowerEvent event)
 	{
-		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
+		if (evolves != null) evolves.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void pig_evolves(PigZapEvent event) throws XPathExpressionException
+	public void pig_evolves(PigZapEvent event)
 	{
-		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
+		if (evolves != null) evolves.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void enters_area(PlayerEnterAreaEvent event) throws XPathExpressionException
+	public void enters_area(PlayerEnterAreaEvent event)
 	{
-		if (enters_area != null) enters_area.performActions(event.getPlayer(), null, event);		
+		if (enters_area != null) enters_area.performActions(event.getPlayer(), event);
 	}
 	
 	@EventHandler
-	public void explodes(EntityExplodeEvent event) throws XPathExpressionException
+	public void explodes(EntityExplodeEvent event)
 	{
 		Entity entity = event.getEntity();		
-		if (entity == null) return;	
-		Projectile projectile = null;
-		if (entity instanceof Projectile)
-		{
-			projectile = (Projectile)entity;
-			entity = projectile.getShooter();
-		}
+		if (entity == null) return;		
+		if (entity instanceof Fireball) entity = ((Fireball)entity).getShooter();
 		if (!(entity instanceof LivingEntity)) return;
 
 		LivingEntity le = (LivingEntity)entity;
 		
-		if (explodes != null) explodes.performActions(le, projectile, event);
+		if (explodes != null) explodes.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
@@ -354,21 +363,21 @@ public class Event_listener implements Listener
 	}
 	
 	@EventHandler
-	public void grows_wool(SheepRegrowWoolEvent event) throws XPathExpressionException
+	public void grows_wool(SheepRegrowWoolEvent event)
 	{
-		if (grows_wool != null) grows_wool.performActions(event.getEntity(), null, event);
+		if (grows_wool != null) grows_wool.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_GROW_WOOL)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void heals(EntityRegainHealthEvent event) throws XPathExpressionException
+	public void heals(EntityRegainHealthEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (heals != null) heals.performActions(le, null, event);
+		if (heals != null) heals.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_HEAL))
@@ -376,178 +385,169 @@ public class Event_listener implements Listener
 			event.setCancelled(true);
 			return;
 		}
+		
+		if (!Data.hasData(le, MParam.HP)) return;
+		
+		int hp = (Integer)Data.getData(le, MParam.HP) + event.getAmount();
+		int max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
+		if (hp > max_hp && Data.hasData(le, MParam.NO_OVERHEAL)) hp = max_hp;
+		Data.putData(le, MParam.HP, hp);
 	}	
 	
 	@EventHandler
-	public void hit(EntityDamageEvent event) throws XPathExpressionException
+	public void hit(EntityDamageEvent event)
 	{
-		Entity entity = event.getEntity();		
-		if (entity == null) return;	
-		Projectile projectile = null;
-		if (entity instanceof Projectile)
-		{
-			projectile = (Projectile)entity;
-			entity = projectile.getShooter();
-		}
-		if (!(entity instanceof LivingEntity)) return;
-
-		LivingEntity le = (LivingEntity)entity;
+		if (!(event.getEntity() instanceof LivingEntity)) return;
+		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (hit != null) hit.performActions(le, projectile, event);
+		if (hit != null) hit.performActions(le, event);
 	}
 	
 	@EventHandler
-	public void projectile_hit(LivingEntityHitByProjectileEvent event) throws XPathExpressionException
+	public void hour_change(HourChangeEvent event)
 	{
-		if (hit_by_projectile != null) hit_by_projectile.performActions(event.getEntity(), event.getProjectile(), event);
+		if (hour_change != null) hour_change.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void hour_change(HourChangeEvent event) throws XPathExpressionException
+	public void in_area(PlayerInAreaEvent event)
 	{
-		if (hour_change != null) hour_change.performActions(null, null, event);
+		if (in_area != null) in_area.performActions(event.getPlayer(), event);
 	}
 	
 	@EventHandler
-	public void in_area(PlayerInAreaEvent event) throws XPathExpressionException
-	{
-		if (in_area != null) in_area.performActions(event.getPlayer(), null, event);
-	}
-	
-	@EventHandler
-	public void joins(PlayerJoinEvent event) throws XPathExpressionException
+	public void joins(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (joins != null) joins.performActions(p, null, event);
+		if (joins != null) joins.performActions(p, event);
 	}
 	
 	@EventHandler
-	public void leaves(PlayerLeaveLivingEntityEvent event) throws XPathExpressionException
+	public void leaves(PlayerLeaveLivingEntityEvent event)
 	{
-		if (leaves != null) leaves.performActions(event.getEntity(), null, event);
+		if (leaves != null) leaves.performActions(event.getEntity(), event);
 	}
 	
 	@EventHandler
-	public void leaves_area(PlayerLeaveAreaEvent event) throws XPathExpressionException
+	public void leaves_area(PlayerLeaveAreaEvent event)
 	{
-		if (leaves_area != null) leaves_area.performActions(event.getPlayer(), null, event);
+		if (leaves_area != null) leaves_area.performActions(event.getPlayer(), event);
 	}
 	
 	@EventHandler
-	public void midday(MiddayEvent event) throws XPathExpressionException
+	public void midday(MiddayEvent event)
 	{
-		if (midday != null) midday.performActions(null, null, event);
+		if (midday != null) midday.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void midnight(MidnightEvent event) throws XPathExpressionException
+	public void midnight(MidnightEvent event)
 	{
-		if (midnight != null) midnight.performActions(null, null, event);
+		if (midnight != null) midnight.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void near(PlayerNearLivingEntityEvent event) throws XPathExpressionException
+	public void near(PlayerNearLivingEntityEvent event)
 	{
-		if (near != null) near.performActions(event.getEntity(), null, event);
+		if (near != null) near.performActions(event.getEntity(), event);
 	}
 	
 	@EventHandler
-	public void night(NightEvent event) throws XPathExpressionException
+	public void night(NightEvent event)
 	{
-		if (night != null) night.performActions(null, null, event);
+		if (night != null) night.performActions(null, event);
 	}
 	
 	@EventHandler
-	public void picks_up_item(PlayerPickupItemEvent event) throws XPathExpressionException
+	public void picks_up_item(PlayerPickupItemEvent event)
 	{
-		if (picks_up_item != null) picks_up_item.performActions(event.getPlayer(), null, event);
+		if (picks_up_item != null) picks_up_item.performActions(event.getPlayer(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getPlayer(), MParam.NO_PICK_UP_ITEMS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void mob_sheared(PlayerShearEntityEvent event) throws XPathExpressionException
+	public void mob_sheared(PlayerShearEntityEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (sheared != null) sheared.performActions(le, null, event);
+		if (sheared != null) sheared.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_SHEARED)) event.setCancelled(true);
 	}
 
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
-	public void spawns(CreatureSpawnEvent event) throws XPathExpressionException
+	public void spawns(CreatureSpawnEvent event)
 	{
-		LivingEntity le = event.getEntity();	
-		
+		LivingEntity le = event.getEntity();
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(MParam.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (spawns != null) spawns.performActions(le, null, event);
+		if (spawns != null) spawns.performActions(le, event);
 		mob_name = null;
 		spawn_reason = null;
 	}
 	
 	@EventHandler
-	public void player_respawns(PlayerRespawnEvent event) throws XPathExpressionException
+	public void player_respawns(PlayerRespawnEvent event)
 	{
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (spawns != null) spawns.performActions(p, null, event);	
+		if (spawns != null) spawns.performActions(p, event);	
 	}
 	
 	@EventHandler
-	public void mob_splits(SlimeSplitEvent event) throws XPathExpressionException
+	public void mob_splits(SlimeSplitEvent event)
 	{
-		if (splits != null) splits.performActions(event.getEntity(), null, event);
+		if (splits != null) splits.performActions(event.getEntity(), event);
 		Integer i = (Integer)Data.getData(event.getEntity(), MParam.SPLIT_INTO);
 		if (i == null) return;
 		if (i == 0) event.setCancelled(true); else event.setCount(i);
 	}
 	
 	@EventHandler
-	public void mob_tamed(EntityTameEvent event) throws XPathExpressionException
+	public void mob_tamed(EntityTameEvent event)
 	{
-		if (tamed != null) tamed.performActions(event.getEntity(), null, event);
+		if (tamed != null) tamed.performActions(event.getEntity(), event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_TAMED)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void targets(EntityTargetLivingEntityEvent event) throws XPathExpressionException
+	public void targets(EntityTargetLivingEntityEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (targets != null) targets.performActions(le, null, event);
+		if (targets != null) targets.performActions(le, event);
 		if (event.isCancelled()) return;
 		//targetd event!
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void mob_teleports(EntityTeleportEvent event) throws XPathExpressionException
+	public void mob_teleports(EntityTeleportEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (teleports != null) teleports.performActions(le, null, event);
+		if (teleports != null) teleports.performActions(le, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_TELEPORT)) event.setCancelled(true);
 	}
 	
 	@EventHandler
-	public void check_max_life(SecondTickEvent event) throws XPathExpressionException
+	public void check_max_life(SecondTickEvent event)
 	{
 		for (World w : Bukkit.getWorlds())
 		{
@@ -565,16 +565,16 @@ public class Event_listener implements Listener
 			}
 		}
 		
-		if (!disabled_timer && repeating != null) repeating.performActions(null, null, event);
+		if (!disabled_timer && repeating != null) repeating.performActions(null, event);
 	}
 	
- 	public void setMob_name(String name) throws XPathExpressionException
+ 	public void setMob_name(String name)
 	{
 		spawn_reason = "SPAWNED";
 		mob_name = name;
 	}
 
- 	public boolean adjustRepeating_outcomes(CommandSender sender, String[] args) throws XPathExpressionException
+ 	public boolean adjustRepeating_outcomes(CommandSender sender, String[] args)
  	{
  		if (args.length == 0)
 		{
@@ -637,12 +637,13 @@ public class Event_listener implements Listener
 		}
 		if (args[0].equalsIgnoreCase("activate"))
 		{
+			Event_report er = new Event_report(MEvent.REPEATING);
 			if (args.length == 1)
 			{					
 				sender.sendMessage("Activated all repeating outcomes!");
 				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.passedConditions_check(null, null, null, true)) o.performActions(null, null);
+					if (o.passedConditions_check(er, null, null, true)) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}
@@ -651,7 +652,7 @@ public class Event_listener implements Listener
 				sender.sendMessage("Activated repeating outcome " + args[1] + "!");
 				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.checkName(args[1]) && o.passedConditions_check(null, null, null, true)) o.performActions(null, null);
+					if (o.checkName(args[1]) && o.passedConditions_check(er, null, null, true)) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}
@@ -661,7 +662,7 @@ public class Event_listener implements Listener
 			if (args.length == 1)
 			{					
 				sender.sendMessage("Forced all repeating outcomes!");
-				for (Outcome o : repeating.getOutcomes()) o.performActions(null, null);
+				for (Outcome o : repeating.getOutcomes()) o.performActions(null, MEvent.REPEATING, null);
 				return true;
 			}
 			else if (args.length == 2)
@@ -669,7 +670,7 @@ public class Event_listener implements Listener
 				sender.sendMessage("Forced repeating outcome " + args[1] + "!");
 				for (Outcome o : repeating.getOutcomes())
 				{
-					if (o.checkName(args[1])) o.performActions(null, null);
+					if (o.checkName(args[1])) o.performActions(null, MEvent.REPEATING, null);
 				}
 				return true;
 			}

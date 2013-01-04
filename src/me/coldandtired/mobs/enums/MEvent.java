@@ -19,7 +19,6 @@ public enum MEvent
 	GROWS_WOOL,
 	HEALS,
 	HIT,
-	HIT_BY_PROJECTILE,
 	HOUR_CHANGE,
 	IN_AREA,
 	JOINS,
