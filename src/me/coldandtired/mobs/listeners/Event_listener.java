@@ -252,20 +252,6 @@ public class Event_listener implements Listener
 				break;
 		}
 		event.setDamage(damage);
-		Integer i = (Integer)Data.getData(le, MParam.HP);
-		if (i != null)
-		{
-			i -= damage;
-			int max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
-			if (event.getEntity() instanceof Player) le.setHealth((int) (20.0 * (i * 1.0 / max_hp)));
-			else event.setDamage(0);
-			if (i <= 0)
-			{
-				le.setHealth(0);
-				return;
-			}
-			Data.putData(le, MParam.HP, i);
-		}		
 	}
 	
 	@EventHandler
@@ -387,13 +373,6 @@ public class Event_listener implements Listener
 			event.setCancelled(true);
 			return;
 		}
-		
-		if (!Data.hasData(le, MParam.HP)) return;
-		
-		int hp = (Integer)Data.getData(le, MParam.HP) + event.getAmount();
-		int max_hp = (Integer)Data.getData(le, MParam.MAX_HP);
-		if (hp > max_hp && Data.hasData(le, MParam.NO_OVERHEAL)) hp = max_hp;
-		Data.putData(le, MParam.HP, hp);
 	}	
 	
 	@EventHandler
