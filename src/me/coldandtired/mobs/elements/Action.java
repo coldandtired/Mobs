@@ -452,7 +452,6 @@ public class Action extends Config_element
 			if (le instanceof Animals) setAnimal_property((Animals)le);
 			if (le instanceof Monster) setMonster_property((Monster)le);
 			if (le instanceof EnderDragon) setEnder_dragon_property((EnderDragon)le);
-			Mobs.log(le.toString());
 			
 			switch (getAction_type())
 			{
