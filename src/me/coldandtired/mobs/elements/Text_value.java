@@ -45,7 +45,7 @@ public class Text_value
 	public String getValue()
 	{
 		if (simple_value != null) return simple_value;
-		return (String)values.get_alternative();
+		return (String)values.getAlternative();
 	}
 	
 	public int getInt_value(int orig)

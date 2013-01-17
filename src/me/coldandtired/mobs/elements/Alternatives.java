@@ -15,7 +15,7 @@ public class Alternatives
 		this.choices = choices;
 	}
 	
-	public Object get_alternative()
+	public Object getAlternative()
 	{
 		int t = new Random().nextInt(total) + 1;
 		for (Integer i : choices.keySet()) if (i >= t) return choices.get(i);

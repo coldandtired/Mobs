@@ -98,7 +98,7 @@ public class Outcome extends Config_element
 	public boolean performActions(LivingEntity le, MEvent event, Event orig_event)
 	{
 		if (actions == null) return false;
-		return ((Actions)actions.get_alternative()).performActions(le, event, orig_event);
+		return ((Actions)actions.getAlternative()).performActions(le, event, orig_event);
 	}
 	
 	private boolean canTick()
@@ -164,6 +164,6 @@ public class Outcome extends Config_element
 	public List<Action> getActions()
 	{
 		if (actions == null) return null;
-		return ((Actions)actions.get_alternative()).getActions();
+		return ((Actions)actions.getAlternative()).getActions();
 	}
 }

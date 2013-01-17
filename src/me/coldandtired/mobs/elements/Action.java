@@ -2,79 +2,59 @@ package me.coldandtired.mobs.elements;
 
 import java.util.List;
 import java.util.Random;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.mobs.Data;
 import me.coldandtired.mobs.Mobs;
-import me.coldandtired.mobs.enums.MAction;
+import me.coldandtired.mobs.enums.MActions;
 import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.enums.MParam;
-import me.coldandtired.mobs.managers.Target_manager;
-import me.coldandtired.mobs.subelements.Item_drop;
+import me.coldandtired.mobs.events.MobsFailedActionEvent;
+import me.coldandtired.mobs.events.MobsPerformingActionEvent;
 import me.coldandtired.mobs.subelements.Target;
-import net.minecraft.server.v1_4_6.EntityWolf;
 
-import org.bukkit.Bukkit;
-import org.bukkit.DyeColor;
-import org.bukkit.Effect;
 import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.block.BlockState;
-import org.bukkit.craftbukkit.v1_4_6.entity.CraftLivingEntity;
-import org.bukkit.craftbukkit.v1_4_6.entity.CraftWolf;
 import org.bukkit.entity.Ageable;
-import org.bukkit.entity.Animals;
-import org.bukkit.entity.Creeper;
-import org.bukkit.entity.EnderDragon;
-import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Monster;
-import org.bukkit.entity.Ocelot;
-import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Sheep;
-import org.bukkit.entity.Tameable;
-import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.material.Button;
-import org.bukkit.material.Door;
-import org.bukkit.material.Gate;
-import org.bukkit.material.Lever;
-import org.bukkit.material.MaterialData;
-import org.bukkit.material.TrapDoor;
-import org.getspout.spoutapi.Spout;
-import org.getspout.spoutapi.player.EntitySkinType;
+import org.bukkit.metadata.Metadatable;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-@SuppressWarnings("deprecation")
 public class Action extends Config_element
 {
-	private MAction action_type;
-	private Alternatives items;
+	private String action_type;
+	//private Alternatives items;
 	private Text_value mob;
 	private Text_value amount;
-	private boolean locked = false;
+	//private boolean locked = false;
 	private Text_value value;
 	private Text_value message;
+	private enum MAction_verbs { BREAK, CANCEL_EVENT, CAUSE, CONTINUE, DAMAGE, GIVE, KILL, PLAY, 
+		REMOVE, SET, SPAWN, TOGGLE, WRITE };
+	private MAction_verbs action_verb;
+	//private enum MAction_subjects { CUSTOM_FLAG };
+	//private MAction_subjects action_subject;
+	private enum MAction_values { NO, RANDOM, YES };
+	private MAction_values action_value;
+	
 	
 	public Action(Element element, Config_element parent) throws XPathExpressionException 
 	{
 		super(element, parent);
-		action_type = MAction.valueOf(element.getLocalName().toUpperCase());
-		
+		action_type = element.getLocalName().toUpperCase();
+		action_verb = getAction_verb();
+		if (action_verb != null) action_type = action_type.replaceFirst(action_verb.toString() + "_", "");
+		//action_subject = getAction_subject();
+		action_value = getAction_value();
+		if (action_value != null) action_type = action_type.substring(0, action_type.lastIndexOf("_" + action_value.toString()));
+		action_type = action_type.replace("CAN_", "NO_");
 		NodeList list = (NodeList)Mobs.getXPath().evaluate("value", element, XPathConstants.NODESET);
 	
 		if (element.getChildNodes().getLength() == 1 || list.getLength() > 0)
@@ -83,7 +63,7 @@ public class Action extends Config_element
 			//return;
 		}
 		
-		if (element.hasAttribute("lock")) locked = Boolean.parseBoolean(element.getAttribute("lock"));	
+		//if (element.hasAttribute("lock")) locked = Boolean.parseBoolean(element.getAttribute("lock"));	
 		
 		Element el = (Element)Mobs.getXPath().evaluate("amount", element, XPathConstants.NODE);
 		if (el != null) amount = new Text_value(el);
@@ -94,116 +74,46 @@ public class Action extends Config_element
 		el = (Element)Mobs.getXPath().evaluate("mob", element, XPathConstants.NODE);
 		if (el != null) mob = new Text_value(el);	
 		
-		fillItems(element);
+	//	fillItems(element);
 	}
 		
 	public boolean perform(LivingEntity le, MEvent event, Event orig_event)
 	{
-		switch (getAction_type())
+		List<Target> targets = getTargets();
+		if (targets != null)
 		{
-			case SET_CUSTOM_FLAG_1_NO:
-			case SET_CUSTOM_FLAG_2_NO:
-			case SET_CUSTOM_FLAG_3_NO:
-			case SET_CUSTOM_FLAG_4_NO:
-			case SET_CUSTOM_FLAG_5_NO:
-			case SET_CUSTOM_FLAG_6_NO:
-			case SET_CUSTOM_FLAG_7_NO:
-			case SET_CUSTOM_FLAG_8_NO:
-			case SET_CUSTOM_FLAG_9_NO:
-			case SET_CUSTOM_FLAG_10_NO:
-			case SET_CUSTOM_FLAG_1_RANDOM:
-			case SET_CUSTOM_FLAG_2_RANDOM:
-			case SET_CUSTOM_FLAG_3_RANDOM:
-			case SET_CUSTOM_FLAG_4_RANDOM:
-			case SET_CUSTOM_FLAG_5_RANDOM:
-			case SET_CUSTOM_FLAG_6_RANDOM:
-			case SET_CUSTOM_FLAG_7_RANDOM:
-			case SET_CUSTOM_FLAG_8_RANDOM:
-			case SET_CUSTOM_FLAG_9_RANDOM:
-			case SET_CUSTOM_FLAG_10_RANDOM:
-			case SET_CUSTOM_FLAG_1_YES:
-			case SET_CUSTOM_FLAG_2_YES:
-			case SET_CUSTOM_FLAG_3_YES:
-			case SET_CUSTOM_FLAG_4_YES:
-			case SET_CUSTOM_FLAG_5_YES:
-			case SET_CUSTOM_FLAG_6_YES:
-			case SET_CUSTOM_FLAG_7_YES:
-			case SET_CUSTOM_FLAG_8_YES:
-			case SET_CUSTOM_FLAG_9_YES:
-			case SET_CUSTOM_FLAG_10_YES:
-				setCustom_flag(le, orig_event);
-				break;
-		
-			case SET_CUSTOM_INT_1:
-			case SET_CUSTOM_INT_2:
-			case SET_CUSTOM_INT_3:
-			case SET_CUSTOM_INT_4:
-			case SET_CUSTOM_INT_5:
-			case SET_CUSTOM_INT_6:
-			case SET_CUSTOM_INT_7:
-			case SET_CUSTOM_INT_8:
-			case SET_CUSTOM_INT_9:
-			case SET_CUSTOM_INT_10:
-			case SET_CUSTOM_STRING_1:
-			case SET_CUSTOM_STRING_2:
-			case SET_CUSTOM_STRING_3:
-			case SET_CUSTOM_STRING_4:
-			case SET_CUSTOM_STRING_5:
-			case SET_CUSTOM_STRING_6:
-			case SET_CUSTOM_STRING_7:
-			case SET_CUSTOM_STRING_8:
-			case SET_CUSTOM_STRING_9:
-			case SET_CUSTOM_STRING_10:
-				setCustom_value(le, orig_event);
-				break;
-		
-			case REMOVE_CUSTOM_FLAG_1:
-			case REMOVE_CUSTOM_FLAG_2:
-			case REMOVE_CUSTOM_FLAG_3:
-			case REMOVE_CUSTOM_FLAG_4:
-			case REMOVE_CUSTOM_FLAG_5:
-			case REMOVE_CUSTOM_FLAG_6:
-			case REMOVE_CUSTOM_FLAG_7:
-			case REMOVE_CUSTOM_FLAG_8:
-			case REMOVE_CUSTOM_FLAG_9:
-			case REMOVE_CUSTOM_FLAG_10:
-			case REMOVE_CUSTOM_INT_1:
-			case REMOVE_CUSTOM_INT_2:
-			case REMOVE_CUSTOM_INT_3:
-			case REMOVE_CUSTOM_INT_4:
-			case REMOVE_CUSTOM_INT_5:
-			case REMOVE_CUSTOM_INT_6:
-			case REMOVE_CUSTOM_INT_7:
-			case REMOVE_CUSTOM_INT_8:
-			case REMOVE_CUSTOM_INT_9:
-			case REMOVE_CUSTOM_INT_10:
-			case REMOVE_CUSTOM_STRING_1:
-			case REMOVE_CUSTOM_STRING_2:
-			case REMOVE_CUSTOM_STRING_3:
-			case REMOVE_CUSTOM_STRING_4:
-			case REMOVE_CUSTOM_STRING_5:
-			case REMOVE_CUSTOM_STRING_6:
-			case REMOVE_CUSTOM_STRING_7:
-			case REMOVE_CUSTOM_STRING_8:
-			case REMOVE_CUSTOM_STRING_9:
-			case REMOVE_CUSTOM_STRING_10:
-				removeCustom_value(le, orig_event);
-				break;
-				
-			case TOGGLE_CUSTOM_FLAG_1:
-			case TOGGLE_CUSTOM_FLAG_2:
-			case TOGGLE_CUSTOM_FLAG_3:
-			case TOGGLE_CUSTOM_FLAG_4:
-			case TOGGLE_CUSTOM_FLAG_5:
-			case TOGGLE_CUSTOM_FLAG_6:
-			case TOGGLE_CUSTOM_FLAG_7:
-			case TOGGLE_CUSTOM_FLAG_8:
-			case TOGGLE_CUSTOM_FLAG_9:
-			case TOGGLE_CUSTOM_FLAG_10:
-				toggleCustom_flag(le, orig_event);
+			boolean b = false;
+			for (Target t : targets)
+			{
+				for (Object o : t.getTargeted_objects(le, orig_event))
+				{
+					if (performAction(o, event, orig_event)) b = true;
+				}
+			}
+			return b;
+		}
+		else return performAction(le, event, orig_event);		
+	}
+	
+	private boolean performAction(Object o, MEvent event, Event orig_event)
+	{
+		switch (action_verb)
+		{
+			case CANCEL_EVENT: cancelEvent(event, orig_event);
 				break;
 				
 			case CONTINUE: return true;
+			
+			case REMOVE: clearSomething(o, event);
+				break;
+				
+			case SET: setSomething(o, event);
+				break;
+				
+			case TOGGLE: toggleSomething(o, event);
+				break;
+				
+			/*	
 			case DROP_ITEM:
 				drop_item(le, orig_event);
 				break;
@@ -311,60 +221,246 @@ public class Action extends Config_element
 				break;
 			default:		
 				setProperty(le, orig_event);
-				break;
+				break;*/
 		}
 		return false;
 	}
 	
-	private void toggleCustom_flag(LivingEntity live, Event orig_event)
-	{
-		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) Data.toggleData(le, MParam.valueOf(getAction_type().toString().substring(7)));
-	}
+/* action_verb section */
 	
-	private void removeCustom_value(LivingEntity live, Event orig_event)
+	/** Cancels the original Bukkit event */
+	private void cancelEvent(MEvent event, Event orig_event)
 	{
-		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) 
-			Data.removeData(le, MParam.valueOf(getAction_type().toString().substring(7)));
-	}
+		if (orig_event instanceof Cancellable)
+		{			
+			((Cancellable)orig_event).setCancelled(true);
+		}
+	}	
 	
-	private void setCustom_flag(LivingEntity live, Event orig_event)
+	private void clearSomething(Object o, MEvent event)
 	{
-		String s = getAction_type().toString().substring(4);
-		String temp = s.substring(s.lastIndexOf("_"));
-		s = s.substring(0, s.lastIndexOf("_"));
+		if (action_type.startsWith("CUSTOM_FLAG") || action_type.startsWith("CUSTOM_INT") || action_type.startsWith("CUSTOM_STRING"))
+		{
+			if (o instanceof LivingEntity) removeCustom_value((LivingEntity)o);
+			return;
+		}
 		
-		if (temp.endsWith("YES"))
+		if (action_type.equalsIgnoreCase("data"))
 		{
-			for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) Data.putData(le, MParam.valueOf(s));
-			return;
-		}
-		else if (temp.endsWith("NO"))
-		{
-			for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) Data.removeData(le, MParam.valueOf(s));
-			return;
-		}
-		else if (temp.endsWith("RANDOM"))
-		{
-			for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) 
-			if (new Random().nextBoolean())	Data.putData(le, MParam.valueOf(s)); else Data.removeData(le, MParam.valueOf(s));
-			return;
+			if (o instanceof LivingEntity) clearData((LivingEntity)o);
 		}
 	}
 	
-	private void setCustom_value(LivingEntity live, Event orig_event)
+	private void setSomething(Object o, MEvent event)
 	{
-		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) 
-			Data.putData(le, MParam.valueOf(getAction_type().toString().substring(4)), getValue());
-	}
-	
-	private void clearData(LivingEntity live, Event orig_event)
-	{
-		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event)) 
+		if (action_type.startsWith("CUSTOM_FLAG"))
 		{
-			Data.clearData(le);
+			setProperty(o, event);
+			return;
+		}
+		
+		if (action_type.startsWith("CUSTOM_INT") || action_type.startsWith("CUSTOM_STRING"))
+		{
+			setCustom_value(o, event);
+			return;
+		}
+		
+		MActions a = MActions.valueOf(action_type);
+		switch (a)
+		{
+			case ADULT: setAdult(o, event);
+				break;
+			case ANGRY: setAngry(o, event);
+				break;
+									
+			case NO_BURN:	
+			case NO_CREATE_PORTALS:
+			case NO_DESTROY_BLOCKS:
+			case NO_DYED:
+			case NO_EVOLVE:		
+			case NO_FIERY_EXPLOSION:	
+			case NO_GRAZE:
+			case NO_GROW_WOOL:
+			case NO_HEAL:
+			case NO_MOVE_BLOCKS:
+			case NO_PICK_UP_ITEMS:
+			case NO_SADDLED:
+			case NO_SHEARING:
+			case NO_TAMING:
+			case NO_TELEPORT:
+			case FRIENDLY: setProperty(o, event);
+				break;
 		}
 	}
 	
+	private void toggleSomething(Object o, MEvent event)
+	{
+		if (action_type.startsWith("CUSTOM_FLAG"))
+		{
+			if (o instanceof LivingEntity) toggleCustom_flag((LivingEntity)o);
+			return;
+		}		
+	}
+	
+/* end verbs */
+	
+/* clear */
+	
+	private void clearData(LivingEntity le)
+	{
+		Data.clearData(le);
+	}
+	
+	private void removeCustom_value(LivingEntity le)
+	{
+		Data.removeData(le, MParam.valueOf(action_type));
+	}
+	
+/* set */
+		
+	private void setCustom_value(Object o, MEvent event)
+	{
+		if (o instanceof Metadatable)
+		{
+			Data.putData((Metadatable)o, MParam.valueOf(action_type), getValue());
+		}
+	}
+	
+	/** Controls whether the animal should be a baby or adult */
+	private void setAdult(Object o, MEvent event)
+	{
+		if (o instanceof Ageable)
+		{
+			if (callPerformingEvent(event, o, null).isCancelled()) return;
+			
+			Ageable a = (Ageable)o;
+			boolean b = getAction_bool();
+			if (b) a.setAdult(); else a.setBaby();
+		}
+		else callFailedEvent(event, o, null);
+	}
+	
+	/** Controls whether the animal should be angry */
+	private void setAngry(Object o, MEvent event)
+	{
+		if (o instanceof Wolf || o instanceof PigZombie)
+		{
+			if (callPerformingEvent(event, o, null).isCancelled()) return;
+			
+			boolean b = getAction_bool();
+			if (o instanceof Wolf)
+			{
+				Wolf wolf = (Wolf)o;
+				if (b)
+				{
+					for (Entity e : wolf.getNearbyEntities(50, 50, 50))
+					if (e instanceof Player)
+					{
+						wolf.damage(0, e);
+					}
+				}
+				else wolf.setAngry(false);
+			}
+			else
+			{
+				PigZombie pz = (PigZombie)o;
+				pz.setAngry(b);
+				if (!b) pz.setTarget(null);
+			}
+			
+		}
+		else callFailedEvent(event, o, null);
+	}
+	
+	/** Sets boolean metadata on a mob */
+	private void setProperty(Object o, MEvent event)
+	{
+		if (o instanceof Metadatable)
+		{
+			boolean b = getAction_bool();
+			if (b)
+			{
+				if (!callPerformingEvent(event, o, null).isCancelled()) Data.putData((Metadatable)o, MParam.valueOf(action_type));
+			}
+			else Data.removeData((Metadatable)o, MParam.valueOf(action_type));
+		}
+		else callFailedEvent(event, o, null);
+	}
+	
+/* toggle */
+	
+	private void toggleCustom_flag(LivingEntity le)
+	{
+		Data.toggleData(le, MParam.valueOf(action_type));
+	}
+	
+/* utils */
+	
+	private MobsPerformingActionEvent callPerformingEvent(MEvent event, Object mob, Location loc)
+	{
+		LivingEntity le = null;
+		String mob_type = null;
+		if (mob != null && mob instanceof LivingEntity)
+		{
+			le = (LivingEntity)mob;
+			if (loc == null) loc = le.getLocation();
+			mob_type = le.getType().toString();
+		}
+		String l = null;
+		if (loc != null) l = loc.getWorld().getName() + ", " + loc.getBlockX() + "-" + loc.getBlockY() + "-" + loc.getBlockZ();
+		MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(event.toString(), mob_type, l, action_verb.toString(), action_type, action_value.toString());
+		Mobs.getInstance().getServer().getPluginManager().callEvent(mpae);
+		return mpae;
+	}
+	
+	private MobsFailedActionEvent callFailedEvent(MEvent event, Object mob, Location loc)
+	{
+		LivingEntity le = null;
+		String mob_type = null;
+		if (mob != null && mob instanceof LivingEntity)
+		{
+			le = (LivingEntity)mob;
+			if (loc == null) loc = le.getLocation();
+			mob_type = le.getType().toString();
+		}
+		String l = null;
+		if (loc != null) l = loc.getWorld().getName() + ", " + loc.getBlockX() + "-" + loc.getBlockY() + "-" + loc.getBlockZ();
+		MobsFailedActionEvent mfae = new MobsFailedActionEvent(event.toString(), mob_type, l, action_verb.toString(), action_type, action_value.toString());
+		Mobs.getInstance().getServer().getPluginManager().callEvent(mfae);
+		return mfae;
+	}
+	
+	private MAction_verbs getAction_verb()
+	{
+		if (action_type.startsWith("CANCEL_EVENT")) return MAction_verbs.CANCEL_EVENT;
+		if (action_type.startsWith("CONTINUE")) return MAction_verbs.CONTINUE;
+		if (action_type.startsWith("REMOVE_")) return MAction_verbs.REMOVE;
+		if (action_type.startsWith("SET_")) return MAction_verbs.SET;
+		if (action_type.startsWith("TOGGLE_")) return MAction_verbs.TOGGLE;
+		return null;
+	}
+	
+	private MAction_values getAction_value()
+	{
+		if (action_type.toString().endsWith("_NO")) return MAction_values.NO;
+		else if (action_type.toString().endsWith("_RANDOM")) return MAction_values.RANDOM;
+		else if (action_type.toString().endsWith("_YES")) return MAction_values.YES;
+		else return null;
+	}
+	
+	private boolean getAction_bool()
+	{
+		switch (action_value)
+		{
+			case NO: return false;
+			case RANDOM: return new Random().nextBoolean();
+			case YES: return true;
+		}
+		return false;
+	}
+	
+	
+	/*
 	private void setMoney(LivingEntity le, Event orig_event)
 	{
 		if (Mobs.economy == null)
@@ -1569,7 +1665,7 @@ public class Action extends Config_element
 		if (name.equalsIgnoreCase("gc_display_name")) replacement = me.getDisplayName();
 		if (name.equalsIgnoreCase("gc_list_name")) replacement = me.getPlayerListName();*/
 		
-		s = s.replace(sub, replacement);
+		/*s = s.replace(sub, replacement);
 		s = s.trim();
 		s = s.replaceAll("  ", " ");
 		return s;
@@ -1594,32 +1690,6 @@ public class Action extends Config_element
 		}
 	}
 	
-	/*private void fillMisc(Param p, Element element)
-	{
-		NodeList list;
-		Map<Integer, Object> temp;
-		int count;
-		try
-		{			
-			list = (NodeList)Mobs.getXPath().evaluate("power | duration | time", element, XPathConstants.NODESET);		
-			if (list.getLength() > 0)
-			{
-				temp = new HashMap<Integer, Object>();
-				count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element el = (Element)list.item(i);
-					int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1;
-					count += ratio;
-					if (list.getLength() == 1) count = 1;						
-					temp.put(count, el.getTextContent());	
-				}
-				p.addParam(MParam.NUMBER, new Alternatives(count, temp));
-			}
-		}
-		catch (Exception e) {e.printStackTrace();}
-	}*/
-	
 	public MAction getAction_type() 
 	{
 		return action_type;
@@ -1629,7 +1699,7 @@ public class Action extends Config_element
 	{
 		if (items == null) return null;
 		return (Item_drop)items.get_alternative();
-	}
+	}*/
 	
 	public String[] getMob()
 	{
@@ -1662,10 +1732,10 @@ public class Action extends Config_element
 		return tv.getInt_value(orig);
 	}	
 	
-	public boolean isLocked()
-	{
-		return locked;
-	}
+	//public boolean isLocked()
+	//{
+	//	return locked;
+	//}
 	
 	public String getMessage()
 	{
