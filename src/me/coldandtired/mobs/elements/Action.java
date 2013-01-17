@@ -16,16 +16,12 @@ import me.coldandtired.mobs.enums.MParam;
 import me.coldandtired.mobs.managers.Target_manager;
 import me.coldandtired.mobs.subelements.Item_drop;
 import me.coldandtired.mobs.subelements.Target;
-import net.minecraft.server.v1_4_6.EntityWolf;
-
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
-import org.bukkit.craftbukkit.v1_4_6.entity.CraftLivingEntity;
-import org.bukkit.craftbukkit.v1_4_6.entity.CraftWolf;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Creeper;
@@ -456,6 +452,7 @@ public class Action extends Config_element
 			if (le instanceof Animals) setAnimal_property((Animals)le);
 			if (le instanceof Monster) setMonster_property((Monster)le);
 			if (le instanceof EnderDragon) setEnder_dragon_property((EnderDragon)le);
+			Mobs.log(le.toString());
 			
 			switch (getAction_type())
 			{
@@ -833,11 +830,10 @@ public class Action extends Config_element
 	
 	private void setAngry(Wolf wolf)
 	{
-		for (Entity e : wolf.getNearbyEntities(50, 50, 50)) if (e instanceof Player)
+		for (Entity e : wolf.getNearbyEntities(50, 50, 50))
+		if (e instanceof Player)
 		{
-			EntityWolf cw = ((CraftWolf)wolf).getHandle();
-			cw.b(((CraftLivingEntity)e).getHandle());
-			return;
+			wolf.damage(0, e);
 		}
 	}
 	
