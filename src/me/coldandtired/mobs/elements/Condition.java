@@ -62,6 +62,44 @@ public class Condition extends Config_element
 	{
 		cr.setName(condition_type.toString());
 		boolean b;
+		
+		if (live == null)
+		{
+			switch (condition_type)
+			{
+				case LUNAR_PHASE: 
+					World w = getWorld(live);
+					long days = w.getFullTime()/24000;
+					long phase= days % 8;
+					return matches((int)phase);
+				case RAINING:
+					w = getWorld(live);
+					return w.hasStorm();
+				case THUNDERING: 
+					w = getWorld(live);
+					return w.isThundering();
+				case WORLD_MOB_COUNT:
+					int i = Target_manager.get().filter(getWorld(null).getEntities(), getMob()).size();
+					return matches(i);
+				case WORLD_NAME:
+					w = getWorld(live);
+					return matches(cr, w.getName());
+				case WORLD_TIME: 
+					w = getWorld(live);
+					return matches((int)w.getTime());
+				case NOT_RAINING: 
+					w = getWorld(live);
+					return !w.hasStorm();
+				case NOT_THUNDERING: 
+					w = getWorld(live);
+					return !w.isThundering();
+				case NOT_WORLD_NAME:
+					w = getWorld(live);
+					return !matches(cr, w.getName());
+				
+			}
+		}
+		else
 		for (LivingEntity le : Target_manager.get().getTargets(getTarget(), live, orig_event))
 		switch (condition_type)
 		{
