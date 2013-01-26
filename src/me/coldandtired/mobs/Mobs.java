@@ -18,11 +18,9 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import me.coldandtired.extra_events.Extra_events;
-import me.coldandtired.mobs.enums.MEvent;
+import me.coldandtired.mobs.Event_listener.MEvents;
 import me.coldandtired.mobs.enums.MParam;
-import me.coldandtired.mobs.listeners.*;
 import net.milkbowl.vault.economy.Economy;
-
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -32,7 +30,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
-import org.fusesource.jansi.Ansi.Color;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -50,9 +47,6 @@ public class Mobs extends JavaPlugin
 	public static Extra_events extra_events;
 	private Event_listener event_listener;
 	private static XPath xpath;
-	private static boolean show_warnings;
-	private boolean debug_mode;
-	private boolean include_failed;
 	
 	@Override
 	public void onEnable()
@@ -101,7 +95,7 @@ public class Mobs extends JavaPlugin
 		
 		if (config.getBoolean("generate_templates"))
 		{
-			for (MEvent event : MEvent.values())
+			for (MEvents event : MEvents.values())
 			{
 				InputStream inputstream = null;
 				OutputStream out = null;
@@ -131,10 +125,6 @@ public class Mobs extends JavaPlugin
 			}
 		}
 		
-		show_warnings = config.getBoolean("show_warnings");
-		debug_mode = config.getBoolean("debug.enabled");
-		include_failed = config.getBoolean("debug.include_failed");
-		
 		Set<String> temp = new HashSet<String>((Collection<? extends String>)config.getList("worlds_to_ignore"));
 		for (World w : Bukkit.getWorlds())
 		{
@@ -162,7 +152,7 @@ public class Mobs extends JavaPlugin
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
 		
-		event_listener = new Event_listener(new HashSet<String>((Collection<? extends String>)config.getList("debug.events_to_debug")));
+		event_listener = new Event_listener(config.getBoolean("allow_debug", false), config.getList("worlds_to_ignore"));
 		getServer().getPluginManager().registerEvents(event_listener, this);		
 		return true;
 	}
@@ -216,58 +206,6 @@ public class Mobs extends JavaPlugin
 		return Bukkit.getServer().getPluginManager().isPluginEnabled("Spout");
 	}
 
-	public void debug(Event_report report)
-	{
-		if (!debug_mode) return;
-		
-		logger.info("");
-		debug(report.getName() + " - " + report.getOutcomes().size() + " outcome(s)");
-		debug("-------------");
-		int i = 1;
-		for (Outcome_report or : report.getOutcomes())
-		{
-			String s = or.getPassed_conds().size() + or.getFailed_conds().size() == 0 ? " - no conditions" : "";
-			debug("Outcome " + i + s);
-			if (s.equalsIgnoreCase(""))
-			{			
-				debug("-------------");
-				if (include_failed && or.getFailed_conds().size() > 0)
-				{
-					debug("Failed conditions", Ansi.Color.MAGENTA);
-					for (Condition_report cr : or.getFailed_conds())
-					{
-						debug(cr.getName());
-						debug(cr.getCheck_value());
-						debug(cr.getActual_value());
-					}
-				}
-				if (or.getPassed() && or.getPassed_conds().size() > 0)
-				{
-					debug("Passed conditions", Ansi.Color.CYAN);
-					for (Condition_report cr : or.getPassed_conds())
-					{
-						debug(cr.getName());
-						debug(cr.getCheck_value());
-						debug(cr.getActual_value());
-					}
-				}	
-			}
-			debug("-------------");
-		}
-	}
-	
-	/** debug info */
-	private void debug(Object message)
-	{
-		logger.info(Ansi.ansi().fg(Ansi.Color.YELLOW).toString() + message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
-	}
-	
-	/** debug info */
-	private void debug(Object message, Color colour)
-	{
-		logger.info(Ansi.ansi().fg(colour).toString() + message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
-	}
-	
 	public static void log(Object message)
 	{
 		logger.info(Ansi.ansi().fg(Ansi.Color.GREEN).toString() + "[Mobs] "
@@ -277,15 +215,6 @@ public class Mobs extends JavaPlugin
 	/** log error */
 	public static void error(Object message)
 	{
-		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
-	}
-	
-	/** log warning */
-	public static void warn(Object message)
-	{
-		if (!show_warnings) return;
-		
 		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
 				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
 	}

@@ -1,18 +1,12 @@
-package me.coldandtired.mobs.listeners;
+package me.coldandtired.mobs;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.extra_events.*;
-import me.coldandtired.mobs.Data;
-import me.coldandtired.mobs.Event_report;
-import me.coldandtired.mobs.Mobs;
-import me.coldandtired.mobs.elements.Config_event;
-import me.coldandtired.mobs.elements.Outcome;
-import me.coldandtired.mobs.enums.MEvent;
 import me.coldandtired.mobs.enums.MParam;
 
 import org.bukkit.Bukkit;
@@ -20,6 +14,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -51,101 +46,103 @@ import org.bukkit.metadata.FixedMetadataValue;
 
 public class Event_listener implements Listener
 {
+	public enum MEvents
+	{//ATTACKED,
+		APPROACHED,
+		BLOCKS,
+		BURNS,
+		CHANGES_BLOCK,
+		CREATES_PORTAL,
+		DAMAGED,
+		DAWN,
+		DIES,
+		DUSK,
+		DYED,
+		ENTERS_AREA,
+		EVOLVES,
+		EXPLODES,
+		GROWS_WOOL,
+		HEALS,
+		HIT,
+		HIT_BY_PROJECTILE,
+		HOUR_CHANGE,
+		IN_AREA,
+		LEAVES,
+		LEAVES_AREA,
+		MIDDAY,
+		MIDNIGHT,
+		NEAR,
+		NIGHT,
+		PICKS_UP_ITEM,
+		PLAYER_DIES,
+		PLAYER_JOINS,
+		PLAYER_SPAWNS,
+		REPEATING,
+		SHEARED,
+		SPAWNS,
+		SPLITS,
+		TAMED,
+		TARGETS,
+		TELEPORTS
+	}
+		
 	private String mob_name = null;
 	private String spawn_reason = null;
-	private Config_event approached;
-	private Config_event blocks;
-	private Config_event burns;
-	private Config_event changes_block;
-	private Config_event creates_portal;
-	private Config_event damaged;
-	private Config_event dawn;
-	private Config_event dies;
-	private Config_event dusk;
-	private Config_event dyed;
-	private Config_event enters_area;
-	private Config_event evolves;
-	private Config_event explodes;
-	private Config_event grows_wool;
-	private Config_event heals;
-	private Config_event hit;
-	private Config_event hit_by_projectile;
-	private Config_event hour_change;
-	private Config_event in_area;
-	private Config_event joins;
-	private Config_event leaves;
-	private Config_event leaves_area;
-	private Config_event midday;
-	private Config_event midnight;
-	private Config_event near;
-	private Config_event night;
-	private Config_event picks_up_item;
-	private Config_event repeating;
-	private Config_event sheared;
-	private Config_event spawns;
-	private Config_event splits;
-	private Config_event tamed;
-	private Config_event targets;
-	private Config_event teleports;
+	private Map<MEvents, Mobs_event> events = new HashMap<MEvents, Mobs_event>();
 	private boolean disabled_timer = false;	
+	private List<String> ignored_worlds;
 	
-	public Event_listener(Set<String> events_to_debug) throws XPathExpressionException
+	
+	public Event_listener(boolean allow_debug, List<?> worlds_to_ignore) throws XPathExpressionException
 	{
-		approached = Config_event.get(MEvent.APPROACHED, events_to_debug);
-		blocks = Config_event.get(MEvent.BLOCKS, events_to_debug);
-		burns = Config_event.get(MEvent.BURNS, events_to_debug);
-		changes_block = Config_event.get(MEvent.CHANGES_BLOCK, events_to_debug);
-		creates_portal = Config_event.get(MEvent.CREATES_PORTAL, events_to_debug);
-		damaged = Config_event.get(MEvent.DAMAGED, events_to_debug);
-		dawn = Config_event.get(MEvent.DAWN, events_to_debug);
-		dies = Config_event.get(MEvent.DIES, events_to_debug);
-		dusk = Config_event.get(MEvent.DUSK, events_to_debug);
-		dyed = Config_event.get(MEvent.DYED, events_to_debug);
-		enters_area = Config_event.get(MEvent.ENTERS_AREA, events_to_debug);
-		evolves = Config_event.get(MEvent.EVOLVES, events_to_debug);
-		explodes = Config_event.get(MEvent.EXPLODES, events_to_debug);
-		grows_wool = Config_event.get(MEvent.GROWS_WOOL, events_to_debug);
-		heals = Config_event.get(MEvent.HEALS, events_to_debug);
-		hit = Config_event.get(MEvent.HIT, events_to_debug);
-		hit_by_projectile = Config_event.get(MEvent.HIT_BY_PROJECTILE, events_to_debug);
-		hour_change = Config_event.get(MEvent.HOUR_CHANGE, events_to_debug);
-		in_area = Config_event.get(MEvent.IN_AREA, events_to_debug);
-		joins = Config_event.get(MEvent.JOINS, events_to_debug);
-		leaves = Config_event.get(MEvent.LEAVES, events_to_debug);
-		leaves_area = Config_event.get(MEvent.LEAVES_AREA, events_to_debug);
-		midday = Config_event.get(MEvent.MIDDAY, events_to_debug);
-		midnight = Config_event.get(MEvent.MIDNIGHT, events_to_debug);
-		near = Config_event.get(MEvent.NEAR, events_to_debug);
-		night = Config_event.get(MEvent.NIGHT, events_to_debug);
-		picks_up_item = Config_event.get(MEvent.PICKS_UP_ITEM, events_to_debug);
-		repeating = Config_event.get(MEvent.REPEATING, events_to_debug);
-		sheared = Config_event.get(MEvent.SHEARED, events_to_debug);
-		spawns = Config_event.get(MEvent.SPAWNS, events_to_debug);
-		splits = Config_event.get(MEvent.SPLITS, events_to_debug);
-		tamed = Config_event.get(MEvent.TAMED, events_to_debug);
-		targets = Config_event.get(MEvent.TARGETS, events_to_debug);
-		teleports = Config_event.get(MEvent.TELEPORTS, events_to_debug);
+		if (worlds_to_ignore != null)
+		{
+			ignored_worlds = new ArrayList<String>();
+			for (Object o : worlds_to_ignore)
+			{
+				ignored_worlds.add(((String)o).toUpperCase());
+			}
+		}
+		
+		for (MEvents e : MEvents.values())
+		{
+			Mobs_event me = Mobs_event.fill(e, allow_debug);
+			if (me != null) events.put(e, me);
+		}		
 	}	
+	
+	private boolean ignore_world(World world)
+	{
+		if (ignored_worlds == null) return false;
+		
+		return ignored_worlds.contains(world.getName().toUpperCase());
+	}
 	
 	@EventHandler
 	public void approached(PlayerApproachLivingEntityEvent event)
 	{
-		if (approached != null) approached.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
+		if (events.containsKey(MEvents.APPROACHED)) events.get(MEvents.APPROACHED).performActions(event.getEntity(), null, event);
 	}
-	
+		
 	@EventHandler
 	public void blocks(LivingEntityBlockEvent event)
 	{
-		if (blocks != null) blocks.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.BLOCKS)) events.get(MEvents.BLOCKS).performActions(event.getEntity(), null, event);
 	}
 	
 	@EventHandler
 	public void burns(EntityCombustEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (burns != null) burns.performActions(le, null, event);
+		if (events.containsKey(MEvents.BURNS)) events.get(MEvents.BURNS).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_BURN)) event.setCancelled(true);
@@ -154,10 +151,12 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void changes_block(EntityChangeBlockEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (changes_block != null) changes_block.performActions(le, null, event);
+		if (events.containsKey(MEvents.CHANGES_BLOCK)) events.get(MEvents.CHANGES_BLOCK).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_MOVE_BLOCKS) || Data.hasData(le, MParam.NO_GRAZE)) event.setCancelled(true);
@@ -166,7 +165,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_creates_portal(EntityCreatePortalEvent event)
 	{
-		if (creates_portal != null) creates_portal.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.CREATES_PORTAL)) events.get(MEvents.CREATES_PORTAL).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_CREATE_PORTALS)) event.setCancelled(true);
@@ -175,11 +176,13 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void damaged(LivingEntityDamageEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		if (event.getDamage() == 1000) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (damaged != null) damaged.performActions(le, null, event);
+		if (events.containsKey(MEvents.DAMAGED)) events.get(MEvents.DAMAGED).performActions(le, null, event);
 		if (event.isCancelled())
 		{
 			event.setCancelled(true);
@@ -257,13 +260,15 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dawn(DawnEvent event)
 	{
-		if (dawn != null) dawn.performActions(null, null, event);
+		if (events.containsKey(MEvents.DAWN)) events.get(MEvents.DAWN).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void dies(EntityDeathEvent event)
 	{
-		if (dies != null) dies.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.DIES)) events.get(MEvents.DIES).performActions(event.getEntity(), null, event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
@@ -271,7 +276,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void player_dies(PlayerDeathEvent event)
 	{
-		if (dies != null) dies.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.PLAYER_DIES)) events.get(MEvents.PLAYER_DIES).performActions(event.getEntity(), null, event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
@@ -279,13 +286,15 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dusk(DuskEvent event)
 	{
-		if (dusk != null) dusk.performActions(null, null, event);
+		if (events.containsKey(MEvents.DUSK)) events.get(MEvents.DUSK).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void dyed(SheepDyeWoolEvent event)
 	{
-		if (dyed != null) dyed.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.DYED)) events.get(MEvents.DYED).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_DYED)) event.setCancelled(true);
@@ -294,7 +303,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void creeper_evolves(CreeperPowerEvent event)
 	{
-		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
@@ -303,7 +314,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void pig_evolves(PigZapEvent event)
 	{
-		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
@@ -312,12 +325,16 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void enters_area(PlayerEnterAreaEvent event)
 	{
-		if (enters_area != null) enters_area.performActions(event.getPlayer(), null, event);
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
+		if (events.containsKey(MEvents.ENTERS_AREA)) events.get(MEvents.ENTERS_AREA).performActions(event.getPlayer(), null, event);
 	}
 	
 	@EventHandler
 	public void explodes(EntityExplodeEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		Entity entity = event.getEntity();		
 		if (entity == null) return;		
 		if (entity instanceof Fireball) entity = ((Fireball)entity).getShooter();
@@ -325,7 +342,7 @@ public class Event_listener implements Listener
 
 		LivingEntity le = (LivingEntity)entity;
 		
-		if (explodes != null) explodes.performActions(le, null, event);
+		if (events.containsKey(MEvents.EXPLODES)) events.get(MEvents.EXPLODES).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
@@ -353,7 +370,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void grows_wool(SheepRegrowWoolEvent event)
 	{
-		if (grows_wool != null) grows_wool.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.GROWS_WOOL)) events.get(MEvents.GROWS_WOOL).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_GROW_WOOL)) event.setCancelled(true);
@@ -362,10 +381,12 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void heals(EntityRegainHealthEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (heals != null) heals.performActions(le, null, event);
+		if (events.containsKey(MEvents.HEALS)) events.get(MEvents.HEALS).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_HEAL))
@@ -378,79 +399,95 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void hit(EntityDamageEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (hit != null) hit.performActions(le, null, event);
+		if (events.containsKey(MEvents.HIT)) events.get(MEvents.HIT).performActions(le, null, event);
 	}
 	
 	@EventHandler
 	public void projectile_hit(LivingEntityHitByProjectileEvent event) throws XPathExpressionException
 	{
-		if (hit_by_projectile != null) hit_by_projectile.performActions(event.getEntity(), event.getProjectile(), event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.HIT_BY_PROJECTILE)) events.get(MEvents.HIT_BY_PROJECTILE).performActions(event.getEntity(), event.getProjectile(), event);
 	}
 	
 	@EventHandler
 	public void hour_change(HourChangeEvent event)
 	{
-		if (hour_change != null) hour_change.performActions(null, null, event);
+		if (events.containsKey(MEvents.HOUR_CHANGE)) events.get(MEvents.HOUR_CHANGE).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void in_area(PlayerInAreaEvent event)
 	{
-		if (in_area != null) in_area.performActions(event.getPlayer(), null, event);
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
+		if (events.containsKey(MEvents.IN_AREA)) events.get(MEvents.IN_AREA).performActions(event.getPlayer(), null, event);
 	}
 	
 	@EventHandler
-	public void joins(PlayerJoinEvent event)
+	public void player_joins(PlayerJoinEvent event)
 	{
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (joins != null) joins.performActions(p, null, event);
+		if (events.containsKey(MEvents.PLAYER_JOINS)) events.get(MEvents.PLAYER_JOINS).performActions(p, null, event);
 	}
 	
 	@EventHandler
 	public void leaves(PlayerLeaveLivingEntityEvent event)
 	{
-		if (leaves != null) leaves.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.LEAVES)) events.get(MEvents.LEAVES).performActions(event.getEntity(), null, event);
 	}
 	
 	@EventHandler
 	public void leaves_area(PlayerLeaveAreaEvent event)
 	{
-		if (leaves_area != null) leaves_area.performActions(event.getPlayer(), null, event);
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
+		if (events.containsKey(MEvents.LEAVES_AREA)) events.get(MEvents.LEAVES_AREA).performActions(event.getPlayer(), null, event);
 	}
 	
 	@EventHandler
 	public void midday(MiddayEvent event)
 	{
-		if (midday != null) midday.performActions(null, null, event);
+		if (events.containsKey(MEvents.MIDDAY)) events.get(MEvents.MIDDAY).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void midnight(MidnightEvent event)
 	{
-		if (midnight != null) midnight.performActions(null, null, event);
+		if (events.containsKey(MEvents.MIDNIGHT)) events.get(MEvents.MIDNIGHT).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void near(PlayerNearLivingEntityEvent event)
 	{
-		if (near != null) near.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.NEAR)) events.get(MEvents.NEAR).performActions(event.getEntity(), null, event);
 	}
 	
 	@EventHandler
 	public void night(NightEvent event)
 	{
-		if (night != null) night.performActions(null, null, event);
+		if (events.containsKey(MEvents.NIGHT)) events.get(MEvents.NIGHT).performActions(null, null, event);
 	}
 	
 	@EventHandler
 	public void picks_up_item(PlayerPickupItemEvent event)
 	{
-		if (picks_up_item != null) picks_up_item.performActions(event.getPlayer(), null, event);
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
+		if (events.containsKey(MEvents.PICKS_UP_ITEM)) events.get(MEvents.PICKS_UP_ITEM).performActions(event.getPlayer(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getPlayer(), MParam.NO_PICK_UP_ITEMS)) event.setCancelled(true);
@@ -459,10 +496,12 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_sheared(PlayerShearEntityEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (sheared != null) sheared.performActions(le, null, event);
+		if (events.containsKey(MEvents.SHEARED)) events.get(MEvents.SHEARED).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_SHEARED)) event.setCancelled(true);
@@ -471,13 +510,16 @@ public class Event_listener implements Listener
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void spawns(CreatureSpawnEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		LivingEntity le = event.getEntity();
+		if (!le.getType().equals(EntityType.PIG)) return;
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(MParam.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (spawns != null) spawns.performActions(le, null, event);
+		if (events.containsKey(MEvents.SPAWNS)) events.get(MEvents.SPAWNS).performActions(le, null, event);
 		mob_name = null;
 		spawn_reason = null;
 	}
@@ -485,16 +527,20 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void player_respawns(PlayerRespawnEvent event)
 	{
+		if (ignore_world(event.getPlayer().getWorld())) return;
+		
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (spawns != null) spawns.performActions(p, null, event);	
+		if (events.containsKey(MEvents.PLAYER_SPAWNS)) events.get(MEvents.PLAYER_SPAWNS).performActions(p, null, event);	
 	}
 	
 	@EventHandler
 	public void mob_splits(SlimeSplitEvent event)
 	{
-		if (splits != null) splits.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.SPLITS)) events.get(MEvents.SPLITS).performActions(event.getEntity(), null, event);
 		Integer i = (Integer)Data.getData(event.getEntity(), MParam.SPLIT_INTO);
 		if (i == null) return;
 		if (i == 0) event.setCancelled(true); else event.setCount(i);
@@ -503,7 +549,9 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_tamed(EntityTameEvent event)
 	{
-		if (tamed != null) tamed.performActions(event.getEntity(), null, event);
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
+		if (events.containsKey(MEvents.TAMED)) events.get(MEvents.TAMED).performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_TAMED)) event.setCancelled(true);
@@ -512,10 +560,12 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void targets(EntityTargetLivingEntityEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (targets != null) targets.performActions(le, null, event);
+		if (events.containsKey(MEvents.TARGETS)) events.get(MEvents.TARGETS).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		//targetd event!
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
@@ -524,10 +574,12 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_teleports(EntityTeleportEvent event)
 	{
+		if (ignore_world(event.getEntity().getWorld())) return;
+		
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (teleports != null) teleports.performActions(le, null, event);
+		if (events.containsKey(MEvents.TELEPORTS)) events.get(MEvents.TELEPORTS).performActions(le, null, event);
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_TELEPORT)) event.setCancelled(true);
@@ -552,7 +604,7 @@ public class Event_listener implements Listener
 			}
 		}
 		
-		if (!disabled_timer && repeating != null) repeating.performActions(null, null, event);
+		if (!disabled_timer && events.containsKey(MEvents.REPEATING)) events.get(MEvents.REPEATING).performActions(null, null, event);
 	}
 	
  	public void setMob_name(String name)
@@ -563,12 +615,12 @@ public class Event_listener implements Listener
 
  	public boolean adjustRepeating_outcomes(CommandSender sender, String[] args)
  	{
- 		if (args.length == 0)
+ 		/*if (args.length == 0)
 		{
 			sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
 			return true;
 		}
-		if (repeating == null)
+		if (!events.containsKey(MEvents.REPEATING))
 		{
 			sender.sendMessage("There are no repeating outcomes!");
 			sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
@@ -578,7 +630,7 @@ public class Event_listener implements Listener
 		{
 			if (args.length == 1)
 			{
-				for (Outcome o : repeating.getOutcomes())
+				for (Outcome o : events.get(MEvents.REPEATING).getOutcomes())
 				{
 					o.setEnabled(true);
 				}
@@ -734,7 +786,7 @@ public class Event_listener implements Listener
 					}
 				}
 			}
-		}
+		}*/
 		return false;
  	}
 }

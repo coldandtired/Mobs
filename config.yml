@@ -1,8 +1,4 @@
 check_for_newer_version: true
 generate_templates: true
 worlds_to_ignore: []
-show_warnings: true
-debug:
-  enabled: false
-  include_failed: true
-  events_to_debug: []
+allow_debug: false
