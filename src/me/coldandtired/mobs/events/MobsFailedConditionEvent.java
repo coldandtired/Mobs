@@ -1,24 +1,17 @@
 package me.coldandtired.mobs.events;
 
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-public class MobsConditionEvent extends Event implements Cancellable
+public class MobsFailedConditionEvent extends Event
 {
 	private static final HandlerList handlers = new HandlerList();
-	private boolean cancelled = false;
 
-	@Override
-	public boolean isCancelled() 
+	public MobsFailedConditionEvent(String event_name, String mob_type,
+			String l, String action_verb, String action_type,
+			String action_value)
 	{
-		return cancelled;
-	}
-
-	@Override
-	public void setCancelled(boolean cancelled) 
-	{
-		this.cancelled = cancelled;
+		// TODO Auto-generated constructor stub
 	}
 
 	@Override

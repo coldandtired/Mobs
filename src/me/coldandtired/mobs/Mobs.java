@@ -90,7 +90,7 @@ public class Mobs extends JavaPlugin
 		xpath = XPathFactory.newInstance().newXPath();
 		error("This is a Beta version of the plugin.  Make sure you have backups!");
 		FileConfiguration config = getConfig();
-		config.options().copyDefaults(true);		 
+		config.options().copyDefaults(true);
 		saveConfig();
 		
 		if (config.getBoolean("generate_templates"))

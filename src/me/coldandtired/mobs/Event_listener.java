@@ -123,7 +123,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getPlayer().getWorld())) return;
 		
-		if (events.containsKey(MEvents.APPROACHED)) events.get(MEvents.APPROACHED).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.APPROACHED)) events.get(MEvents.APPROACHED).performActions(new Bukkit_values(event.getEntity(), null, event));
 	}
 		
 	@EventHandler
@@ -131,7 +131,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.BLOCKS)) events.get(MEvents.BLOCKS).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.BLOCKS)) events.get(MEvents.BLOCKS).performActions(new Bukkit_values(event.getEntity(), null, event));
 	}
 	
 	@EventHandler
@@ -142,7 +142,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.BURNS)) events.get(MEvents.BURNS).performActions(le, null, event);
+		if (events.containsKey(MEvents.BURNS)) events.get(MEvents.BURNS).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_BURN)) event.setCancelled(true);
@@ -156,7 +156,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.CHANGES_BLOCK)) events.get(MEvents.CHANGES_BLOCK).performActions(le, null, event);
+		if (events.containsKey(MEvents.CHANGES_BLOCK)) events.get(MEvents.CHANGES_BLOCK).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_MOVE_BLOCKS) || Data.hasData(le, MParam.NO_GRAZE)) event.setCancelled(true);
@@ -167,7 +167,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.CREATES_PORTAL)) events.get(MEvents.CREATES_PORTAL).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.CREATES_PORTAL)) events.get(MEvents.CREATES_PORTAL).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_CREATE_PORTALS)) event.setCancelled(true);
@@ -182,7 +182,7 @@ public class Event_listener implements Listener
 		if (event.getDamage() == 1000) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (events.containsKey(MEvents.DAMAGED)) events.get(MEvents.DAMAGED).performActions(le, null, event);
+		if (events.containsKey(MEvents.DAMAGED)) events.get(MEvents.DAMAGED).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled())
 		{
 			event.setCancelled(true);
@@ -260,7 +260,7 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dawn(DawnEvent event)
 	{
-		if (events.containsKey(MEvents.DAWN)) events.get(MEvents.DAWN).performActions(null, null, event);
+		if (events.containsKey(MEvents.DAWN)) events.get(MEvents.DAWN).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
@@ -268,7 +268,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.DIES)) events.get(MEvents.DIES).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.DIES)) events.get(MEvents.DIES).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
@@ -278,7 +278,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.PLAYER_DIES)) events.get(MEvents.PLAYER_DIES).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.PLAYER_DIES)) events.get(MEvents.PLAYER_DIES).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
 	}
@@ -286,7 +286,7 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dusk(DuskEvent event)
 	{
-		if (events.containsKey(MEvents.DUSK)) events.get(MEvents.DUSK).performActions(null, null, event);
+		if (events.containsKey(MEvents.DUSK)) events.get(MEvents.DUSK).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
@@ -294,7 +294,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.DYED)) events.get(MEvents.DYED).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.DYED)) events.get(MEvents.DYED).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_DYED)) event.setCancelled(true);
@@ -305,7 +305,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
@@ -316,7 +316,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.EVOLVES)) events.get(MEvents.EVOLVES).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
@@ -327,7 +327,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getPlayer().getWorld())) return;
 		
-		if (events.containsKey(MEvents.ENTERS_AREA)) events.get(MEvents.ENTERS_AREA).performActions(event.getPlayer(), null, event);
+		if (events.containsKey(MEvents.ENTERS_AREA)) events.get(MEvents.ENTERS_AREA).performActions(new Bukkit_values(event.getPlayer(), null, event));
 	}
 	
 	@EventHandler
@@ -342,7 +342,7 @@ public class Event_listener implements Listener
 
 		LivingEntity le = (LivingEntity)entity;
 		
-		if (events.containsKey(MEvents.EXPLODES)) events.get(MEvents.EXPLODES).performActions(le, null, event);
+		if (events.containsKey(MEvents.EXPLODES)) events.get(MEvents.EXPLODES).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
@@ -372,7 +372,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.GROWS_WOOL)) events.get(MEvents.GROWS_WOOL).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.GROWS_WOOL)) events.get(MEvents.GROWS_WOOL).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_GROW_WOOL)) event.setCancelled(true);
@@ -386,7 +386,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
-		if (events.containsKey(MEvents.HEALS)) events.get(MEvents.HEALS).performActions(le, null, event);
+		if (events.containsKey(MEvents.HEALS)) events.get(MEvents.HEALS).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_HEAL))
@@ -404,7 +404,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.HIT)) events.get(MEvents.HIT).performActions(le, null, event);
+		if (events.containsKey(MEvents.HIT)) events.get(MEvents.HIT).performActions(new Bukkit_values(le, null, event));
 	}
 	
 	@EventHandler
@@ -412,13 +412,13 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.HIT_BY_PROJECTILE)) events.get(MEvents.HIT_BY_PROJECTILE).performActions(event.getEntity(), event.getProjectile(), event);
+		if (events.containsKey(MEvents.HIT_BY_PROJECTILE)) events.get(MEvents.HIT_BY_PROJECTILE).performActions(new Bukkit_values(event.getEntity(), event.getProjectile(), event));
 	}
 	
 	@EventHandler
 	public void hour_change(HourChangeEvent event)
 	{
-		if (events.containsKey(MEvents.HOUR_CHANGE)) events.get(MEvents.HOUR_CHANGE).performActions(null, null, event);
+		if (events.containsKey(MEvents.HOUR_CHANGE)) events.get(MEvents.HOUR_CHANGE).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
@@ -426,7 +426,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getPlayer().getWorld())) return;
 		
-		if (events.containsKey(MEvents.IN_AREA)) events.get(MEvents.IN_AREA).performActions(event.getPlayer(), null, event);
+		if (events.containsKey(MEvents.IN_AREA)) events.get(MEvents.IN_AREA).performActions(new Bukkit_values(event.getPlayer(), null, event));
 	}
 	
 	@EventHandler
@@ -437,7 +437,7 @@ public class Event_listener implements Listener
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (events.containsKey(MEvents.PLAYER_JOINS)) events.get(MEvents.PLAYER_JOINS).performActions(p, null, event);
+		if (events.containsKey(MEvents.PLAYER_JOINS)) events.get(MEvents.PLAYER_JOINS).performActions(new Bukkit_values(p, null, event));
 	}
 	
 	@EventHandler
@@ -445,7 +445,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.LEAVES)) events.get(MEvents.LEAVES).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.LEAVES)) events.get(MEvents.LEAVES).performActions(new Bukkit_values(event.getEntity(), null, event));
 	}
 	
 	@EventHandler
@@ -453,19 +453,19 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getPlayer().getWorld())) return;
 		
-		if (events.containsKey(MEvents.LEAVES_AREA)) events.get(MEvents.LEAVES_AREA).performActions(event.getPlayer(), null, event);
+		if (events.containsKey(MEvents.LEAVES_AREA)) events.get(MEvents.LEAVES_AREA).performActions(new Bukkit_values(event.getPlayer(), null, event));
 	}
 	
 	@EventHandler
 	public void midday(MiddayEvent event)
 	{
-		if (events.containsKey(MEvents.MIDDAY)) events.get(MEvents.MIDDAY).performActions(null, null, event);
+		if (events.containsKey(MEvents.MIDDAY)) events.get(MEvents.MIDDAY).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
 	public void midnight(MidnightEvent event)
 	{
-		if (events.containsKey(MEvents.MIDNIGHT)) events.get(MEvents.MIDNIGHT).performActions(null, null, event);
+		if (events.containsKey(MEvents.MIDNIGHT)) events.get(MEvents.MIDNIGHT).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
@@ -473,13 +473,13 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.NEAR)) events.get(MEvents.NEAR).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.NEAR)) events.get(MEvents.NEAR).performActions(new Bukkit_values(event.getEntity(), null, event));
 	}
 	
 	@EventHandler
 	public void night(NightEvent event)
 	{
-		if (events.containsKey(MEvents.NIGHT)) events.get(MEvents.NIGHT).performActions(null, null, event);
+		if (events.containsKey(MEvents.NIGHT)) events.get(MEvents.NIGHT).performActions(new Bukkit_values(null, null, event));
 	}
 	
 	@EventHandler
@@ -487,7 +487,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getPlayer().getWorld())) return;
 		
-		if (events.containsKey(MEvents.PICKS_UP_ITEM)) events.get(MEvents.PICKS_UP_ITEM).performActions(event.getPlayer(), null, event);
+		if (events.containsKey(MEvents.PICKS_UP_ITEM)) events.get(MEvents.PICKS_UP_ITEM).performActions(new Bukkit_values(event.getPlayer(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getPlayer(), MParam.NO_PICK_UP_ITEMS)) event.setCancelled(true);
@@ -501,7 +501,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.SHEARED)) events.get(MEvents.SHEARED).performActions(le, null, event);
+		if (events.containsKey(MEvents.SHEARED)) events.get(MEvents.SHEARED).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_SHEARED)) event.setCancelled(true);
@@ -519,9 +519,11 @@ public class Event_listener implements Listener
 		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(MParam.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
-		if (events.containsKey(MEvents.SPAWNS)) events.get(MEvents.SPAWNS).performActions(le, null, event);
+		if (events.containsKey(MEvents.SPAWNS)) events.get(MEvents.SPAWNS).performActions(new Bukkit_values(le, null, event));
 		mob_name = null;
 		spawn_reason = null;
+		
+		event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -532,7 +534,7 @@ public class Event_listener implements Listener
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
-		if (events.containsKey(MEvents.PLAYER_SPAWNS)) events.get(MEvents.PLAYER_SPAWNS).performActions(p, null, event);	
+		if (events.containsKey(MEvents.PLAYER_SPAWNS)) events.get(MEvents.PLAYER_SPAWNS).performActions(new Bukkit_values(p, null, event));	
 	}
 	
 	@EventHandler
@@ -540,7 +542,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.SPLITS)) events.get(MEvents.SPLITS).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.SPLITS)) events.get(MEvents.SPLITS).performActions(new Bukkit_values(event.getEntity(), null, event));
 		Integer i = (Integer)Data.getData(event.getEntity(), MParam.SPLIT_INTO);
 		if (i == null) return;
 		if (i == 0) event.setCancelled(true); else event.setCount(i);
@@ -551,7 +553,7 @@ public class Event_listener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		if (events.containsKey(MEvents.TAMED)) events.get(MEvents.TAMED).performActions(event.getEntity(), null, event);
+		if (events.containsKey(MEvents.TAMED)) events.get(MEvents.TAMED).performActions(new Bukkit_values(event.getEntity(), null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(event.getEntity(), MParam.NO_TAMED)) event.setCancelled(true);
@@ -565,7 +567,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.TARGETS)) events.get(MEvents.TARGETS).performActions(le, null, event);
+		if (events.containsKey(MEvents.TARGETS)) events.get(MEvents.TARGETS).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		//targetd event!
 		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
@@ -579,7 +581,7 @@ public class Event_listener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 		
-		if (events.containsKey(MEvents.TELEPORTS)) events.get(MEvents.TELEPORTS).performActions(le, null, event);
+		if (events.containsKey(MEvents.TELEPORTS)) events.get(MEvents.TELEPORTS).performActions(new Bukkit_values(le, null, event));
 		if (event.isCancelled()) return;
 		
 		if (Data.hasData(le, MParam.NO_TELEPORT)) event.setCancelled(true);
@@ -604,7 +606,7 @@ public class Event_listener implements Listener
 			}
 		}
 		
-		if (!disabled_timer && events.containsKey(MEvents.REPEATING)) events.get(MEvents.REPEATING).performActions(null, null, event);
+		if (!disabled_timer && events.containsKey(MEvents.REPEATING)) events.get(MEvents.REPEATING).performActions(new Bukkit_values(null, null, event));
 	}
 	
  	public void setMob_name(String name)
