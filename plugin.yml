@@ -1,10 +1,10 @@
 name: Mobs
-version: Beta23
+version: Beta24
 author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
 website: coldandtired.binhoster.com
-softdepend: [Vault, TerrainControl, Heroes, SpoutPlugin]
+softdepend: [Vault, TerrainControl, SpoutPlugin]
 depend: [Extra Events]
 commands:
     reload_mobs:

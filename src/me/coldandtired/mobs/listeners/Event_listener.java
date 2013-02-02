@@ -130,12 +130,16 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void approached(PlayerApproachLivingEntityEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (approached != null) approached.performActions(event.getEntity(), null, event);
 	}
 	
 	@EventHandler
 	public void blocks(LivingEntityBlockEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (blocks != null) blocks.performActions(event.getEntity(), null, event);
 	}
 	
@@ -144,6 +148,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (burns != null) burns.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -156,6 +161,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (changes_block != null) changes_block.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -166,6 +172,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_creates_portal(EntityCreatePortalEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (creates_portal != null) creates_portal.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -176,6 +184,8 @@ public class Event_listener implements Listener
 	public void damaged(LivingEntityDamageEvent event)
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (event.getDamage() == 1000) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
 
@@ -263,6 +273,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dies(EntityDeathEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (dies != null) dies.performActions(event.getEntity(), null, event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
@@ -271,6 +283,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void player_dies(PlayerDeathEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (dies != null) dies.performActions(event.getEntity(), null, event);
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
 		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
@@ -285,6 +299,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void dyed(SheepDyeWoolEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (dyed != null) dyed.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -294,6 +310,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void creeper_evolves(CreeperPowerEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -303,6 +321,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void pig_evolves(PigZapEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (evolves != null) evolves.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -312,6 +332,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void enters_area(PlayerEnterAreaEvent event)
 	{
+		if (ignoreWorld(event.getPlayer().getWorld())) return;
+		
 		if (enters_area != null) enters_area.performActions(event.getPlayer(), null, event);
 	}
 	
@@ -319,7 +341,9 @@ public class Event_listener implements Listener
 	public void explodes(EntityExplodeEvent event)
 	{
 		Entity entity = event.getEntity();		
-		if (entity == null) return;		
+		if (entity == null) return;	
+		if (ignoreWorld(entity.getWorld())) return;
+		
 		if (entity instanceof Fireball) entity = ((Fireball)entity).getShooter();
 		if (!(entity instanceof LivingEntity)) return;
 
@@ -353,6 +377,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void grows_wool(SheepRegrowWoolEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (grows_wool != null) grows_wool.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -364,6 +390,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 
 		if (heals != null) heals.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -380,6 +407,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (hit != null) hit.performActions(le, null, event);
 	}
@@ -387,6 +415,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void projectile_hit(LivingEntityHitByProjectileEvent event) throws XPathExpressionException
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (hit_by_projectile != null) hit_by_projectile.performActions(event.getEntity(), event.getProjectile(), event);
 	}
 	
@@ -399,6 +429,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void in_area(PlayerInAreaEvent event)
 	{
+		if (ignoreWorld(event.getPlayer().getWorld())) return;
+		
 		if (in_area != null) in_area.performActions(event.getPlayer(), null, event);
 	}
 	
@@ -406,6 +438,8 @@ public class Event_listener implements Listener
 	public void joins(PlayerJoinEvent event)
 	{
 		Player p = event.getPlayer();
+		if (ignoreWorld(p.getWorld())) return;
+		
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
 		if (joins != null) joins.performActions(p, null, event);
@@ -414,12 +448,16 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void leaves(PlayerLeaveLivingEntityEvent event)
 	{
+		if (ignoreWorld(event.getPlayer().getWorld())) return;
+		
 		if (leaves != null) leaves.performActions(event.getEntity(), null, event);
 	}
 	
 	@EventHandler
 	public void leaves_area(PlayerLeaveAreaEvent event)
 	{
+		if (ignoreWorld(event.getPlayer().getWorld())) return;
+		
 		if (leaves_area != null) leaves_area.performActions(event.getPlayer(), null, event);
 	}
 	
@@ -438,6 +476,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void near(PlayerNearLivingEntityEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (near != null) near.performActions(event.getEntity(), null, event);
 	}
 	
@@ -450,6 +490,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void picks_up_item(PlayerPickupItemEvent event)
 	{
+		if (ignoreWorld(event.getPlayer().getWorld())) return;
+		
 		if (picks_up_item != null) picks_up_item.performActions(event.getPlayer(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -461,6 +503,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (sheared != null) sheared.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -472,6 +515,8 @@ public class Event_listener implements Listener
 	public void spawns(CreatureSpawnEvent event)
 	{
 		LivingEntity le = event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
+		
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
@@ -486,6 +531,8 @@ public class Event_listener implements Listener
 	public void player_respawns(PlayerRespawnEvent event)
 	{
 		Player p = event.getPlayer();
+		if (ignoreWorld(p.getWorld())) return;
+		
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
 		Data.putData(p, MParam.NAME, p.getName());
 		if (spawns != null) spawns.performActions(p, null, event);	
@@ -494,6 +541,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_splits(SlimeSplitEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (splits != null) splits.performActions(event.getEntity(), null, event);
 		Integer i = (Integer)Data.getData(event.getEntity(), MParam.SPLIT_INTO);
 		if (i == null) return;
@@ -503,6 +552,8 @@ public class Event_listener implements Listener
 	@EventHandler
 	public void mob_tamed(EntityTameEvent event)
 	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;
+		
 		if (tamed != null) tamed.performActions(event.getEntity(), null, event);
 		if (event.isCancelled()) return;
 		
@@ -514,6 +565,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (targets != null) targets.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -526,6 +578,7 @@ public class Event_listener implements Listener
 	{
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		LivingEntity le = (LivingEntity)event.getEntity();
+		if (ignoreWorld(le.getWorld())) return;
 		
 		if (teleports != null) teleports.performActions(le, null, event);
 		if (event.isCancelled()) return;
@@ -737,4 +790,10 @@ public class Event_listener implements Listener
 		}
 		return false;
  	}
+
+ 	private boolean ignoreWorld(World w)
+ 	{
+ 		return Data.hasData(w, MParam.IGNORED_WORLD);
+ 	}
+
 }
