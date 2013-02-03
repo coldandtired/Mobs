@@ -259,26 +259,26 @@ public class Mobs extends JavaPlugin
 	/** debug info */
 	private void debug(Object message)
 	{
-		logger.info(Ansi.ansi().fg(Ansi.Color.YELLOW).toString() + message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+		logger.info(Ansi.ansi().fg(Ansi.Color.YELLOW).toString() + message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 	
 	/** debug info */
 	private void debug(Object message, Color colour)
 	{
-		logger.info(Ansi.ansi().fg(colour).toString() + message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+		logger.info(Ansi.ansi().fg(colour).toString() + message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 	
 	public static void log(Object message)
 	{
 		logger.info(Ansi.ansi().fg(Ansi.Color.GREEN).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+				+ message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 	
 	/** log error */
 	public static void error(Object message)
 	{
 		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+				+ message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 	
 	/** log warning */
@@ -287,6 +287,6 @@ public class Mobs extends JavaPlugin
 		if (!show_warnings) return;
 		
 		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+				+ message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 }
