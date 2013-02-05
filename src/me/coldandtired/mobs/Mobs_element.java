@@ -430,10 +430,12 @@ public class Mobs_element
 	
 	public List<Mobs_element> getActions()
 	{
+		Mobs.log("in");
 		List<Mobs_element> mes = getValues(Element_types.ACTION_TYPE);
 		List<Mobs_element> temp = new ArrayList<Mobs_element>();
 		for (Mobs_element me : mes)
 		{
+			Mobs.log(me.toString());
 			temp.addAll(me.getValues(Element_types.ACTION_TYPE));			
 		}
 		return temp;

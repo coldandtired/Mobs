@@ -267,7 +267,7 @@ public class Mobs_event
 	
 	/** Performs all the actions on all the targets */
 	public void performActions(Bukkit_values bukkit_values)
-	{
+	{Mobs.log("event");
 		for (Mobs_element me : actions.getActions())
 		{			
 			switch (Action_types.valueOf(me.getAction_type_value().toUpperCase()))
