@@ -32,6 +32,7 @@ import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
 import me.coldandtired.extra_events.PlayerLeaveLivingEntityEvent;
 import me.coldandtired.extra_events.PlayerNearLivingEntityEvent;
 import me.coldandtired.mobs.Event_listener.MEvents;
+import me.coldandtired.mobs.Mobs_element.Element_types;
 import me.coldandtired.mobs.events.MobsFailedActionEvent;
 import me.coldandtired.mobs.events.MobsPerformingActionEvent;
 
@@ -251,7 +252,7 @@ public class Mobs_event
 	
 	private Mobs_event(String event_name, Element element, boolean allow_debug) throws XPathExpressionException
 	{
-		actions = new Mobs_element(element);
+		actions = new Mobs_element(element, null);
 		this.event_name = event_name;
 		this.allow_debug = allow_debug;
 	}
@@ -267,10 +268,10 @@ public class Mobs_event
 	
 	/** Performs all the actions on all the targets */
 	public void performActions(Bukkit_values bukkit_values)
-	{Mobs.log("event");
-		for (Mobs_element me : actions.getActions())
+	{
+		for (Mobs_element me : actions.getActions(bukkit_values))
 		{			
-			switch (Action_types.valueOf(me.getAction_type_value().toUpperCase()))
+			switch (Action_types.valueOf(me.getString(Element_types.ACTION_TYPE, bukkit_values).toUpperCase()))
 			{
 				case CANCEL_EVENT: cancelEvent(bukkit_values);
 					break;
@@ -649,6 +650,8 @@ public class Mobs_event
 			if (allow_debug) callFailedActionEvent(bukkit_values, "write", "log", "", "No message found");
 			return;
 		}
+		
+		Mobs.log(temp.getMessage().getCondition_type_value());
 		
 		String s = temp.getMessage_value();
 		boolean b = allow_debug ? !callPerformingActionEvent(null, "write", "log", s).isCancelled() : true;

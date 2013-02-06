@@ -152,7 +152,7 @@ public class Mobs extends JavaPlugin
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
 		
-		event_listener = new Event_listener(config.getBoolean("allow_debug", false), config.getList("worlds_to_ignore"));
+		event_listener = new Event_listener(config.getBoolean("allow_debug", false));
 		getServer().getPluginManager().registerEvents(event_listener, this);		
 		return true;
 	}

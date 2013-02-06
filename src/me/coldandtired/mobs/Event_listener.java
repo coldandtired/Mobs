@@ -1,8 +1,6 @@
 package me.coldandtired.mobs;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.xml.xpath.XPathExpressionException;
 
@@ -89,21 +87,11 @@ public class Event_listener implements Listener
 	private String mob_name = null;
 	private String spawn_reason = null;
 	private Map<MEvents, Mobs_event> events = new HashMap<MEvents, Mobs_event>();
-	private boolean disabled_timer = false;	
-	private List<String> ignored_worlds;
+	private boolean disabled_timer = false;
 	
 	
-	public Event_listener(boolean allow_debug, List<?> worlds_to_ignore) throws XPathExpressionException
-	{
-		if (worlds_to_ignore != null)
-		{
-			ignored_worlds = new ArrayList<String>();
-			for (Object o : worlds_to_ignore)
-			{
-				ignored_worlds.add(((String)o).toUpperCase());
-			}
-		}
-		
+	public Event_listener(boolean allow_debug) throws XPathExpressionException
+	{		
 		for (MEvents e : MEvents.values())
 		{
 			Mobs_event me = Mobs_event.fill(e, allow_debug);
@@ -113,9 +101,7 @@ public class Event_listener implements Listener
 	
 	private boolean ignore_world(World world)
 	{
-		if (ignored_worlds == null) return false;
-		
-		return ignored_worlds.contains(world.getName().toUpperCase());
+		return Data.hasData(world, MParam.IGNORED_WORLD);
 	}
 	
 	@EventHandler
@@ -523,7 +509,7 @@ public class Event_listener implements Listener
 		mob_name = null;
 		spawn_reason = null;
 		
-		event.setCancelled(true);
+		//event.setCancelled(true);
 	}
 	
 	@EventHandler

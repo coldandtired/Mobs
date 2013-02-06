@@ -1,13 +1,8 @@
 package me.coldandtired.mobs;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
-import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 
@@ -15,11 +10,11 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.Event;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 public class Mobs_element
 {
 	private Mobs_element parent;
+	private boolean passed = false;
 	public enum Element_types { ACTION_TYPE, AFFECTED_MOBS, AFFECTED_WORLDS, AMOUNT, CONDITION_TYPE, CONDITION_VALUE, EFFECT, ENCHANTMENT_ID, ENCHANTMENT_LEVEL, ITEM_DATA, ITEM_ID, LOCKED, MESSAGE, MOB_NAME, MOB_TYPE, PLAYER, SUBACTION_TYPE, TARGET_TYPE, WORLD, X, Y, Z }
 	public enum Subasssctions {ADULT,
 		ANGRY,
@@ -214,231 +209,53 @@ public class Mobs_element
 		TOGGLE_GATE,
 		TOGGLE_LEVER,
 		TOGGLE_TRAPDOOR;*/}
-
-	public enum Conditions
-	{
-		ADULT, 
-		ANGRY,
-		AREA,
-		//AREA_MOB_COUNT,
-		//ATTACKER_TYPE
-		BIOME,
-		BLOCK_LIGHT_LEVEL,
-		CHUNK_MOB_COUNT,
-		CUSTOM_INT_1,
-		CUSTOM_INT_2,
-		CUSTOM_INT_3,
-		CUSTOM_INT_4,
-		CUSTOM_INT_5,
-		CUSTOM_INT_6,
-		CUSTOM_INT_7,
-		CUSTOM_INT_8,
-		CUSTOM_INT_9,
-		CUSTOM_INT_10,
-		CUSTOM_STRING_1,
-		CUSTOM_STRING_2,
-		CUSTOM_STRING_3,
-		CUSTOM_STRING_4,
-		CUSTOM_STRING_5,
-		CUSTOM_STRING_6,
-		CUSTOM_STRING_7,
-		CUSTOM_STRING_8,
-		CUSTOM_STRING_9,
-		CUSTOM_STRING_10,
-		//CAN_BREED,
-		DEATH_CAUSE,
-		CUSTOM_FLAG_1,
-		CUSTOM_FLAG_2,
-		CUSTOM_FLAG_3,
-		CUSTOM_FLAG_4,
-		CUSTOM_FLAG_5,
-		CUSTOM_FLAG_6,
-		CUSTOM_FLAG_7,
-		CUSTOM_FLAG_8,
-		CUSTOM_FLAG_9,
-		CUSTOM_FLAG_10,
-		KILLED_BY_PLAYER,
-		//KILLER_NAME,
-		LIGHT_LEVEL,
-		//LOCAL_TIME,
-		LUNAR_PHASE,
-		//MOB_AGE,
-		NAME,
-		NOT_ADULT,
-		NOT_ANGRY,
-		NOT_AREA,
-		NOT_BIOME,
-		NOT_CUSTOM_STRING_1,
-		NOT_CUSTOM_STRING_2,
-		NOT_CUSTOM_STRING_3,
-		NOT_CUSTOM_STRING_4,
-		NOT_CUSTOM_STRING_5,
-		NOT_CUSTOM_STRING_6,
-		NOT_CUSTOM_STRING_7,
-		NOT_CUSTOM_STRING_8,
-		NOT_CUSTOM_STRING_9,
-		NOT_CUSTOM_STRING_10,
-		NOT_DEATH_CAUSE,
-		NOT_CUSTOM_FLAG_1,
-		NOT_CUSTOM_FLAG_2,
-		NOT_CUSTOM_FLAG_3,
-		NOT_CUSTOM_FLAG_4,
-		NOT_CUSTOM_FLAG_5,
-		NOT_CUSTOM_FLAG_6,
-		NOT_CUSTOM_FLAG_7,
-		NOT_CUSTOM_FLAG_8,
-		NOT_CUSTOM_FLAG_9,
-		NOT_CUSTOM_FLAG_10,
-		NOT_KILLED_BY_PLAYER,
-		NOT_NAME,
-		NOT_OCELOT_TYPE,
-		NOT_OWNER,
-		NOT_PLAYER_HAS_PERMISSION,
-		NOT_PLAYER_IS_OP,
-		NOT_POWERED,
-		NOT_PROJECTILE,
-		NOT_PROJECTILE_TYPE,
-		NOT_RAINING,
-		NOT_SADDLED,
-		NOT_SHEARED,
-		NOT_SPAWN_REASON,
-		NOT_TAMED,
-		NOT_THUNDERING,
-		NOT_VILLAGER_TYPE,
-		NOT_WORLD_NAME,
-		OCELOT_TYPE,
-		OWNER,
-		PLAYER_HAS_PERMISSION,
-		PLAYER_IS_OP,
-		PROJECTILE,
-		PROJECTILE_TYPE,
-		//MOB_NOT_STANDING_ON,
-		//MOB_STANDING_ON,
-		//OCELOT_TYPE,
-		//ONLINE_PLAYER_COUNT,
-		//PERCENT,
-		//PLAYER_HOLDING,
-		//PLAYER_ITEM,
-		//PLAYER_MONEY,
-		//PLAYER_PERMISSION,
-		//PLAYER_WEARING,
-		POWERED,
-		RAINING,
-		//REGION_MOB_COUNT,
-		//REMAINING_LIFETIME,
-		SADDLED,
-		SHEARED,
-		SPAWN_REASON,
-		SKY_LIGHT_LEVEL,
-		TAMED,
-		THUNDERING,
-		//time conditions
-		//WOOL_COLORS,
-		VILLAGER_TYPE,
-		WORLD_MOB_COUNT,
-		WORLD_NAME, 
-		//WORLD_PLAYER,
-		WORLD_TIME,
-		//WORLD_TYPE,
-		X,
-		Y,
-		Z; }
 	
 	private Map<Element_types, Element_wrapper> wrappers = new HashMap<Element_types, Element_wrapper>();
 	
-	public Mobs_element(Element element) throws XPathExpressionException
+	public boolean hasConditions()
 	{
-		//Mobs.log("localname = " + element.getLocalName());		
-		for (Element_types a : Element_types.values()) fill(element, a);
+		return wrappers.containsKey(Element_types.CONDITION_TYPE);
 	}
 	
-	private void fill(Element element, Element_types a) throws XPathExpressionException
+	public void setPassed()
 	{
-		String name = a.toString().toLowerCase();
-		if (element.hasAttribute(name))
-		{
-		//	Mobs.log(name + " = string (" + element.getAttribute(name) + ")");
-			//return element.getAttribute(name);
-			wrappers.put(a, new Element_wrapper(element.getAttribute(name)));
-			return;
-		}
-		else
-		{
-			Element el = (Element)Mobs.getXPath().evaluate(name, element, XPathConstants.NODE);
-			if (el != null)
-			{
-				//Mobs.log(name + " = sublist");
-				//Mobs.warn("scanning " + el.getLocalName());
-				SortedMap<Integer, Mobs_element> map = new TreeMap<Integer, Mobs_element>();
-				NodeList list = (NodeList)Mobs.getXPath().evaluate("entry", el, XPathConstants.NODESET);
-				int low = 1;
-				int high = 1;
-				String list_type = "ratio";
-				
-				if (el.hasAttribute("use"))
-				{
-					list_type = "list";
-					String use = el.getAttribute("use").replace(" ", "").toUpperCase();
-					if (use.contains("TO"))
-					{
-						String[] temp = use.split("TO");
-						low = Integer.parseInt(temp[0]);
-						high = temp[1].equalsIgnoreCase("ALL") ? list.getLength() : Integer.parseInt(temp[1]);
-					}
-					else
-					{
-					//	Mobs.log("use = " + use);
-						if (use.equalsIgnoreCase("ALL")) list_type = "all";
-						else
-						{
-							low = Integer.parseInt(use);
-							high = low;
-						}
-					}
-				}
-				
-				int count = 0;
-				for (int i = 0; i < list.getLength(); i ++)
-				{
-					Element li = (Element)list.item(i);
-					int ratio = li.hasAttribute("ratio") ? Integer.parseInt(li.getAttribute("ratio")) : 1;
-					count += ratio;						
-					map.put(count, new Mobs_element(li));
-				}
-				
-				for (Mobs_element mv : map.values()) mv.setParent(this);
-				
-				wrappers.put(a, new Element_wrapper(map, count, low, high, list_type));
-			}
-		}
+		passed = true;
 	}
 	
-	private void setParent(Mobs_element parent)
+	public boolean hasPassed()
 	{
+		return passed;
+	}
+	
+	public Mobs_element(Element element, Mobs_element parent) throws XPathExpressionException
+	{
+		//Mobs.log("localname = " + element.getLocalName());
 		this.parent = parent;
-	}
-	
-	public List<Mobs_element> getValues(Element_types a)
-	{
-		Mobs_element mv = this;
-		
-		while (mv != null && !mv.wrappers.containsKey(a)) mv = mv.parent;
-		if (mv == null) return null;	
-		
-		return mv.wrappers.get(a).getMobs_values(mv);
-	}
-	
-	public List<Mobs_element> getActions()
-	{
-		Mobs.log("in");
-		List<Mobs_element> mes = getValues(Element_types.ACTION_TYPE);
-		List<Mobs_element> temp = new ArrayList<Mobs_element>();
-		for (Mobs_element me : mes)
+		for (Element_types et : Element_types.values())
 		{
-			Mobs.log(me.toString());
-			temp.addAll(me.getValues(Element_types.ACTION_TYPE));			
+			Element_wrapper ew = new Element_wrapper(element, et, this);
+			if (ew.isFilled()) wrappers.put(et, ew);
 		}
-		return temp;
+	}
+	
+	public Element_wrapper getWrapper(Element_types et)
+	{
+		return wrappers.get(et);
+	}
+	
+	public List<Mobs_element> getActions(Bukkit_values bukkit_values) 
+	{
+		return wrappers.get(Element_types.ACTION_TYPE).getActions(this, bukkit_values);		
+	}
+	
+	public List<Mobs_element> getConditions(Bukkit_values bukkit_values) 
+	{
+		return wrappers.get(Element_types.CONDITION_TYPE).getConditions(this, bukkit_values);		
+	}
+	
+	public String getString(Element_types et, Bukkit_values bukkit_values)
+	{
+		return wrappers.get(et).getString(et, this, bukkit_values);
 	}
 	
 // element getters
@@ -450,11 +267,12 @@ public class Mobs_element
 		while (mv != null && !mv.wrappers.containsKey(et)) mv = mv.parent;
 		if (mv == null) return this;
 		
-		Element_wrapper wrapper = mv.wrappers.get(et);
+		//Element_wrapper wrapper = mv.wrappers.get(et);
 		
-		if (wrapper.getValue() instanceof String) return mv;
+		//if (wrapper.getValue() instanceof String) 
+			return mv;
 		
-		return wrapper.getContainer();
+		//return wrapper.getContainer();
 	}
 	
 	public Mobs_element getAction_type()
@@ -512,11 +330,11 @@ public class Mobs_element
 		while (mv != null && !mv.wrappers.containsKey(et)) mv = mv.parent;
 		if (mv == null) return null;					
 		
-		Object o = mv.wrappers.get(et).getValue();
+		//Object o = mv.wrappers.get(et).getValue();
 		
-		if (o instanceof String) return (String)o;
+		//if (o instanceof String) return (String)o;
 		
-		return null;
+		return "nope";//o.toString();
 	}
 	
 	public String getAction_type_value()
@@ -531,13 +349,14 @@ public class Mobs_element
 	
 	public String getCondition_type_value()
 	{
-		if (wrappers.containsKey(Element_types.CONDITION_TYPE))
+		return getElement_value(Element_types.CONDITION_TYPE);
+		/*if (wrappers.containsKey(Element_types.CONDITION_TYPE))
 		{
 			Object o = wrappers.get(Element_types.CONDITION_TYPE).getValue();
 			
 			if (o instanceof String) return (String)o;
 		}
-		return null;
+		return null;*/
 	}
 	
 	public String getCondition_value_value()
@@ -595,13 +414,13 @@ public class Mobs_element
 	
 	public boolean passesConditions(LivingEntity le, Projectile projectile, Event orig_event)
 	{
-		String cond = "";//getCondition_type_value();
-		if (cond == null) return true;
+		//String cond = getCondition_type_value();
+		//if (cond == null) return true;
 		
-		switch (Conditions.valueOf(cond.toUpperCase()))
-		{
-			case RAINING: return le.getWorld().hasStorm();
-		}
+	//	switch (Conditions.valueOf(cond.toUpperCase()))
+	//	{
+	//		case RAINING: return le.getWorld().hasStorm();
+	//	}
 		return false;
 	}
 }
