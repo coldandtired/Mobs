@@ -1,58 +1,39 @@
 package me.coldandtired.mobs.events;
 
+import me.coldandtired.mobs.Enums.FailedReason;
+import me.coldandtired.mobs.MobsOutcome;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
 public class MobsFailedActionEvent extends Event
 {
 	private static final HandlerList handlers = new HandlerList();
-	private final String event;
-	private final String mob;
-	private final String loc;
-	private final String action_verb;
-	private final String action_name;
-	private final String action_value;
+	private final MobsOutcome outcome;
+	private final String attempted;
+	private final FailedReason reason;
 
-	public MobsFailedActionEvent(String event, String mob, String loc, String action_verb, String action_name, String action_value)
+	public MobsFailedActionEvent(MobsOutcome outcome, String attempted, FailedReason reason)
 	{
-		this.event = event;
-		this.mob = mob;
-		this.loc = loc;
-		this.action_verb = action_verb;
-		this.action_name = action_name;
-		this.action_value = action_value;
+		this.outcome = outcome;
+		this.attempted = attempted;
+		this.reason = reason;
 	}
 	
-	public String getEvent()
+	public MobsOutcome getMobsOutcome()
 	{
-		return event;
-	}	
+		return outcome;
+	}		
 
-	public String getMob()
+	public String getAttempted()
 	{
-		return mob;
-	}	
-
-	public String getLoc()
-	{
-		return loc;
-	}	
-
-	public String getAction_verb()
-	{
-		return action_verb;
-	}	
-
-	public String getAction_name()
-	{
-		return action_name;
-	}	
-
-	public String getAction_value()
-	{
-		return action_value;
+		return attempted;
 	}
-
+	
+	public FailedReason getReason()
+	{
+		return reason;
+	}
+	
 	@Override
 	public HandlerList getHandlers() 
 	{

@@ -1,4 +1,5 @@
-check_for_newer_version: true
-generate_templates: true
+check_for_newer_version: yes
+generate_templates: yes
 worlds_to_ignore: []
-allow_debug: false
+allow_debug: no
+allow_bubbling: no

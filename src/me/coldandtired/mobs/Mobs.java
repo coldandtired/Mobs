@@ -18,8 +18,8 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import me.coldandtired.extra_events.Extra_events;
-import me.coldandtired.mobs.Event_listener.MEvents;
-import me.coldandtired.mobs.enums.MParam;
+import me.coldandtired.mobs.BukkitListener.EventType;
+import me.coldandtired.mobs.Enums.MParam;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -45,8 +45,10 @@ public class Mobs extends JavaPlugin
 	private static Mobs instance;
 	public static Economy economy = null;
 	public static Extra_events extra_events;
-	private Event_listener event_listener;
+	private BukkitListener event_listener;
 	private static XPath xpath;
+	public static boolean allow_debug;
+	public static boolean allow_bubbling; 
 	
 	@Override
 	public void onEnable()
@@ -95,7 +97,7 @@ public class Mobs extends JavaPlugin
 		
 		if (config.getBoolean("generate_templates"))
 		{
-			for (MEvents event : MEvents.values())
+			for (EventType event : EventType.values())
 			{
 				InputStream inputstream = null;
 				OutputStream out = null;
@@ -152,7 +154,9 @@ public class Mobs extends JavaPlugin
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
 		
-		event_listener = new Event_listener(config.getBoolean("allow_debug", false));
+		allow_debug = config.getBoolean("allow_debug", false);
+		allow_bubbling = config.getBoolean("allow_bubbling", false);
+		event_listener = new BukkitListener();
 		getServer().getPluginManager().registerEvents(event_listener, this);		
 		return true;
 	}
@@ -201,7 +205,7 @@ public class Mobs extends JavaPlugin
 		economy = null;
 	}
 	
-	public static boolean isSpout_enabled()
+	public static boolean isSpoutEnabled()
 	{
 		return Bukkit.getServer().getPluginManager().isPluginEnabled("Spout");
 	}

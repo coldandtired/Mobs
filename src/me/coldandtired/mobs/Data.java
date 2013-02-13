@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import me.coldandtired.mobs.enums.MParam;
+import me.coldandtired.mobs.Enums.MParam;
 
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.Metadatable;

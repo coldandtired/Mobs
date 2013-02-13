@@ -1,5 +1,7 @@
 package me.coldandtired.mobs.events;
 
+import me.coldandtired.mobs.EventValues;
+
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
@@ -7,9 +9,7 @@ public class MobsPassedConditionEvent extends Event
 {
 	private static final HandlerList handlers = new HandlerList();
 
-	public MobsPassedConditionEvent(String event_name, String mob_type,
-			String l, String action_verb, String action_type,
-			String action_value)
+	public MobsPassedConditionEvent(EventValues bukkit_values, String condition_type, String condition_value)
 	{
 		// TODO Auto-generated constructor stub
 	}
