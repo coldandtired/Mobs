@@ -13,7 +13,7 @@ import javax.xml.xpath.XPathExpressionException;
 import me.coldandtired.mobs.Enums.ElementType;
 import me.coldandtired.mobs.events.MobsFailedConditionEvent;
 import me.coldandtired.mobs.events.MobsPassedConditionEvent;
-import me.coldandtired.mobs.Enums.Condition;
+import me.coldandtired.mobs.Enums.ConditionType;
 
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -260,7 +260,7 @@ public class ElementWrapper
 	
 	private boolean checkCondition(MobsElement orig, String cond, EventValues bv)
 	{
-		switch (Condition.valueOf(cond.toUpperCase()))
+		switch (ConditionType.valueOf(cond.toUpperCase()))
 		{
 			case ADULT: return checkAdult(orig, bv, false);
 			case ANGRY: return checkAngry(orig, bv, false);

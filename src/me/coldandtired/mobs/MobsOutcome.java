@@ -8,21 +8,27 @@ import java.util.Random;
 import javax.xml.xpath.XPathExpressionException;
 
 import org.bukkit.Bukkit;
+import org.bukkit.DyeColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Creeper;
+import org.bukkit.entity.Damageable;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Ocelot;
 import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
+import org.bukkit.entity.Slime;
 import org.bukkit.entity.Tameable;
+import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -37,6 +43,7 @@ import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
 import org.bukkit.material.Openable;
 import org.getspout.spoutapi.Spout;
+import org.getspout.spoutapi.player.EntitySkinType;
 import org.w3c.dom.Element;
 import me.coldandtired.extra_events.LivingEntityBlockEvent;
 import me.coldandtired.extra_events.LivingEntityDamageEvent;
@@ -54,7 +61,7 @@ public class MobsOutcome extends MobsElement
 	private MobsElement ce;
 	private Object target;
 	private List<String> affected_mobs;
-	//private List<String> affected_worlds;
+	private List<String> affected_worlds;
 	
 	MobsOutcome(String event_name, Element element) throws XPathExpressionException
 	{
@@ -67,12 +74,12 @@ public class MobsOutcome extends MobsElement
 			affected_mobs = Arrays.asList(s.split(","));
 		}
 
-		/*if (element.hasAttribute("affected_worlds"))
+		if (element.hasAttribute("affected_worlds"))
 		{
 			affected_worlds = new ArrayList<String>();
 			String s = element.getAttribute("affected_worlds").toUpperCase().replace(" ", "");
 			affected_worlds = Arrays.asList(s.split(","));
-		}*///TODO world stuff
+		}
 		this.event_name = event_name;
 	}
 	
@@ -87,7 +94,7 @@ public class MobsOutcome extends MobsElement
 		List<MobsElement> actions = getActions();
 		if (actions == null)
 		{
-			actionFailed(null, FailedReason.NO_ACTION);
+			actionFailed(null, ReasonType.NO_ACTION);
 			return;
 		}
 		
@@ -97,7 +104,7 @@ public class MobsOutcome extends MobsElement
 			ActionType at = getAction();
 			if (!at.equals(ActionType.CANCEL_EVENT) && target == null)
 			{
-				actionFailed(at.toString(), FailedReason.NO_TARGET);
+				actionFailed(at.toString(), ReasonType.NO_TARGET);
 				continue;
 			}
 			
@@ -134,10 +141,10 @@ public class MobsOutcome extends MobsElement
 			
 			((Cancellable)ev.getOrigEvent()).setCancelled(true);
 		}
-		else actionFailed("cancel_event", FailedReason.CANNOT_CANCEL_EVENT);
+		else actionFailed("cancel_event", ReasonType.CANNOT_CANCEL_EVENT);
 	}
 	
-// Cause action_type
+// Cause action
 	
 	/** Causes explosions, lightning, etc. */
 	private void causeSomething()
@@ -145,7 +152,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("cause", FailedReason.NO_SUBACTION);
+			actionFailed("cause", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -173,7 +180,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("cause explosion " + size + ", " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("cause explosion " + size + ", " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().createExplosion(loc, size);
@@ -191,7 +198,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("cause fiery_explosion " + size + ", " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("cause fiery_explosion " + size + ", " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().createExplosion(loc, size, true);
@@ -207,7 +214,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("cause lightning, " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("cause lightning, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().strikeLightning(loc);
@@ -223,14 +230,14 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("cause lightning_effect, " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("cause lightning_effect, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().strikeLightningEffect(loc);
 		}
 	}
 	
-// Damage action_type
+// Damage action
 	
 	/** Damages a mob or breaks a block */
 	private void damageSomething()
@@ -238,7 +245,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", FailedReason.NO_SUBACTION);
+			actionFailed("damage", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -263,7 +270,7 @@ public class MobsOutcome extends MobsElement
 			{
 				if (!loc.getChunk().isLoaded())
 				{
-					actionFailed("damage block, " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+					actionFailed("damage block, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 					continue;
 				}
 				loc.getBlock().breakNaturally();
@@ -280,7 +287,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("damage block, (" + getPrettyItem(is) + "), " + getPrettyLoc(loc), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("damage block, (" + getPrettyItem(is) + "), " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getBlock().breakNaturally(is);
@@ -293,20 +300,20 @@ public class MobsOutcome extends MobsElement
 		int amount = getAmount(0);
 		if (amount == 0)
 		{
-			actionFailed("damage mob", FailedReason.ZERO_AMOUNT);
+			actionFailed("damage mob", ReasonType.BAD_AMOUNT);
 			return;		
 		}
 			
 		if (isActionCancelled("damage mob " + amount)) return;
 			
-		for (LivingEntity le : getEntities())
+		for (Damageable d : getDamageables())
 		{
-			if (amount != -1 ) le.damage(amount); else le.setHealth(0);
+			if (amount != -1 ) d.damage(amount); else d.setHealth(0);
 			//TODO kill docs -1
 		}
 	}	
 	
-// Give action_type
+// Give action
 	
 	/** Sends an item to players */
 	private void giveSomething()
@@ -314,7 +321,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("give", FailedReason.NO_SUBACTION);
+			actionFailed("give", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -335,7 +342,7 @@ public class MobsOutcome extends MobsElement
 		int amount = getAmount(0);
 		if (amount == 0)
 		{
-			actionFailed("give exp", FailedReason.ZERO_AMOUNT);
+			actionFailed("give exp", ReasonType.BAD_AMOUNT);
 			return;		
 		}
 		
@@ -350,7 +357,7 @@ public class MobsOutcome extends MobsElement
 		int id = getItemId();
 		if (id == 0)
 		{
-			actionFailed("give item", FailedReason.ZERO_ITEM_ID);
+			actionFailed("give item", ReasonType.BAD_ITEM_ID);
 			return;		
 		}
 		
@@ -368,14 +375,14 @@ public class MobsOutcome extends MobsElement
 	{
 		if (Mobs.economy == null)
 		{
-			actionFailed("give money", FailedReason.NO_VAULT);
+			actionFailed("give money", ReasonType.NO_VAULT);
 			return;
 		}
 		
 		int amount = getAmount(0);
 		if (amount == 0)
 		{
-			actionFailed("give money", FailedReason.ZERO_AMOUNT);
+			actionFailed("give money", ReasonType.BAD_AMOUNT);
 			return;		
 		}
 		
@@ -384,7 +391,7 @@ public class MobsOutcome extends MobsElement
 		for (Player p : getPlayers()) Mobs.economy.depositPlayer(p.getName(), amount);
 	}
 	
-// Play action_type
+// Play action
 	
 	/** Plays a visual effect or sound effect */
 	private void playSomething()
@@ -392,7 +399,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("play", FailedReason.NO_SUBACTION);
+			actionFailed("play", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -411,7 +418,7 @@ public class MobsOutcome extends MobsElement
 		Effect effect = getEffect();
 		if (effect == null)
 		{
-			actionFailed("play effect", FailedReason.NO_EFFECT);
+			actionFailed("play effect", ReasonType.NO_EFFECT);
 			return;
 		}
 		
@@ -421,7 +428,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("play effect " + effect, FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("play effect " + effect, ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().playEffect(loc, effect, 10);
@@ -434,7 +441,7 @@ public class MobsOutcome extends MobsElement
 		Sound sound = getSound();
 		if (sound == null)
 		{
-			actionFailed("play sound", FailedReason.NO_SOUND);
+			actionFailed("play sound", ReasonType.NO_SOUND);
 			return;
 		}
 		
@@ -447,14 +454,14 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("play sound", FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("play sound", ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().playSound(loc, sound, volume, pitch);
 		}
 	}
 
-// Remove action_type
+// Remove action
 
 	/** Removes something from the world */
 	private void removeSomething()
@@ -462,7 +469,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("remove", FailedReason.NO_SUBACTION);
+			actionFailed("remove", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -545,7 +552,7 @@ public class MobsOutcome extends MobsElement
 	{
 		if (!Mobs.isSpoutEnabled())
 		{
-			actionFailed("remove skin", FailedReason.NO_SPOUT);
+			actionFailed("remove skin", ReasonType.NO_SPOUT);
 			return;
 		}
 		
@@ -560,7 +567,7 @@ public class MobsOutcome extends MobsElement
 		//TODO meta stuff
 	}
 	
-// Set action_type
+// Set action
 	
 	/** Sets something (mob property, door, etc.) */
 	private void setSomething()
@@ -568,7 +575,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", FailedReason.NO_SUBACTION);
+			actionFailed("set", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -578,21 +585,44 @@ public class MobsOutcome extends MobsElement
 				break;
 			case ANGRY: setAngry();
 				break;
+			case BLOCK: setBlock();
+				break;
+			case HP: setHp();
+				break;
+			case LEVEL: setLevel();
+				break;
+			case MAX_HP: setMaxHp();
+				break;  
+			case OCELOT_TYPE: setOcelotType();
+				break;
 			case OPEN: setOpen();
+				break;
+			case OWNER: setOwner();
 				break;
 			case POWERED: setPowered();
 				break;				
 			case SADDLED: setSaddled();
 				break;
 			case SHEARED: setSheared();
-				break;					
+				break;	
+			case SIZE: setSize();
+				break;
+			case SKIN: setSkin();
+				break;
 			case TAMED: setTamed();
 				break;
-			/*case ATTACK_POWER: setAttack_power(temp, ev);
+			case TIME: setTime();
 				break;
-			case BLOCK: setBlock(temp, ev);
+			case TITLE: setTitle();
 				break;
-			/*case CUSTOM_FLAG_1:
+			case VILLAGER_TYPE: setVillagerType();
+				break;
+			case WEATHER: setWeather();
+				break;
+			case WOOL: setWool();
+				break;
+				
+			case CUSTOM_FLAG_1:
 			case CUSTOM_FLAG_2:
 			case CUSTOM_FLAG_3:
 			case CUSTOM_FLAG_4:
@@ -601,11 +631,15 @@ public class MobsOutcome extends MobsElement
 			case CUSTOM_FLAG_7:
 			case CUSTOM_FLAG_8:
 			case CUSTOM_FLAG_9:
-			case CUSTOM_FLAG_10: 
-			case FRIENDLY:					
+			case CUSTOM_FLAG_10:
+			case FIERY_EXPLOSION:
+			case FRIENDLY:
 			case NO_BURN:	
 			case NO_CREATE_PORTALS:
 			case NO_DESTROY_BLOCKS:
+			case NO_DROPPED_EXP:
+			case NO_DROPPED_ITEMS:
+			case NO_DROPS:
 			case NO_DYED:
 			case NO_EVOLVE:		
 			case NO_FIERY_EXPLOSION:	
@@ -617,8 +651,10 @@ public class MobsOutcome extends MobsElement
 			case NO_SADDLED:
 			case NO_SHEARING:
 			case NO_TAMING:
-			case NO_TELEPORT: setProperty(temp, ev);
-				break;					
+			case NO_TELEPORT: setMeta(st);
+				break;	
+				
+			case ATTACK_POWER:			
 			case CUSTOM_INT_1:
 			case CUSTOM_INT_2:
 			case CUSTOM_INT_3:
@@ -629,6 +665,32 @@ public class MobsOutcome extends MobsElement
 			case CUSTOM_INT_8:
 			case CUSTOM_INT_9:
 			case CUSTOM_INT_10:
+			case DAMAGE_FROM_BLOCK_EXPLOSION:
+			case DAMAGE_FROM_CONTACT:
+			case DAMAGE_FROM_CUSTOM:
+			case DAMAGE_FROM_DROWNING:
+			case DAMAGE_FROM_ENTITY_ATTACK:
+			case DAMAGE_FROM_ENTITY_EXPLOSION:
+			case DAMAGE_FROM_FALL:
+			case DAMAGE_FROM_FALLING_BLOCK:
+			case DAMAGE_FROM_FIRE:
+			case DAMAGE_FROM_FIRE_TICK:
+			case DAMAGE_FROM_LAVA:
+			case DAMAGE_FROM_LIGHTNING:
+			case DAMAGE_FROM_MAGIC:
+			case DAMAGE_FROM_MELTING:
+			case DAMAGE_FROM_POISON:
+			case DAMAGE_FROM_PROJECTILE:
+			case DAMAGE_FROM_STARVATION:
+			case DAMAGE_FROM_SUFFOCATION:
+			case DAMAGE_FROM_SUICIDE:
+			case DAMAGE_FROM_VOID:
+			case DAMAGE_FROM_WITHER:
+			case EXPLOSION_SIZE:
+			case MAX_LIFE: 
+			case SPLIT_INTO: setCustomInt(st);
+				break;
+				
 			case CUSTOM_STRING_1:
 			case CUSTOM_STRING_2:
 			case CUSTOM_STRING_3:
@@ -639,52 +701,36 @@ public class MobsOutcome extends MobsElement
 			case CUSTOM_STRING_8:
 			case CUSTOM_STRING_9:
 			case CUSTOM_STRING_10: 
-			case NAME: setCustom_value(temp, ev);
+			case NAME: setCustomValue(st);
 				break;
-			case DAMAGE_TAKEN: setDamage_taken(temp, ev);
+			/*case EXP: setExp(temp, ev);
 				break;
-			case EXP: setExp(temp, ev);
-				break;
-			case EXPLOSION_SIZE: setExplosion_size(temp, ev);
-				break;
-			case HP: setHp(temp, ev);
-				break;
-			case LEVEL: setLevel(temp, ev);
-				break;	
-			case MAX_HP: setMax_hp(temp, ev);
-				break;
-			case MAX_LIFE: setMax_life(temp, ev);
-				break;	
 			case MONEY: setMoney(temp, ev);
-				break;
-			case OCELOT_TYPE: setOcelot_type(temp, ev);
-				break;
-			case OPEN: openSomething(temp, ev);
-				break;
-			case OWNER: setOwner(temp, ev);
-				break;	
-			case SKIN: setSkin(temp, ev);
-				break;
-			case TIME: setTime(temp, ev);
-				break;
-			case TITLE: setTitle(temp, ev);
-				break;	
-			case VILLAGER_TYPE: setVillager_type(temp, ev);						
-				break;
-			case WEATHER: setWeather(temp, ev);
-				break;
-			case WOOL_COLOR: setWool_colour(temp, ev);
 				break;*/
 		}
+		//TODO flexidamage?
 	}
 
+	private void setBlock()
+	{
+		int id = getItemId();		
+		int data = getItemData();
+		
+		if (isActionCancelled("set block " + id + ":" + data)) return;
+		
+		for (Location loc : getLocations())
+		{
+			loc.getBlock().setTypeIdAndData(id, (byte)data, false);
+		}
+	}
+	
 	/** Sets a door, gate, etc. open or closed */
 	private void setOpen()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set open " + value, FailedReason.NO_VALUE);
+			actionFailed("set open " + value, ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -694,7 +740,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("set open " + value, FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("set open " + value, ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			
@@ -702,17 +748,17 @@ public class MobsOutcome extends MobsElement
 			MaterialData md = bs.getData();
 			if (md instanceof Openable)
 			{
-				boolean b = getBooleanPropertyValue(((Openable)md).isOpen(), value);
+				boolean b = getBooleanValue(((Openable)md).isOpen(), value);
 				((Openable)md).setOpen(b);
 			}
 			else if (md instanceof Lever)
 			{
-				boolean b = getBooleanPropertyValue(((Lever)md).isPowered(), value);
+				boolean b = getBooleanValue(((Lever)md).isPowered(), value);
 				((Lever)md).setPowered(b);
 			}
 			else
 			{
-				actionFailed("set open", FailedReason.CANNOT_BE_OPENED);
+				actionFailed("set open", ReasonType.CANNOT_BE_OPENED);
 				return;
 			}
 			bs.setData(md);
@@ -720,15 +766,83 @@ public class MobsOutcome extends MobsElement
 		}
 	}
 	
+	private void setTime()
+	{		
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set time", ReasonType.NO_VALUE);
+			return;
+		}	//TODO +/-/%
+		
+		int time = getNumber(value);
+		
+		if (isActionCancelled("set time" + ", " + value)) return;
+		
+		World w = getWorld();
+		
+		long i = time % 24000; 
+		if (i < 0) i += 24000;
+		w.setTime(i);
+	}
+	
+	/** Sets the weather */
+	private void setWeather()
+	{
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set weather", ReasonType.NO_VALUE);
+			return;
+		}//TODO before and after events
+		
+		int duration = getDuration();
+		
+		if (value.equals(ValueType.RANDOM))
+		{
+			int i = new Random().nextInt(3);
+			switch (i)
+			{
+				case 0: value = ValueType.RAINY;
+					break;
+				case 1: value = ValueType.SUNNY;
+					break;
+				case 2: value = ValueType.STORMY;
+					break;
+			}//TODO docs random + effect / sound
+		}
+		
+		if (isActionCancelled("set weather, " + value + "(" + duration + ")")) return;
+		
+		World w = getWorld();
+		
+		switch (value)
+		{
+			case RAINY:
+				w.setStorm(true);
+				w.setThundering(false);
+				break;
+			case STORMY:
+				w.setStorm(true);
+				w.setThundering(true);
+				break;
+			case SUNNY:
+				w.setStorm(false);
+				w.setThundering(false);
+				break;
+		}
+		if (duration != 0) w.setWeatherDuration(duration);
+	}
+	
 // set mob properties
 		
 	/** Makes an Ageable mob an adult or baby */
 	private void setAdult()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set adult", FailedReason.NO_VALUE);
+			actionFailed("set adult", ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -736,7 +850,7 @@ public class MobsOutcome extends MobsElement
 		
 		for (Ageable a : getAgeables())
 		{
-			boolean b2 = getBooleanPropertyValue(a.isAdult(), value);
+			boolean b2 = getBooleanValue(a.isAdult(), value);
 			if (a.isAdult() == b2) return;
 				
 			if (b2) a.setAdult(); else a.setBaby();
@@ -746,10 +860,10 @@ public class MobsOutcome extends MobsElement
 	/** Makes a Wolf or PigZombie angry or calm */
 	private void setAngry()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set angry", FailedReason.NO_VALUE);
+			actionFailed("set angry", ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -760,7 +874,7 @@ public class MobsOutcome extends MobsElement
 			if (le instanceof Wolf)
 			{
 				Wolf w = (Wolf)le;
-				boolean b = getBooleanPropertyValue(w.isAngry(), value);
+				boolean b = getBooleanValue(w.isAngry(), value);
 				if (b == w.isAngry()) return;
 				
 				w.setAngry(b);
@@ -777,22 +891,177 @@ public class MobsOutcome extends MobsElement
 			else if (le instanceof PigZombie)
 			{
 				boolean b = ((PigZombie)le).isAngry();
-				boolean b2 = getBooleanPropertyValue(b, value);
+				boolean b2 = getBooleanValue(b, value);
 				if (b == b2) return;
 				
 				((PigZombie)le).setAngry(b2);
 			}
-			else actionFailed("set angry", FailedReason.NOT_AN_ANGERABLE_MOB);
+			else actionFailed("set angry", ReasonType.NOT_AN_ANGERABLE_MOB);
 		}
 	}
-		
-	/** Makes an Ageable mob an adult or baby */
-	private void setPowered()
+	
+	private void setCustomInt(SubactionType st)
 	{
 		String value = getValue();
 		if (value == null)
 		{
-			actionFailed("set powered", FailedReason.NO_VALUE);
+			actionFailed("set " + st, ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		int amount = getNumber(value);
+		
+		if (isActionCancelled("set " + st + ", " + amount)) return;
+		
+		for (LivingEntity le : getEntities())
+		{
+			Data.putData(le, st, amount);
+		}
+	}
+	
+	private void setCustomValue(SubactionType st)
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set " + st, ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		if (isActionCancelled("set " + st + ", " + value)) return;
+		
+		for (LivingEntity le : getEntities())
+		{
+			Data.putData(le, st, value);
+		}
+	}
+		
+	/** Sets a mob's health */
+	private void setHp()
+	{//TODO reset health
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set hp", ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		int amount = getNumber(value);
+		
+		if (isActionCancelled("set hp " + amount)) return;
+		
+		for (Damageable d : getDamageables())
+		{
+			if (amount > d.getMaxHealth()) d.setHealth(d.getMaxHealth()); else d.setHealth(amount);
+		}
+	}
+	
+	/** Sets a mob's health */
+	private void setMaxHp()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set max_hp", ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		int amount = getNumber(value);
+		
+		if (isActionCancelled("set max_hp " + amount)) return;
+		
+		for (Damageable d : getDamageables())
+		{
+			d.setMaxHealth(amount);
+		}
+	}
+	
+	/** Sets a player's exp level */
+	private void setLevel()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set level", ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		int amount = getNumber(value);	
+		
+		if (isActionCancelled("set level " + amount)) return;
+		
+		for (Player p : getPlayers())
+		{
+			p.setLevel(amount);
+		}
+	}
+	
+	/** Makes an Ageable mob an adult or baby */
+	private void setMeta(SubactionType st)
+	{
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set " + st, ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		if (isActionCancelled("set " + st + ", " + value)) return;
+		
+		for (LivingEntity le : getEntities())
+		{
+			boolean b = Data.hasData(le, st);
+			boolean b2 = getBooleanValue(b, value);
+			if (b == b2) continue;
+			if (b) Data.putData(le, st); else Data.removeData(le, st);
+		}
+	}
+	
+	private void setOcelotType()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set ocelot_type", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set ocelot_type, " + value)) return;
+		
+		Ocelot.Type ot;
+		if (value.equalsIgnoreCase("random"))
+		{
+			ot = Ocelot.Type.getType(new Random().nextInt(Ocelot.Type.values().length));
+		}
+		else ot = Ocelot.Type.valueOf(value.toUpperCase());
+		
+		for (Ocelot o : getOcelots()) o.setCatType(ot);
+	}
+	
+	private void setOwner()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set owner", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set owner, " + value)) return;
+		
+		for (Tameable t : getTameables())
+		{
+			t.setOwner(Bukkit.getPlayer(value));
+		}
+	}
+	
+	/** Makes an Ageable mob an adult or baby */
+	private void setPowered()
+	{
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set powered", ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -800,7 +1069,7 @@ public class MobsOutcome extends MobsElement
 		
 		for (Creeper c : getCreepers())
 		{
-			boolean b = getBooleanPropertyValue(c.isPowered(), value);
+			boolean b = getBooleanValue(c.isPowered(), value);
 			if (c.isPowered() != b) c.setPowered(b);
 		}
 	}
@@ -808,10 +1077,10 @@ public class MobsOutcome extends MobsElement
 	/** Makes an Ageable mob an adult or baby */
 	private void setSaddled()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set saddled", FailedReason.NO_VALUE);
+			actionFailed("set saddled", ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -819,7 +1088,7 @@ public class MobsOutcome extends MobsElement
 		
 		for (Pig p : getPigs())
 		{
-			boolean b = getBooleanPropertyValue(p.hasSaddle(), value);
+			boolean b = getBooleanValue(p.hasSaddle(), value);
 			if (p.hasSaddle() != b) p.setSaddle(b);
 		}
 	}
@@ -827,10 +1096,10 @@ public class MobsOutcome extends MobsElement
 	/** Makes an Ageable mob an adult or baby */
 	private void setSheared()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set sheared", FailedReason.NO_VALUE);
+			actionFailed("set sheared", ReasonType.NO_VALUE);
 			return;
 		}
 		
@@ -838,18 +1107,57 @@ public class MobsOutcome extends MobsElement
 		
 		for (Sheep s : getSheep())
 		{
-			boolean b = getBooleanPropertyValue(s.isSheared(), value);
+			boolean b = getBooleanValue(s.isSheared(), value);
 			if (s.isSheared() != b) s.setSheared(b);
+		}
+	}
+	
+	private void setSize()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set size", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		int size = getNumber(value);
+		
+		if (isActionCancelled("set size " + size)) return;
+		
+		for (Slime s : getSlimes()) s.setSize(size);
+	}
+	
+	private void setSkin()
+	{
+		if (!Mobs.isSpoutEnabled())
+		{
+			actionFailed("set skin", ReasonType.NO_SPOUT);
+			return;
+		}
+		
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set skin", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set skin, " + value)) return;
+		
+		for (LivingEntity le : getEntities())
+		{
+			Spout.getServer().setEntitySkin(le, value, EntitySkinType.DEFAULT);
 		}
 	}
 	
 	/** Makes an Ageable mob an adult or baby */
 	private void setTamed()
 	{
-		String value = getValue();
+		ValueType value = getValueType();
 		if (value == null)
 		{
-			actionFailed("set tamed", FailedReason.NO_VALUE);
+			actionFailed("set tamed", ReasonType.NO_VALUE);
 			return;
 		}	
 		
@@ -857,12 +1165,78 @@ public class MobsOutcome extends MobsElement
 		
 		for (Tameable t : getTameables())
 		{
-			boolean b = getBooleanPropertyValue(t.isTamed(), value);
+			boolean b = getBooleanValue(t.isTamed(), value);
 			if (t.isTamed() != b) t.setTamed(b);
 		}
 	}
 	
-// Spawn action_type
+	private void setTitle()
+	{
+		if (!Mobs.isSpoutEnabled())
+		{
+			actionFailed("set title", ReasonType.NO_SPOUT);
+			return;
+		}
+		
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set title", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set title, " + value)) return;
+		
+		for (LivingEntity le : getEntities())
+		{
+			Spout.getServer().setTitle(le, value);
+		}
+	}
+	
+	private void setVillagerType()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set villager_type", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set villager_type, " + value)) return;
+		
+		Villager.Profession vp;
+		if (value.equalsIgnoreCase("random"))
+		{
+			vp = Villager.Profession.getProfession(new Random().nextInt(Villager.Profession.values().length));
+		}
+		else vp = Villager.Profession.valueOf(value.toUpperCase());
+		
+		for (Villager v : getVillagers()) v.setProfession(vp);
+	}
+	
+	/** Sets a sheep's wool colour */
+	private void setWool()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set wool", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set wool, " + value)) return;
+		
+		DyeColor dc;
+		if (value.equalsIgnoreCase("random"))
+		{
+			dc = DyeColor.getByDyeData((byte) new Random().nextInt(DyeColor.values().length));
+		}
+		else dc = DyeColor.valueOf(value.toUpperCase());
+		
+		for (Sheep s : getSheep()) s.setColor(dc);
+	}
+	
+// spawn action
 	
 	/** Spawns a mob/item/exp_orb, etc. */
 	private void spawnSomething()
@@ -870,7 +1244,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", FailedReason.NO_SUBACTION);
+			actionFailed("damage", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -891,7 +1265,7 @@ public class MobsOutcome extends MobsElement
 		int amount = getAmount(0);
 		if (amount == 0)
 		{
-			actionFailed("spawn exp", FailedReason.ZERO_AMOUNT);
+			actionFailed("spawn exp", ReasonType.BAD_AMOUNT);
 			return;
 		}
 		
@@ -901,7 +1275,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("spawn exp " + amount, FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("spawn exp " + amount, ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
@@ -915,7 +1289,7 @@ public class MobsOutcome extends MobsElement
 		int id = getItemId();
 		if (id == 0)
 		{
-			actionFailed("spawn item", FailedReason.ZERO_ITEM_ID);
+			actionFailed("spawn item", ReasonType.BAD_ITEM_ID);
 			return;
 		}
 		
@@ -929,7 +1303,7 @@ public class MobsOutcome extends MobsElement
 		{
 			if (!loc.getChunk().isLoaded())
 			{
-				actionFailed("spawn item " + getPrettyItem(is), FailedReason.CHUNK_NOT_LOADED);
+				actionFailed("spawn item " + getPrettyItem(is), ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
 			loc.getWorld().dropItem(loc, is);
@@ -942,7 +1316,7 @@ public class MobsOutcome extends MobsElement
 		EntityType et = getMob();
 		if (et == null)
 		{
-			actionFailed("spawn mob", FailedReason.NO_MOB);
+			actionFailed("spawn mob", ReasonType.NO_MOB);
 			return;
 		}
 		
@@ -957,7 +1331,7 @@ public class MobsOutcome extends MobsElement
 			{
 				if (!loc.getChunk().isLoaded())
 				{
-					actionFailed("spawn mob " + et + "(" + mob_name + ")", FailedReason.CHUNK_NOT_LOADED);
+					actionFailed("spawn mob " + et + "(" + mob_name + ")", ReasonType.CHUNK_NOT_LOADED);
 					continue;
 				}
 				
@@ -968,7 +1342,7 @@ public class MobsOutcome extends MobsElement
 		//TODO mob description ?
 	}
 	
-// Write action_type	 
+// write action 	 
 	
 	/** Sends a message to the log/a player/the server */
 	private void writeSomething()
@@ -976,7 +1350,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", FailedReason.NO_SUBACTION);
+			actionFailed("damage", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -997,7 +1371,7 @@ public class MobsOutcome extends MobsElement
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", FailedReason.NO_MESSAGE);
+			actionFailed("write message", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
@@ -1012,7 +1386,7 @@ public class MobsOutcome extends MobsElement
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", FailedReason.NO_MESSAGE);
+			actionFailed("write message", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
@@ -1027,7 +1401,7 @@ public class MobsOutcome extends MobsElement
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", FailedReason.NO_MESSAGE);
+			actionFailed("write message", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
@@ -1035,6 +1409,7 @@ public class MobsOutcome extends MobsElement
 			
 		for (Player p : getPlayers()) p.sendMessage(message);
 	}
+	
 	
 // MobsElement getters
 	
@@ -1057,6 +1432,14 @@ public class MobsOutcome extends MobsElement
 		if (ce == null) return orig;
 		
 		return getNumber(ce.getString(ElementType.AMOUNT));
+	}
+	
+	private int getDuration()
+	{
+		ce = ce.getCurrentElement(ElementType.DURATION, ev);
+		if (ce == null) return 0;
+		
+		return getNumber(ce.getString(ElementType.DURATION)) * 20;//TODO docs = ticks
 	}
 	
 	private Effect getEffect()
@@ -1177,6 +1560,29 @@ public class MobsOutcome extends MobsElement
 		return ce.getString(ElementType.VALUE);
 	}
 	
+	private ValueType getValueType()
+	{
+		String s = getValue();
+		if (s == null) return null;
+		
+		return ValueType.valueOf(s.toUpperCase());
+	}
+	
+	private World getWorld()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.WORLD, ev);
+		if (me != null)
+		{//TODO bubble?
+			ce = me;
+			return Bukkit.getWorld(me.getString(ElementType.WORLD));
+		}
+		
+		LivingEntity le = ev.getLivingEntity();
+		if (le != null) return le.getWorld();
+		
+		return null;
+	}
+	
 // Utils
 	
 	private boolean isAffected()
@@ -1188,14 +1594,12 @@ public class MobsOutcome extends MobsElement
 			if (!affected_mobs.contains(le.getType().toString())) return false;			
 		}
 		
-		/*s = orig.getAffectedWorlds();
-		if (s != null)
+		if (affected_worlds != null)
 		{
-			World w = getWorld(orig, ev);
+			World w = getWorld();
 			if (w == null) return false;
-			if (!Arrays.asList(s.replace(" ", "").split(",")).contains(w.getName().toUpperCase())) return false;
-		}*/
-		//TODO world stuff, including global
+			if (!affected_worlds.contains(w.getName().toUpperCase())) return false;
+		}//TODO global?
 		return true;
 	}
 	
@@ -1214,16 +1618,16 @@ public class MobsOutcome extends MobsElement
 		else return Integer.parseInt(s2);
 	}
 	
-	/** */
-	private boolean getBooleanPropertyValue(boolean orig, String s)
+	/** Returns a boolean calculated from the original value and the valuetype */
+	private boolean getBooleanValue(boolean orig, ValueType vt)
 	{
-		if (s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("true")) return true;
-		
-		if (s.equalsIgnoreCase("no") || s.equalsIgnoreCase("false")) return false;
-		
-		if (s.equalsIgnoreCase("random")) return new Random().nextBoolean();
-		
-		if (s.equalsIgnoreCase("toggle")) return !orig;
+		switch (vt)
+		{
+			case NO: return false;
+			case RANDOM: return new Random().nextBoolean();
+			case TOGGLED: return !orig;
+			case YES: return true;
+		}
 		
 		return orig;
 	}
@@ -1316,9 +1720,37 @@ public class MobsOutcome extends MobsElement
 		return null;
 	}
 	
+	private List<Ageable> getAgeables()
+	{
+		List<Ageable> temp = new ArrayList<Ageable>();
+		if (target instanceof List<?>)
+		{
+			for (Object o : (List<?>)target)
+			{
+				if (o instanceof Ageable) temp.add((Ageable)target);
+			}
+		}
+		else if (target instanceof Ageable) temp.add((Ageable)target);
+		return temp;
+	}
+	
 	private List<Location> getLocations()
 	{//TODO stuff
 		return null;
+	}
+	
+	private List<Damageable> getDamageables()
+	{
+		List<Damageable> temp = new ArrayList<Damageable>();
+		if (target instanceof List<?>)
+		{
+			for (Object o : (List<?>)target)
+			{
+				if (o instanceof Damageable) temp.add((Damageable)target);
+			}
+		}
+		else if (target instanceof Damageable) temp.add((Damageable)target);
+		return temp;
 	}
 	
 	private List<LivingEntity> getEntities()
@@ -1363,6 +1795,20 @@ public class MobsOutcome extends MobsElement
 		return temp;
 	}
 	
+	private List<Ocelot> getOcelots()
+	{
+		List<Ocelot> temp = new ArrayList<Ocelot>();
+		if (target instanceof List<?>)
+		{
+			for (Object o : (List<?>)target)
+			{
+				if (o instanceof Ocelot) temp.add((Ocelot)target);
+			}
+		}
+		else if (target instanceof Ocelot) temp.add((Ocelot)target);
+		return temp;
+	}
+	
 	private List<Pig> getPigs()
 	{
 		List<Pig> temp = new ArrayList<Pig>();
@@ -1391,6 +1837,20 @@ public class MobsOutcome extends MobsElement
 		return temp;
 	}
 	
+	private List<Slime> getSlimes()
+	{
+		List<Slime> temp = new ArrayList<Slime>();
+		if (target instanceof List<?>)
+		{
+			for (Object o : (List<?>)target)
+			{
+				if (o instanceof Slime) temp.add((Slime)target);
+			}
+		}
+		else if (target instanceof Slime) temp.add((Slime)target);
+		return temp;
+	}
+	
 	private List<Tameable> getTameables()
 	{
 		List<Tameable> temp = new ArrayList<Tameable>();
@@ -1405,7 +1865,21 @@ public class MobsOutcome extends MobsElement
 		return temp;
 	}
 	
-	private List<Ageable> getAgeables()
+	private List<Villager> getVillagers()
+	{
+		List<Villager> temp = new ArrayList<Villager>();
+		if (target instanceof List<?>)
+		{
+			for (Object o : (List<?>)target)
+			{
+				if (o instanceof Villager) temp.add((Villager)target);
+			}
+		}
+		else if (target instanceof Villager) temp.add((Villager)target);
+		return temp;
+	}
+	
+	/*private List<Ageable> test()
 	{
 		List<Ageable> temp = new ArrayList<Ageable>();
 		if (target instanceof List<?>)
@@ -1417,7 +1891,9 @@ public class MobsOutcome extends MobsElement
 		}
 		else if (target instanceof Ageable) temp.add((Ageable)target);
 		return temp;
-	}
+	}*/
+	
+	
 	
 	/** Calls an event when an action is about to be performed, with the possibility of cancelling */
 	private boolean isActionCancelled(String attempting)
@@ -1432,7 +1908,7 @@ public class MobsOutcome extends MobsElement
 	}
 	
 	/** Calls an event when an action fails (due to wrong type of mob, etc.) */
-	private void actionFailed(String attempted, FailedReason reason)
+	private void actionFailed(String attempted, ReasonType reason)
 	{
 		if (!Mobs.allow_debug) return;//TODO pass stuff
 		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(this, attempted, reason));

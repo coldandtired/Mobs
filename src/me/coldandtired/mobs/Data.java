@@ -4,15 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import me.coldandtired.mobs.Enums.MParam;
-
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.Metadatable;
 
 public class Data 
 {
 	@SuppressWarnings("unchecked")
-	public static boolean hasData(Metadatable m, MParam param)
+	public static boolean hasData(Metadatable m, Object param)
 	{
 		if (m.hasMetadata("mobs_data"))
 		{
@@ -21,7 +19,7 @@ public class Data
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void putData(Metadatable m, MParam param)
+	public static void putData(Metadatable m, Object param)
 	{
 		Map<String, Object> data;
 		if (m.hasMetadata("mobs_data"))
@@ -38,7 +36,7 @@ public class Data
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void putData(Metadatable m, MParam param, Object value)
+	public static void putData(Metadatable m, Object param, Object value)
 	{
 		Map<String, Object> data;
 		if (m.hasMetadata("mobs_data"))
@@ -55,7 +53,7 @@ public class Data
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void removeData(Metadatable m, MParam param)
+	public static void removeData(Metadatable m, Object param)
 	{
 		if (m.hasMetadata("mobs_data"))
 		{
@@ -64,31 +62,31 @@ public class Data
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static Object getData(Metadatable m, MParam param)
+	public static Object getData(Metadatable m, Object param)
 	{
 		if (!m.hasMetadata("mobs_data")) return null;
 		
 		return	((Map<String, Object>)m.getMetadata("mobs_data").get(0).value()).get(param.toString());		
 	}
 	
-	public static void toggleData(Metadatable m, MParam param)
+	/*public static void toggleData(Metadatable m, Object param)
 	{
-		if (hasData(m, param)) removeData(m, param); else putData(m, param);
+		if (hasData(m, param.toString())) removeData(m, param.toString()); else putData(m, param.toString());
 	}
 	
-	public static void putRandom_data(Metadatable m, MParam param)
+	public static void putRandomData(Metadatable m, Object param)
 	{
-		if (new Random().nextBoolean()) removeData(m, param); else putData(m, param);
-	}
+		if (new Random().nextBoolean()) removeData(m, param.toString()); else putData(m, param.toString());
+	}*/
 
 	public static void clearData(Metadatable m)
 	{
 		m.removeMetadata("mobs_data", Mobs.getInstance());
 	}
 	
-	public static int adjustInt(Metadatable m, MParam param, int orig)
+	public static int adjustInt(Metadatable m, Object param, int orig)
 	{
-		String ad = (String)getData(m, param);
+		String ad = (String)getData(m, param.toString());
 		if (ad == null) return orig;
 		
 		String[] value = ad.split(":");

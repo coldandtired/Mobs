@@ -9,6 +9,7 @@ import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.Enums.MParam;
+import me.coldandtired.mobs.Enums.SubactionType;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -17,6 +18,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -142,7 +144,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.BURNS)) events.get(EventType.BURNS).performActions(new EventValues(le, null, event, "burns"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.NO_BURN)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.NO_BURN)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -156,7 +158,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.CHANGES_BLOCK)) events.get(EventType.CHANGES_BLOCK).performActions(new EventValues(le, null, event, "changes_block"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.NO_MOVE_BLOCKS) || Data.hasData(le, MParam.NO_GRAZE)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.NO_MOVE_BLOCKS) || Data.hasData(le, SubactionType.NO_GRAZE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -167,7 +169,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.CREATES_PORTAL)) events.get(EventType.CREATES_PORTAL).performActions(new EventValues(event.getEntity(), null, event, "creates_portal"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_CREATE_PORTALS)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_CREATE_PORTALS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -188,67 +190,17 @@ public class BukkitListener implements Listener
 		
 		int damage = event.getDamage();		
 			
+		String s = "DAMAGE_FROM" + event.getCause();
 		switch (event.getCause())
 		{
-			case BLOCK_EXPLOSION:
-				damage = Data.adjustInt(le, MParam.BLOCK_EXPLOSION_DAMAGE, damage);
-				break;
-			case CONTACT:
-				damage = Data.adjustInt(le, MParam.CONTACT_DAMAGE, damage);
-				break;
-			case CUSTOM:
-				damage = Data.adjustInt(le, MParam.CUSTOM_DAMAGE, damage);
-				break;
-			case DROWNING:
-				damage = Data.adjustInt(le, MParam.DROWNING_DAMAGE, damage);
-				break;
 			case ENTITY_ATTACK:
 				LivingEntity damager = event.getAttacker();
-				if (damager != null) damage = Data.adjustInt(damager, MParam.ATTACK, damage);
+				if (damager != null) damage = Data.adjustInt(damager, SubactionType.ATTACK_POWER, damage);
 				
-				damage = Data.adjustInt(le, MParam.ATTACK_DAMAGE, damage);
+				damage = Data.adjustInt(le, s, damage);
 				break;
-			case ENTITY_EXPLOSION:
-				damage = Data.adjustInt(le, MParam.ENTITY_EXPLOSION_DAMAGE, damage);
-				break;
-			case FALL:
-				damage = Data.adjustInt(le, MParam.FALL_DAMAGE, damage);
-				break;
-			case FIRE:
-				damage = Data.adjustInt(le, MParam.FIRE_DAMAGE, damage);
-				break;
-			case FIRE_TICK:
-				damage = Data.adjustInt(le, MParam.FIRE_TICK_DAMAGE, damage);
-				break;
-			case LAVA:
-				damage = Data.adjustInt(le, MParam.LAVA_DAMAGE, damage);
-				break;
-			case LIGHTNING:
-				damage = Data.adjustInt(le, MParam.LIGHTNING_DAMAGE, damage);
-				break;
-			case MAGIC:
-				damage = Data.adjustInt(le, MParam.MAGIC_DAMAGE, damage);
-				break;
-			case MELTING:
-				damage = Data.adjustInt(le, MParam.MELTING_DAMAGE, damage);
-				break;
-			case POISON:
-				damage = Data.adjustInt(le, MParam.POISON_DAMAGE, damage);
-				break;
-			case PROJECTILE:
-				damage = Data.adjustInt(le, MParam.PROJECTILE_DAMAGE, damage);
-				break;
-			case STARVATION:
-				damage = Data.adjustInt(le, MParam.STARVATION_DAMAGE, damage);
-				break;
-			case SUFFOCATION:
-				damage = Data.adjustInt(le, MParam.SUFFOCATION_DAMAGE, damage);
-				break;
-			case SUICIDE:
-				damage = Data.adjustInt(le, MParam.SUICIDE_DAMAGE, damage);
-				break;
-			case VOID:
-				damage = Data.adjustInt(le, MParam.VOID_DAMAGE, damage);
+			default:
+				damage = Data.adjustInt(le, s, damage);
 				break;
 		}
 		event.setDamage(damage);
@@ -263,21 +215,41 @@ public class BukkitListener implements Listener
 	@EventHandler
 	public void dies(EntityDeathEvent event)
 	{
-		if (ignore_world(event.getEntity().getWorld())) return;
+		LivingEntity le = event.getEntity();
 		
-		if (events.containsKey(EventType.DIES)) events.get(EventType.DIES).performActions(new EventValues(event.getEntity(), null, event, "dies"));
-		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
-		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
+		if (ignore_world(le.getWorld())) return;
+		
+		if (events.containsKey(EventType.DIES)) events.get(EventType.DIES).performActions(new EventValues(le, null, event, "dies"));
+		if (Data.hasData(le, SubactionType.NO_DROPS))
+		{
+			event.getDrops().clear();
+			event.setDroppedExp(0);
+		}
+		else
+		{
+			if (Data.hasData(le, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
+			if (Data.hasData(le, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
+		}
 	}
 	
 	@EventHandler
 	public void player_dies(PlayerDeathEvent event)
 	{
-		if (ignore_world(event.getEntity().getWorld())) return;
+		Player p = event.getEntity();
 		
-		if (events.containsKey(EventType.PLAYER_DIES)) events.get(EventType.PLAYER_DIES).performActions(new EventValues(event.getEntity(), null, event, "player_dies"));
-		if (Data.hasData(event.getEntity(), MParam.CLEAR_DROPS)) event.getDrops().clear();
-		if (Data.hasData(event.getEntity(), MParam.CLEAR_EXP)) event.setDroppedExp(0);
+		if (ignore_world(p.getWorld())) return;
+		
+		if (events.containsKey(EventType.PLAYER_DIES)) events.get(EventType.PLAYER_DIES).performActions(new EventValues(p, null, event, "player_dies"));
+		if (Data.hasData(p, SubactionType.NO_DROPS))
+		{
+			event.getDrops().clear();
+			event.setDroppedExp(0);
+		}
+		else
+		{
+			if (Data.hasData(p, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
+			if (Data.hasData(p, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
+		}
 	}
 	
 	@EventHandler
@@ -294,7 +266,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.DYED)) events.get(EventType.DYED).performActions(new EventValues(event.getEntity(), null, event, "dyed"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_DYED)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_DYED)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -305,7 +277,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.EVOLVES)) events.get(EventType.EVOLVES).performActions(new EventValues(event.getEntity(), null, event, "evolves"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -316,7 +288,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.EVOLVES)) events.get(EventType.EVOLVES).performActions(new EventValues(event.getEntity(), null, event, "evolves"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_EVOLVE)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -342,22 +314,22 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.EXPLODES)) events.get(EventType.EXPLODES).performActions(new EventValues(le, null, event, "explodes"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
 		
 		if (event.isCancelled()) return;
 		else
 		{			
-			if (Data.hasData(le, MParam.NO_DESTROY_BLOCKS)) event.blockList().clear();
+			if (Data.hasData(le, SubactionType.NO_DESTROY_BLOCKS)) event.blockList().clear();
 			else
 			{
-				if (Data.hasData(le, MParam.EXPLOSION_SIZE))
+				if (Data.hasData(le, SubactionType.EXPLOSION_SIZE))
 				{
-					Integer size = (Integer)Data.getData(le, MParam.EXPLOSION_SIZE);
+					Integer size = (Integer)Data.getData(le, SubactionType.EXPLOSION_SIZE);
 					if (size == null) return;
 					
 					event.setCancelled(true);
 					Location loc = event.getLocation();
-					if (Data.hasData(le, MParam.FIERY_EXPLOSION)) loc.getWorld().createExplosion(loc, size, true);
+					if (Data.hasData(le, SubactionType.FIERY_EXPLOSION)) loc.getWorld().createExplosion(loc, size, true);
 					else loc.getWorld().createExplosion(loc, size);
 				}
 			}
@@ -372,7 +344,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.GROWS_WOOL)) events.get(EventType.GROWS_WOOL).performActions(new EventValues(event.getEntity(), null, event, "grows_wool"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_GROW_WOOL)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_GROW_WOOL)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -386,7 +358,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.HEALS)) events.get(EventType.HEALS).performActions(new EventValues(le, null, event, "heals"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.NO_HEAL))
+		if (Data.hasData(le, SubactionType.NO_HEAL))
 		{
 			event.setCancelled(true);
 			return;
@@ -433,7 +405,7 @@ public class BukkitListener implements Listener
 		
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
-		Data.putData(p, MParam.NAME, p.getName());
+		Data.putData(p, SubactionType.NAME, p.getName());
 		if (events.containsKey(EventType.PLAYER_JOINS)) events.get(EventType.PLAYER_JOINS).performActions(new EventValues(p, null, event, "player_joins"));
 	}
 	
@@ -487,7 +459,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.PICKS_UP_ITEM)) events.get(EventType.PICKS_UP_ITEM).performActions(new EventValues(event.getPlayer(), null, event, "picks_up_item"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getPlayer(), MParam.NO_PICK_UP_ITEMS)) event.setCancelled(true);
+		if (Data.hasData(event.getPlayer(), SubactionType.NO_PICK_UP_ITEMS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -501,7 +473,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.SHEARED)) events.get(EventType.SHEARED).performActions(new EventValues(le, null, event, "sheared"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.NO_SHEARED)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.NO_SHEARING)) event.setCancelled(true);
 	}
 
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -510,16 +482,17 @@ public class BukkitListener implements Listener
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
 		LivingEntity le = event.getEntity();
+		
+		if (Pig.class.isInstance(le)) Mobs.log("yesy");
+		
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
-		if (mob_name != null) data.put(MParam.NAME.toString(), mob_name);
+		if (mob_name != null) data.put(SubactionType.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
 		if (events.containsKey(EventType.SPAWNS)) events.get(EventType.SPAWNS).performActions(new EventValues(le, null, event, "spawns"));
 		mob_name = null;
 		spawn_reason = null;
-		
-		//event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -529,7 +502,7 @@ public class BukkitListener implements Listener
 		
 		Player p = event.getPlayer();
 		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
-		Data.putData(p, MParam.NAME, p.getName());
+		Data.putData(p, SubactionType.NAME, p.getName());
 		if (events.containsKey(EventType.PLAYER_SPAWNS)) events.get(EventType.PLAYER_SPAWNS).performActions(new EventValues(p, null, event, "player_spawns"));	
 	}
 	
@@ -539,7 +512,7 @@ public class BukkitListener implements Listener
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
 		if (events.containsKey(EventType.SPLITS)) events.get(EventType.SPLITS).performActions(new EventValues(event.getEntity(), null, event, "splits"));
-		Integer i = (Integer)Data.getData(event.getEntity(), MParam.SPLIT_INTO);
+		Integer i = (Integer)Data.getData(event.getEntity(), SubactionType.SPLIT_INTO);
 		if (i == null) return;
 		if (i == 0) event.setCancelled(true); else event.setCount(i);
 	}
@@ -552,7 +525,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.TAMED)) events.get(EventType.TAMED).performActions(new EventValues(event.getEntity(), null, event, "tamed"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(event.getEntity(), MParam.NO_TAMED)) event.setCancelled(true);
+		if (Data.hasData(event.getEntity(), SubactionType.NO_TAMING)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -566,7 +539,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.TARGETS)) events.get(EventType.TARGETS).performActions(new EventValues(le, null, event, "targets"));
 		if (event.isCancelled()) return;
 		//targetd event!
-		if (Data.hasData(le, MParam.FRIENDLY)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -580,7 +553,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(EventType.TELEPORTS)) events.get(EventType.TELEPORTS).performActions(new EventValues(le, null, event, "teleports"));
 		if (event.isCancelled()) return;
 		
-		if (Data.hasData(le, MParam.NO_TELEPORT)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.NO_TELEPORT)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -594,11 +567,11 @@ public class BukkitListener implements Listener
 			{
 				if (le instanceof Player) continue;
 				
-				Integer life = (Integer)Data.getData(le, MParam.MAX_LIFE);
+				Integer life = (Integer)Data.getData(le, SubactionType.MAX_LIFE);
 				if (life == null) continue;
 				life--;
 				if (life < 0) le.remove();	
-				else Data.putData(le, MParam.MAX_LIFE, life);
+				else Data.putData(le, SubactionType.MAX_LIFE, life);
 			}
 		}
 		
