@@ -760,6 +760,19 @@ public class Action extends Config_element
 			case SET_EXPLOSION_SIZE:
 				Data.putData(creeper, MParam.EXPLOSION_SIZE, getInt_value(0));
 				return;	
+			
+			case SET_CAN_DESTROY_BLOCKS_NO:
+				Data.putData(creeper, MParam.NO_DESTROY_BLOCKS);
+				return;
+			case SET_CAN_DESTROY_BLOCKS_RANDOM:
+				Data.putRandom_data(creeper, MParam.NO_DESTROY_BLOCKS);
+				return;
+			case SET_CAN_DESTROY_BLOCKS_YES:
+				Data.removeData(creeper, MParam.NO_DESTROY_BLOCKS);
+				return;	
+			case TOGGLE_CAN_DESTROY_BLOCKS:
+				Data.toggleData(creeper, MParam.NO_DESTROY_BLOCKS);
+				return;
 		}		
 		
 		switch (getAction_type())
