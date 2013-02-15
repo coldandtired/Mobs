@@ -20,6 +20,7 @@ import javax.xml.xpath.XPathFactory;
 import me.coldandtired.extra_events.Extra_events;
 import me.coldandtired.mobs.BukkitListener.EventType;
 import me.coldandtired.mobs.Enums.MParam;
+import me.coldandtired.mobs.api.Data;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -90,7 +91,8 @@ public class Mobs extends JavaPlugin
 	boolean load_config() throws XPathExpressionException
 	{
 		xpath = XPathFactory.newInstance().newXPath();
-		error("This is a Beta version of the plugin.  Make sure you have backups!");
+		error("This is a new version of the plugin and the old config files won't work anymore!");
+		error("See for a guide to the new and improved config!");//TODO link
 		FileConfiguration config = getConfig();
 		config.options().copyDefaults(true);
 		saveConfig();

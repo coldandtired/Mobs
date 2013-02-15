@@ -50,13 +50,13 @@ import me.coldandtired.extra_events.LivingEntityDamageEvent;
 import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
 import me.coldandtired.extra_events.PlayerLeaveLivingEntityEvent;
 import me.coldandtired.extra_events.PlayerNearLivingEntityEvent;
-import me.coldandtired.mobs.events.MobsFailedActionEvent;
-import me.coldandtired.mobs.events.MobsPerformingActionEvent;
+import me.coldandtired.mobs.api.Data;
+import me.coldandtired.mobs.api.MobsFailedActionEvent;
+import me.coldandtired.mobs.api.MobsPerformingActionEvent;
 import me.coldandtired.mobs.Enums.*;
 
 public class MobsOutcome extends MobsElement
 {	
-	private String event_name;
 	private EventValues ev;
 	private MobsElement ce;
 	private Object target;
@@ -79,8 +79,7 @@ public class MobsOutcome extends MobsElement
 			affected_worlds = new ArrayList<String>();
 			String s = element.getAttribute("affected_worlds").toUpperCase().replace(" ", "");
 			affected_worlds = Arrays.asList(s.split(","));
-		}
-		this.event_name = event_name;
+		}//TODO pass target to ev?
 	}
 	
 	/** Performs all the actions on all the targets */
@@ -117,7 +116,9 @@ public class MobsOutcome extends MobsElement
 				case DAMAGE: damageSomething();
 					break;					
 				case GIVE: giveSomething();
-					break;						
+					break;	
+				case KILL: killSomething();
+					break;
 				case PLAY: playSomething();
 					break;				
 				case REMOVE: removeSomething();
@@ -306,10 +307,9 @@ public class MobsOutcome extends MobsElement
 			
 		if (isActionCancelled("damage mob " + amount)) return;
 			
-		for (Damageable d : getDamageables())
+		for (Damageable d : getMobType(Damageable.class))
 		{
-			if (amount != -1 ) d.damage(amount); else d.setHealth(0);
-			//TODO kill docs -1
+			d.damage(amount);
 		}
 	}	
 	
@@ -348,7 +348,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("give exp " + amount)) return;
 		
-		for (Player p : getPlayers()) p.giveExp(amount);
+		for (Player p : getMobType(Player.class)) p.giveExp(amount);
 	}
 		
 	/** Sends an item to players */
@@ -367,7 +367,7 @@ public class MobsOutcome extends MobsElement
 		ItemStack is = new ItemStack(id, amount, (short)data);
 		if (isActionCancelled("give item " + getPrettyItem(is))) return;
 			
-		for (Player p : getPlayers()) p.getInventory().addItem(is);
+		for (Player p : getMobType(Player.class)) p.getInventory().addItem(is);
 	}
 	
 	/** Gives a player money (needs Vault) */
@@ -388,8 +388,21 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("give money " + amount)) return;
 		
-		for (Player p : getPlayers()) Mobs.economy.depositPlayer(p.getName(), amount);
+		for (Player p : getMobType(Player.class)) Mobs.economy.depositPlayer(p.getName(), amount);
 	}
+	
+// Kill action
+	
+	/** Kills a mob */
+	private void killSomething()
+	{			
+		if (isActionCancelled("kill")) return;
+			
+		for (Damageable d : getMobType(Damageable.class))
+		{
+			d.setHealth(0);
+		}
+	}	
 	
 // Play action
 	
@@ -487,11 +500,13 @@ public class MobsOutcome extends MobsElement
 				break;
 			case ITEMS: removeInventory();
 				break;
+			case MAX_HP: removeMaxHp();
+				break;
 			case MOB: removeMob();
 				break;
 			case SKIN: removeSkin();
 				break;
-			default: removeProperty();
+			default: removeProperty(st);
 				break;
 		}
 	}
@@ -499,7 +514,13 @@ public class MobsOutcome extends MobsElement
 	/** Flags a mob to not drop anything on death */
 	private void removeAllDrops()
 	{
-		//TODO meta stuff
+		if (isActionCancelled("remove all_drops")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.NO_DROPPED_ITEMS);
+			Data.putData(le, SubactionType.NO_DROPPED_EXP);
+		}
 	}
 	
 	/** Removes all data from a mob or block */
@@ -507,19 +528,29 @@ public class MobsOutcome extends MobsElement
 	{		
 		if (isActionCancelled("remove data")) return;
 		
-		for (LivingEntity le : getEntities()) Data.clearData(le);
+		for (LivingEntity le : getMobType(LivingEntity.class)) Data.clearData(le);
 	}
 	
 	/** Flags a mob to not drop any exp on death */
 	private void removeDroppedExp()
 	{
-		//TODO meta stuff
+		if (isActionCancelled("remove dropped_exp")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.NO_DROPPED_EXP);
+		}
 	}
 	
 	/** Flags a mob to not drop any items on death */
 	private void removeDroppedItems()
 	{
-		//TODO meta stuff
+		if (isActionCancelled("remove dropped_items")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.NO_DROPPED_ITEMS);
+		}
 	}
 	
 	/** Removes all matching items from a player's inventory */
@@ -533,7 +564,18 @@ public class MobsOutcome extends MobsElement
 	{
 		if (isActionCancelled("remove items")) return;
 		
-		for (Player p : getPlayers()) p.getInventory().clear();
+		for (Player p : getMobType(Player.class)) p.getInventory().clear();
+	}
+	
+	/** Restore a mob's max_hp to its vanilla setting */
+	private void removeMaxHp()
+	{
+		if (isActionCancelled("remove max_hp")) return;
+		
+		for (Damageable d : getMobType(Damageable.class))
+		{
+			d.resetMaxHealth();
+		}
 	}
 	
 	/** Removes a mob from the world without it dying */
@@ -541,7 +583,7 @@ public class MobsOutcome extends MobsElement
 	{
 		if (isActionCancelled("remove mob")) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			if (!(le instanceof Player)) le.remove();
 		}
@@ -558,13 +600,18 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("remove skin")) return;
 		
-		for (LivingEntity le : getEntities()) Spout.getServer().resetEntitySkin(le);
+		for (LivingEntity le : getMobType(LivingEntity.class)) Spout.getServer().resetEntitySkin(le);
 	}
 	
 	/** Removes some data from a mob */
-	private void removeProperty()
+	private void removeProperty(SubactionType st)
 	{		
-		//TODO meta stuff
+		if (isActionCancelled("remove " + st)) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.removeData(le, st);
+		}
 	}
 	
 // Set action
@@ -848,7 +895,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set adult, " + value)) return;
 		
-		for (Ageable a : getAgeables())
+		for (Ageable a : getMobType(Ageable.class))
 		{
 			boolean b2 = getBooleanValue(a.isAdult(), value);
 			if (a.isAdult() == b2) return;
@@ -869,7 +916,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set angry, " + value)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			if (le instanceof Wolf)
 			{
@@ -913,7 +960,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set " + st + ", " + amount)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			Data.putData(le, st, amount);
 		}
@@ -930,7 +977,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set " + st + ", " + value)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			Data.putData(le, st, value);
 		}
@@ -938,7 +985,7 @@ public class MobsOutcome extends MobsElement
 		
 	/** Sets a mob's health */
 	private void setHp()
-	{//TODO reset health
+	{
 		String value = getValue();
 		if (value == null)
 		{
@@ -950,7 +997,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set hp " + amount)) return;
 		
-		for (Damageable d : getDamageables())
+		for (Damageable d : getMobType(Damageable.class))
 		{
 			if (amount > d.getMaxHealth()) d.setHealth(d.getMaxHealth()); else d.setHealth(amount);
 		}
@@ -970,7 +1017,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set max_hp " + amount)) return;
 		
-		for (Damageable d : getDamageables())
+		for (Damageable d : getMobType(Damageable.class))
 		{
 			d.setMaxHealth(amount);
 		}
@@ -990,7 +1037,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set level " + amount)) return;
 		
-		for (Player p : getPlayers())
+		for (Player p : getMobType(Player.class))
 		{
 			p.setLevel(amount);
 		}
@@ -1008,7 +1055,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set " + st + ", " + value)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			boolean b = Data.hasData(le, st);
 			boolean b2 = getBooleanValue(b, value);
@@ -1035,7 +1082,7 @@ public class MobsOutcome extends MobsElement
 		}
 		else ot = Ocelot.Type.valueOf(value.toUpperCase());
 		
-		for (Ocelot o : getOcelots()) o.setCatType(ot);
+		for (Ocelot o : getMobType(Ocelot.class)) o.setCatType(ot);
 	}
 	
 	private void setOwner()
@@ -1049,7 +1096,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set owner, " + value)) return;
 		
-		for (Tameable t : getTameables())
+		for (Tameable t : getMobType(Tameable.class))
 		{
 			t.setOwner(Bukkit.getPlayer(value));
 		}
@@ -1067,7 +1114,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set powered, " + value)) return;
 		
-		for (Creeper c : getCreepers())
+		for (Creeper c : getMobType(Creeper.class))
 		{
 			boolean b = getBooleanValue(c.isPowered(), value);
 			if (c.isPowered() != b) c.setPowered(b);
@@ -1086,7 +1133,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set saddled, " + value)) return;
 		
-		for (Pig p : getPigs())
+		for (Pig p : getMobType(Pig.class))
 		{
 			boolean b = getBooleanValue(p.hasSaddle(), value);
 			if (p.hasSaddle() != b) p.setSaddle(b);
@@ -1105,7 +1152,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set sheared, " + value)) return;
 		
-		for (Sheep s : getSheep())
+		for (Sheep s : getMobType(Sheep.class))
 		{
 			boolean b = getBooleanValue(s.isSheared(), value);
 			if (s.isSheared() != b) s.setSheared(b);
@@ -1125,7 +1172,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set size " + size)) return;
 		
-		for (Slime s : getSlimes()) s.setSize(size);
+		for (Slime s : getMobType(Slime.class)) s.setSize(size);
 	}
 	
 	private void setSkin()
@@ -1145,7 +1192,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set skin, " + value)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			Spout.getServer().setEntitySkin(le, value, EntitySkinType.DEFAULT);
 		}
@@ -1163,7 +1210,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set tamed, " + value)) return;	
 		
-		for (Tameable t : getTameables())
+		for (Tameable t : getMobType(Tameable.class))
 		{
 			boolean b = getBooleanValue(t.isTamed(), value);
 			if (t.isTamed() != b) t.setTamed(b);
@@ -1187,7 +1234,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set title, " + value)) return;
 		
-		for (LivingEntity le : getEntities())
+		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			Spout.getServer().setTitle(le, value);
 		}
@@ -1211,7 +1258,7 @@ public class MobsOutcome extends MobsElement
 		}
 		else vp = Villager.Profession.valueOf(value.toUpperCase());
 		
-		for (Villager v : getVillagers()) v.setProfession(vp);
+		for (Villager v : getMobType(Villager.class)) v.setProfession(vp);
 	}
 	
 	/** Sets a sheep's wool colour */
@@ -1233,7 +1280,7 @@ public class MobsOutcome extends MobsElement
 		}
 		else dc = DyeColor.valueOf(value.toUpperCase());
 		
-		for (Sheep s : getSheep()) s.setColor(dc);
+		for (Sheep s : getMobType(Sheep.class)) s.setColor(dc);
 	}
 	
 // spawn action
@@ -1407,7 +1454,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("write message " + message)) return;
 			
-		for (Player p : getPlayers()) p.sendMessage(message);
+		for (Player p : getMobType(Player.class)) p.sendMessage(message);
 	}
 	
 	
@@ -1583,6 +1630,30 @@ public class MobsOutcome extends MobsElement
 		return null;
 	}
 	
+	private String getX()
+	{
+		ce = ce.getCurrentElement(ElementType.X, ev);
+		if (ce == null) return null;
+		
+		return ce.getString(ElementType.X);
+	}
+	
+	private String getY()
+	{
+		ce = ce.getCurrentElement(ElementType.Y, ev);
+		if (ce == null) return null;
+		
+		return ce.getString(ElementType.Y);
+	}
+	
+	private String getZ()
+	{
+		ce = ce.getCurrentElement(ElementType.Z, ev);
+		if (ce == null) return null;
+		
+		return ce.getString(ElementType.Z);
+	}
+	
 // Utils
 	
 	private boolean isAffected()
@@ -1635,18 +1706,17 @@ public class MobsOutcome extends MobsElement
 	/** Returns a formatted ItemStack */
 	private String getPrettyItem(ItemStack is)
 	{
-		//TODO return proper stuff
-		return "an item";
+		return "" + is.getType() + ":" + is.getData().getData() + " x " + is.getAmount();
 	}
 	
+	/** returns a formatted location */
 	private String getPrettyLoc(Location loc)
 	{
-		//TODO prettify
-		return loc.toString();
+		return "x:" + loc.getBlockX() + " y:" + loc.getBlockY() + " z:" + loc.getBlockZ() + " (" + loc.getWorld().getName() + ")";
 	}
 	
-	/** Returns a list of objects (LivingEntity or Location) to have actions performed on */
-	private Object getMCTarget()
+	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
+	public Object getMCTarget()
 	{		
 		TargetType tt = getTarget();
 		if (tt == null)
@@ -1655,7 +1725,7 @@ public class MobsOutcome extends MobsElement
 		}			
 		
 		switch (tt)
-		{
+		{//TODO split
 			case AUX_MOB:
 				Event orig_event = ev.getOrigEvent();
 				if (orig_event instanceof EntityDamageByEntityEvent)
@@ -1665,31 +1735,52 @@ public class MobsOutcome extends MobsElement
 				}
 				else if (orig_event instanceof PlayerApproachLivingEntityEvent)
 					return ((PlayerApproachLivingEntityEvent)orig_event).getPlayer();
+				
 				else if (orig_event instanceof PlayerLeaveLivingEntityEvent)
 					return ((PlayerLeaveLivingEntityEvent)orig_event).getPlayer();
+				
 				else if (orig_event instanceof PlayerNearLivingEntityEvent)
 					return ((PlayerNearLivingEntityEvent)orig_event).getPlayer();
+				
 				else if (orig_event instanceof LivingEntityBlockEvent)
 					return ((LivingEntityBlockEvent)orig_event).getAttacker();
+				
 				else if (orig_event instanceof LivingEntityDamageEvent)
 					return ((LivingEntityDamageEvent)orig_event).getAttacker();
+				
 				else if (orig_event instanceof EntityTargetLivingEntityEvent)
 					return ((EntityTargetLivingEntityEvent)orig_event).getTarget();
-				else if (orig_event instanceof EntityTameEvent)
-					return (LivingEntity) ((EntityTameEvent)orig_event).getOwner();
+				
 				else if (orig_event instanceof PlayerShearEntityEvent)
 					return ((PlayerShearEntityEvent)orig_event).getPlayer();
-				else if (orig_event instanceof EntityDeathEvent)
-					return ((EntityDeathEvent)orig_event).getEntity().getKiller();
-				else if (orig_event instanceof PlayerDeathEvent)
-					return ((PlayerDeathEvent)orig_event).getEntity().getKiller();
 			
 				break;	
-				//TODO target drilling down
+				
+			case KILLER:
+				if (!(ev.getOrigEvent() instanceof EntityDeathEvent || ev.getOrigEvent() instanceof PlayerDeathEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_DIES_EVENT);
+					return null;
+				}
+				if (ev.getOrigEvent() instanceof EntityDeathEvent)	return ((EntityDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
+				else return ((PlayerDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
+				
+			case OWNER:
+				if (!(ev.getOrigEvent() instanceof EntityTameEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TAMES_EVENT);
+					return null;
+				}
+				return ((EntityTameEvent)ev.getOrigEvent()).getOwner();
+				
 			case PLAYER:
 				String s = getPlayer();
-				if (s != null) return Bukkit.getPlayer(s);
-				break;
+				if (s == null)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_PLAYER);
+					return null;
+				}
+				return Bukkit.getPlayer(s);
 			/*case NEAREST:
 				for (LivingEntity l : getNearest(le.getNearbyEntities(50, 10, 50), le))
 					targets.add(l);
@@ -1697,210 +1788,88 @@ public class MobsOutcome extends MobsElement
 			case RANDOM:
 				for (LivingEntity l : getNearby(le.getWorld().getEntities()))
 					targets.add(l);
-				break;
+				break;*/
 			case BLOCK:
-				World w = getWorld(le);
-				targets.add(new Location(w, getX().getInt_value(0), getY().getInt_value(0), getZ().getInt_value(0)));
-				/*
-				for (int x : getX())
+				World w = getWorld();
+				String temp = getX();
+				if (temp == null)
 				{
-					for (int y : getY())
-					{
-						if (y > w.getMaxHeight()) y = w.getMaxHeight();
-						for (int z : getZ())
-						{
-							targets.add(new Location(w, x, y, z));
-						}
-					}
-				}*/
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_X);
+					return null;
+				}
+				int x = getNumber(temp);
+				
+				temp = getY();
+				if (temp == null)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_Y);
+					return null;
+				}
+				int y = getNumber(temp);
+				if (y > w.getMaxHeight())
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.Y_EXCEEDS_MAX_HEIGHT);
+					return null;
+				}
+				
+				temp = getZ();
+				if (temp == null)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_Z);
+					return null;
+				}
+				int z = getNumber(temp);
+				
+				return new Location(w, x, y, z);
 			default: if (ev.getLivingEntity() != null) return ev.getLivingEntity();
-			//	break;
+				break;
 		}
 		
 		return null;
 	}
 	
-	private List<Ageable> getAgeables()
-	{
-		List<Ageable> temp = new ArrayList<Ageable>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Ageable) temp.add((Ageable)target);
-			}
-		}
-		else if (target instanceof Ageable) temp.add((Ageable)target);
-		return temp;
-	}
-	
+	/** Returns a list of target locations, using livingentity if necessary */
 	private List<Location> getLocations()
-	{//TODO stuff
-		return null;
-	}
-	
-	private List<Damageable> getDamageables()
 	{
-		List<Damageable> temp = new ArrayList<Damageable>();
+		List<Location> temp = new ArrayList<Location>();
 		if (target instanceof List<?>)
 		{
 			for (Object o : (List<?>)target)
 			{
-				if (o instanceof Damageable) temp.add((Damageable)target);
+				if (o instanceof Location) temp.add((Location)o);
+				else if (o instanceof LivingEntity) temp.add(((LivingEntity)o).getLocation());
 			}
 		}
-		else if (target instanceof Damageable) temp.add((Damageable)target);
+		else
+		{
+			if (target instanceof Location) temp.add((Location)target);
+			else if (target instanceof LivingEntity) temp.add(((LivingEntity)target).getLocation());
+		}
 		return temp;
 	}
 	
-	private List<LivingEntity> getEntities()
+	/** Returns a list of the relevant mobs (pigs, ageables, etc.) */
+	@SuppressWarnings("unchecked")
+	private <T> List<T> getMobType(Class<T> type)
 	{
-		List<LivingEntity> temp = new ArrayList<LivingEntity>();
+		List<T> temp = new ArrayList<T>();
 		if (target instanceof List<?>)
 		{
 			for (Object o : (List<?>)target)
 			{
-				if (o instanceof LivingEntity) temp.add((LivingEntity)target);
+				if (type.isInstance(o)) temp.add((T)o);
 			}
 		}
-		else if (target instanceof LivingEntity) temp.add((LivingEntity)target);
+		else if (type.isInstance(target)) temp.add((T)target);
 		return temp;
 	}
-	
-	private List<Player> getPlayers()
-	{
-		List<Player> temp = new ArrayList<Player>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Player) temp.add((Player)target);
-			}
-		}
-		else if (target instanceof Player) temp.add((Player)target);
-		return temp;
-	}
-	
-	private List<Creeper> getCreepers()
-	{
-		List<Creeper> temp = new ArrayList<Creeper>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Creeper) temp.add((Creeper)target);
-			}
-		}
-		else if (target instanceof Creeper) temp.add((Creeper)target);
-		return temp;
-	}
-	
-	private List<Ocelot> getOcelots()
-	{
-		List<Ocelot> temp = new ArrayList<Ocelot>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Ocelot) temp.add((Ocelot)target);
-			}
-		}
-		else if (target instanceof Ocelot) temp.add((Ocelot)target);
-		return temp;
-	}
-	
-	private List<Pig> getPigs()
-	{
-		List<Pig> temp = new ArrayList<Pig>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Pig) temp.add((Pig)target);
-			}
-		}
-		else if (target instanceof Pig) temp.add((Pig)target);
-		return temp;
-	}
-	
-	private List<Sheep> getSheep()
-	{
-		List<Sheep> temp = new ArrayList<Sheep>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Sheep) temp.add((Sheep)target);
-			}
-		}
-		else if (target instanceof Sheep) temp.add((Sheep)target);
-		return temp;
-	}
-	
-	private List<Slime> getSlimes()
-	{
-		List<Slime> temp = new ArrayList<Slime>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Slime) temp.add((Slime)target);
-			}
-		}
-		else if (target instanceof Slime) temp.add((Slime)target);
-		return temp;
-	}
-	
-	private List<Tameable> getTameables()
-	{
-		List<Tameable> temp = new ArrayList<Tameable>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Tameable) temp.add((Tameable)target);
-			}
-		}
-		else if (target instanceof Tameable) temp.add((Tameable)target);
-		return temp;
-	}
-	
-	private List<Villager> getVillagers()
-	{
-		List<Villager> temp = new ArrayList<Villager>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Villager) temp.add((Villager)target);
-			}
-		}
-		else if (target instanceof Villager) temp.add((Villager)target);
-		return temp;
-	}
-	
-	/*private List<Ageable> test()
-	{
-		List<Ageable> temp = new ArrayList<Ageable>();
-		if (target instanceof List<?>)
-		{
-			for (Object o : (List<?>)target)
-			{
-				if (o instanceof Ageable) temp.add((Ageable)target);
-			}
-		}
-		else if (target instanceof Ageable) temp.add((Ageable)target);
-		return temp;
-	}*/
-	
-	
 	
 	/** Calls an event when an action is about to be performed, with the possibility of cancelling */
 	private boolean isActionCancelled(String attempting)
 	{
 		if (Mobs.allow_debug)
-		{//TODO pass tuff
-			MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(event_name, ev, null, null, null);
+		{
+			MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(attempting, this);
 			Bukkit.getServer().getPluginManager().callEvent(mpae);
 			return mpae.isCancelled();
 		}
@@ -1910,8 +1879,7 @@ public class MobsOutcome extends MobsElement
 	/** Calls an event when an action fails (due to wrong type of mob, etc.) */
 	private void actionFailed(String attempted, ReasonType reason)
 	{
-		if (!Mobs.allow_debug) return;//TODO pass stuff
-		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(this, attempted, reason));
+		if (!Mobs.allow_debug) return;
+		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(attempted, reason, this));
 	}
-	
 }

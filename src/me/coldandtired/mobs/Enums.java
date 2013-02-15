@@ -40,6 +40,7 @@ public class Enums
 		CAUSE,
 		DAMAGE,
 		GIVE,
+		KILL,
 		PLAY, 
 		REMOVE,
 		SET,
@@ -166,8 +167,20 @@ public class Enums
 		
 	enum TargetType
 	{ 
-		AREA, AROUND, AUX_MOB, BLOCK, NEAREST, PLAYER, RANDOM,	SELF
-		//TODO killer, tamer, etc.?
+		APPROACHER,
+		AREA,
+		AROUND,
+		ATTACKER,
+		AUX_MOB,
+		BLOCK,
+		KILLER,
+		NEAREST,
+		PLAYER,
+		RANDOM,
+		OWNER,
+		SELF,
+		SHEARER,
+		TARGETED,
 	}
 	
 	enum ValueType
@@ -206,20 +219,26 @@ public class Enums
 		NO_EFFECT,
 		NO_MESSAGE,
 		NO_MOB,
+		NO_PLAYER,
 		NO_SOUND,
 		NO_SPOUT,
 		NO_SUBACTION,
 		NO_TARGET,
 		NO_VALUE,
 		NO_VAULT,
+		NO_X,
+		NO_Y,
+		NO_Z,
 		NOT_AN_ANGERABLE_MOB,
+		NOT_THE_DIES_EVENT,
+		NOT_THE_TAMES_EVENT,
+		Y_EXCEEDS_MAX_HEIGHT
 	}
 	
 	
 
 	
-	public enum Subasssctions {	
-		DROPS,
+	public enum Subasssctions {
 		PRESS_BUTTON}
 	
 	public enum Conditionsss

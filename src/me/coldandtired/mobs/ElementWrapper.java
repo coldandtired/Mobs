@@ -11,8 +11,8 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.mobs.Enums.ElementType;
-import me.coldandtired.mobs.events.MobsFailedConditionEvent;
-import me.coldandtired.mobs.events.MobsPassedConditionEvent;
+import me.coldandtired.mobs.api.MobsFailedConditionEvent;
+import me.coldandtired.mobs.api.MobsPassedConditionEvent;
 import me.coldandtired.mobs.Enums.ConditionType;
 
 import org.bukkit.Bukkit;

@@ -1,8 +1,10 @@
-package me.coldandtired.mobs;
+package me.coldandtired.mobs.api;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+
+import me.coldandtired.mobs.Mobs;
 
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.Metadatable;

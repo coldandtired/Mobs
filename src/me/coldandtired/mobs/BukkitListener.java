@@ -10,6 +10,7 @@ import javax.xml.xpath.XPathExpressionException;
 import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.Enums.MParam;
 import me.coldandtired.mobs.Enums.SubactionType;
+import me.coldandtired.mobs.api.Data;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,7 +19,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -481,9 +481,7 @@ public class BukkitListener implements Listener
 	{
 		if (ignore_world(event.getEntity().getWorld())) return;
 		
-		LivingEntity le = event.getEntity();
-		
-		if (Pig.class.isInstance(le)) Mobs.log("yesy");
+		LivingEntity le = event.getEntity();		
 		
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
