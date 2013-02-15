@@ -1183,6 +1183,7 @@ public class Action extends Config_element
 			Mobs.getInstance().setMob_name(name);
 			for (Location loc : list)
 			{
+				if (!loc.getChunk().isLoaded()) continue;
 				loc.getWorld().spawnEntity(loc, EntityType.valueOf(mob[0]));
 			}
 			if (!isLocked())
@@ -1240,6 +1241,7 @@ public class Action extends Config_element
 			short data = drop.getData();
 			for (Location loc : locs)
 			{
+				if (!loc.getChunk().isLoaded()) continue;
 				loc.getBlock().setTypeIdAndData(id, (byte) data, false);
 			}
 		}
@@ -1247,6 +1249,7 @@ public class Action extends Config_element
 		{
 			for (Location loc : locs)
 			{
+				if (!loc.getChunk().isLoaded()) continue;
 				loc.getBlock().breakNaturally();
 			}
 		}
@@ -1256,6 +1259,7 @@ public class Action extends Config_element
 	{
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{
+			if (!loc.getChunk().isLoaded()) continue;
 			World w = loc.getWorld();
 			if (getAction_type() == MAction.LIGHTNING_EFFECT) w.strikeLightningEffect(loc);
 			else w.strikeLightning(loc);
@@ -1267,6 +1271,7 @@ public class Action extends Config_element
 		int p = getInt_value(0);
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{
+			if (!loc.getChunk().isLoaded()) continue;
 			loc.getWorld().createExplosion(loc, p, getAction_type() == MAction.FIERY_EXPLOSION);
 		}
 	}
@@ -1343,6 +1348,7 @@ public class Action extends Config_element
 		
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{
+			if (!loc.getChunk().isLoaded()) continue;
 			loc.getWorld().dropItem(loc, is);
 		}
 	}
@@ -1409,6 +1415,7 @@ public class Action extends Config_element
 		
 		for (Location loc : Target_manager.get().getLocations(this, le, orig_event))
 		{	
+			if (!loc.getChunk().isLoaded()) continue;
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
 			orb.setExperience(q);
 		}
@@ -1461,6 +1468,7 @@ public class Action extends Config_element
 	{
 		for (Location l : Target_manager.get().getLocations(this, le, orig_event))
 		{
+			if (!l.getChunk().isLoaded()) continue;
 			BlockState bs = l.getBlock().getState();
 			MaterialData md = bs.getData();
 			if (type.equalsIgnoreCase("button") && bs.getData() instanceof Button)
