@@ -1,7 +1,7 @@
 package me.coldandtired.mobs.api;
 
 import me.coldandtired.mobs.Enums.ReasonType;
-import me.coldandtired.mobs.MobsOutcome;
+import me.coldandtired.mobs.MobsAction;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
@@ -10,9 +10,9 @@ public class MobsFailedActionEvent extends Event
 	private static final HandlerList handlers = new HandlerList();
 	private final String attempted;
 	private final ReasonType reason;
-	private final MobsOutcome outcome;
+	private final MobsAction outcome;
 
-	public MobsFailedActionEvent(String attempted, ReasonType reason, MobsOutcome outcome)
+	public MobsFailedActionEvent(String attempted, ReasonType reason, MobsAction outcome)
 	{
 		this.attempted = attempted;
 		this.reason = reason;
@@ -29,7 +29,7 @@ public class MobsFailedActionEvent extends Event
 		return reason;
 	}
 	
-	public MobsOutcome getMobsOutcome()
+	public MobsAction getMobsOutcome()
 	{
 		return outcome;
 	}

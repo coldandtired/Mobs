@@ -1,33 +1,38 @@
 package me.coldandtired.mobs.api;
 
-import me.coldandtired.mobs.MobsAction;
-
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-public class MobsPerformingActionEvent extends Event implements Cancellable
+public class MobsTimerTickingEvent extends Event implements Cancellable
 {
 	private static final HandlerList handlers = new HandlerList();
 	private boolean cancelled = false;
-	private final String attempting;
-	private final MobsAction outcome;
-
-	public MobsPerformingActionEvent(String attempting, MobsAction outcome)
-	{
-		this.attempting = attempting;
-		this.outcome = outcome;
-	}
+	private String name;
+	private int interval;
+	private String world;
 	
-	public String getAttempting()
+	public MobsTimerTickingEvent(String name, int interval, String world)
 	{
-		return attempting;
-	}
-	
-	public MobsAction getOutcome()
-	{
-		return outcome;
+		this.name = name;
+		this.interval = interval;
+		this.world = world;
 	}	
+	
+	public String getTimerName()
+	{
+		return name;
+	}
+	
+	public int getTimerInterval()
+	{
+		return interval;
+	}
+		
+	public String getTimerWorld()
+	{
+		return world;
+	}
 	
 	@Override
 	public boolean isCancelled() 
@@ -40,13 +45,13 @@ public class MobsPerformingActionEvent extends Event implements Cancellable
 	{
 		this.cancelled = cancelled;
 	}
-
+	
 	@Override
 	public HandlerList getHandlers() 
 	{
 		return handlers;
 	}
-	
+
 	public static HandlerList getHandlerList() 
 	{
 	    return handlers;

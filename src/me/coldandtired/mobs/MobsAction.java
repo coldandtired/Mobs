@@ -2,9 +2,10 @@ package me.coldandtired.mobs;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
-
 import javax.xml.xpath.XPathExpressionException;
 
 import org.bukkit.Bukkit;
@@ -31,7 +32,6 @@ import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.Cancellable;
-import org.bukkit.event.Event;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityTameEvent;
@@ -55,7 +55,7 @@ import me.coldandtired.mobs.api.MobsFailedActionEvent;
 import me.coldandtired.mobs.api.MobsPerformingActionEvent;
 import me.coldandtired.mobs.Enums.*;
 
-public class MobsOutcome extends MobsElement
+public class MobsAction extends MobsElement
 {	
 	private EventValues ev;
 	private MobsElement ce;
@@ -63,7 +63,7 @@ public class MobsOutcome extends MobsElement
 	private List<String> affected_mobs;
 	private List<String> affected_worlds;
 	
-	MobsOutcome(String event_name, Element element) throws XPathExpressionException
+	MobsAction(String event_name, Element element) throws XPathExpressionException
 	{
 		super(element, null);
 		ce = this;
@@ -72,7 +72,8 @@ public class MobsOutcome extends MobsElement
 			affected_mobs = new ArrayList<String>();
 			String s = element.getAttribute("affected_mobs").toUpperCase().replace(" ", "");
 			affected_mobs = Arrays.asList(s.split(","));
-		}
+		}//TODO players get "real player" meta data?
+		//TODO custom biomes
 
 		if (element.hasAttribute("affected_worlds"))
 		{
@@ -80,6 +81,8 @@ public class MobsOutcome extends MobsElement
 			String s = element.getAttribute("affected_worlds").toUpperCase().replace(" ", "");
 			affected_worlds = Arrays.asList(s.split(","));
 		}//TODO pass target to ev?
+		
+		//ce.test();
 	}
 	
 	/** Performs all the actions on all the targets */
@@ -87,8 +90,8 @@ public class MobsOutcome extends MobsElement
 	{
 		this.ev = ev;
 		if (!isAffected()) return;
-		
-		target = getMCTarget();
+		//TODO world here
+		//target = getMCTarget();
 		
 		List<MobsElement> actions = getActions();
 		if (actions == null)
@@ -101,11 +104,6 @@ public class MobsOutcome extends MobsElement
 		{		
 			ce = me;
 			ActionType at = getAction();
-			if (!at.equals(ActionType.CANCEL_EVENT) && target == null)
-			{
-				actionFailed(at.toString(), ReasonType.NO_TARGET);
-				continue;
-			}
 			
 			switch (at)
 			{					
@@ -129,7 +127,8 @@ public class MobsOutcome extends MobsElement
 					break;					
 				case WRITE: writeSomething();
 					break;			
-			}	
+			}	//TODO split log?
+			//TODO world only for repeating?
 		}
 	}
 		
@@ -373,14 +372,15 @@ public class MobsOutcome extends MobsElement
 	/** Gives a player money (needs Vault) */
 	private void giveMoney()
 	{
-		if (Mobs.economy == null)
+		if (Mobs.getEconomy() == null)
 		{
 			actionFailed("give money", ReasonType.NO_VAULT);
 			return;
 		}
 		
+		//TODO minus amount? remove money
 		int amount = getAmount(0);
-		if (amount == 0)
+		if (amount < 0)
 		{
 			actionFailed("give money", ReasonType.BAD_AMOUNT);
 			return;		
@@ -388,7 +388,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("give money " + amount)) return;
 		
-		for (Player p : getMobType(Player.class)) Mobs.economy.depositPlayer(p.getName(), amount);
+		for (Player p : getMobType(Player.class)) Mobs.getEconomy().depositPlayer(p.getName(), amount);
 	}
 	
 // Kill action
@@ -398,6 +398,8 @@ public class MobsOutcome extends MobsElement
 	{			
 		if (isActionCancelled("kill")) return;
 			
+		target = getMCTarget();
+		
 		for (Damageable d : getMobType(Damageable.class))
 		{
 			d.setHealth(0);
@@ -497,7 +499,7 @@ public class MobsOutcome extends MobsElement
 			case DROPPED_ITEMS: removeDroppedItems();
 				break;
 			case ITEM: removeItem();
-				break;
+				break;//TODO all_items?
 			case ITEMS: removeInventory();
 				break;
 			case MAX_HP: removeMaxHp();
@@ -826,7 +828,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set time" + ", " + value)) return;
 		
-		World w = getWorld();
+		World w = ev.getWorld();
 		
 		long i = time % 24000; 
 		if (i < 0) i += 24000;
@@ -861,7 +863,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (isActionCancelled("set weather, " + value + "(" + duration + ")")) return;
 		
-		World w = getWorld();
+		World w = ev.getWorld();
 		
 		switch (value)
 		{
@@ -1291,7 +1293,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", ReasonType.NO_SUBACTION);
+			actionFailed("spawn", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -1382,7 +1384,7 @@ public class MobsOutcome extends MobsElement
 					continue;
 				}
 				
-				Mobs.getInstance().setMob_name(mob_name);
+				Mobs.getPlugin().setMobName(mob_name);
 				loc.getWorld().spawnEntity(loc, et);
 			}
 		}
@@ -1397,7 +1399,7 @@ public class MobsOutcome extends MobsElement
 		SubactionType st = getSubaction();
 		if (st == null)
 		{
-			actionFailed("damage", ReasonType.NO_SUBACTION);
+			actionFailed("write", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
@@ -1418,11 +1420,11 @@ public class MobsOutcome extends MobsElement
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", ReasonType.NO_MESSAGE);
+			actionFailed("write broadcast", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
-		if (isActionCancelled("write message " + message)) return;
+		if (isActionCancelled("write broadcast " + message)) return;
 		
 		Bukkit.getServer().broadcastMessage(message);
 	}
@@ -1433,11 +1435,11 @@ public class MobsOutcome extends MobsElement
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", ReasonType.NO_MESSAGE);
+			actionFailed("write log", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
-		if (isActionCancelled("write message " + message)) return;
+		if (isActionCancelled("write log " + message)) return;
 		
 		Mobs.log(message);
 	}
@@ -1462,132 +1464,147 @@ public class MobsOutcome extends MobsElement
 	
 	private ActionType getAction()
 	{
-		ce = ce.getCurrentElement(ElementType.ACTION, ev);
-		if (ce == null) return null;
-		
-		return ActionType.valueOf(ce.getString(ElementType.ACTION).toUpperCase());
+		MobsElement me = ce.getCurrentElement(ElementType.MAIN, ev);
+		if (me == null) return null;
+
+		ce = me;
+		return ActionType.valueOf(ce.getString(ElementType.MAIN).toUpperCase());
 	}
 	
+	@SuppressWarnings("unchecked")
 	private List<MobsElement> getActions() 
 	{
-		return ce.getActions(ev);
+		Object o = ce.getActions(ev);
+		if (o == null) return null;
+		
+		if (o instanceof List<?>) return (List<MobsElement>)o;
+		
+			
+		List<MobsElement> list = new ArrayList<MobsElement>();
+		list.add((MobsElement)o);
+		return list;
 	}
 	
 	private int getAmount(int orig)
 	{
-		ce = ce.getCurrentElement(ElementType.AMOUNT, ev);
-		if (ce == null) return orig;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT, ev);
+		if (me == null) return orig;
+
+		ce = me;
 		return getNumber(ce.getString(ElementType.AMOUNT));
 	}
 	
 	private int getDuration()
 	{
-		ce = ce.getCurrentElement(ElementType.DURATION, ev);
-		if (ce == null) return 0;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.DURATION, ev);
+		if (me == null) return 0;
+
+		ce = me;
 		return getNumber(ce.getString(ElementType.DURATION)) * 20;//TODO docs = ticks
 	}
 	
 	private Effect getEffect()
 	{
-		ce = ce.getCurrentElement(ElementType.EFFECT, ev);
-		if (ce == null) return null;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.EFFECT, ev);
+		if (me == null) return null;
+
+		ce = me;
 		return Effect.valueOf(ce.getString(ElementType.EFFECT).toUpperCase());	
 	}
 	
 	private int getItemData()
 	{
-		ce = ce.getCurrentElement(ElementType.ITEM_DATA, ev);
-		if (ce == null) return 0;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.ITEM_DATA, ev);
+		if (me == null) return 0;
+
+		ce = me;
 		return getNumber(ce.getString(ElementType.ITEM_DATA));
 	}
 	
 	private int getItemId()
 	{
-		ce = ce.getCurrentElement(ElementType.ITEM_ID, ev);
-		if (ce == null) return 0;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.ITEM_ID, ev);
+		if (me == null) return 0;
+
+		ce = me;
 		return getNumber(ce.getString(ElementType.ITEM_ID));
 	}
 	
 	private String getMessage()
-	{//TODO message change to value?
-		ce = ce.getCurrentElement(ElementType.MESSAGE, ev);
-		if (ce == null) return null;
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.MESSAGE, ev);
+		if (me == null) return null;
 		
+		ce = me;
 		return ce.getString(ElementType.MESSAGE);
 	}
 	
 	private EntityType getMob()
 	{
-		ce = ce.getCurrentElement(ElementType.MOB, ev);
-		if (ce == null) return null;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.MOB, ev);
+		if (me == null) return null;
+
+		ce = me;
 		return EntityType.valueOf(ce.getString(ElementType.MOB).toUpperCase());	
 	}
 	
 	private String getMobName()
 	{
-		ce = ce.getCurrentElement(ElementType.MOB_NAME, ev);
-		if (ce == null) return null;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.MOB_NAME, ev);
+		if (me == null) return null;
+
+		ce = me;
 		return ce.getString(ElementType.MOB_NAME);
-	}
-	
-	private String getPlayer()
-	{
-		ce = ce.getCurrentElement(ElementType.PLAYER, ev);
-		if (ce == null) return null;
-		
-		return ce.getString(ElementType.PLAYER);
 	}
 	
 	private int getSize(int orig)
 	{
-		ce = ce.getCurrentElement(ElementType.SIZE, ev);
-		if (ce == null) return orig;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.SIZE, ev);
+		if (me == null) return orig;
+
+		ce = me;
 		return getNumber(ce.getString(ElementType.SIZE));
 	}
 	
 	private Sound getSound()
 	{
-		ce = ce.getCurrentElement(ElementType.SOUND, ev);
-		if (ce == null) return null;
-		
+		MobsElement me = ce.getCurrentElement(ElementType.SOUND, ev);
+		if (me == null) return null;
+
+		ce = me;
 		return Sound.valueOf(ce.getString(ElementType.SOUND).toUpperCase());	
 	}
 	
 	private float getSoundPitch()
 	{
-		ce = ce.getCurrentElement(ElementType.SOUND_PITCH, ev);
-		if (ce == null) return 1.0f;
-	
+		MobsElement me = ce.getCurrentElement(ElementType.SOUND_PITCH, ev);
+		if (me == null) return 1.0f;
+
+		ce = me;
 		return Float.parseFloat(ce.getString(ElementType.SOUND_PITCH)) / 100;
 		//TODO docs
 	}
 	
 	private float getSoundVolume()
 	{
-		ce = ce.getCurrentElement(ElementType.SOUND_VOLUME, ev);
-		if (ce == null) return 1.0f;
-	
+		MobsElement me = ce.getCurrentElement(ElementType.SOUND_VOLUME, ev);
+		if (me == null) return 1.0f;
+
+		ce = me;
 		return Float.parseFloat(ce.getString(ElementType.SOUND_VOLUME)) / 100;
 		//TODO docs
 	}
 	
 	private SubactionType getSubaction()
 	{
-		ce = ce.getCurrentElement(ElementType.SUBACTION, ev);
-		if (ce == null) return null;
-		
-		return SubactionType.valueOf(ce.getString(ElementType.SUBACTION).toUpperCase());
+		MobsElement me = ce.getCurrentElement(ElementType.SUB, ev);
+		if (me == null) return null;
+
+		ce = me;
+		return SubactionType.valueOf(ce.getString(ElementType.SUB).toUpperCase());
 	}
 	
-	private TargetType getTarget()
+	private String getTarget()
 	{
 		ce = ce.getCurrentElement(ElementType.TARGET, ev);
 		if (ce == null)
@@ -1596,14 +1613,60 @@ public class MobsOutcome extends MobsElement
 			return null;
 		}
 		
-		return TargetType.valueOf(ce.getString(ElementType.TARGET).toUpperCase());
+		return ce.getString(ElementType.TARGET).toUpperCase();
 	}
+	
+	private int getTargetAmount(int orig)
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET_AMOUNT, ev);
+		if (me == null) return orig;
+		
+		ce = me;
+		return getNumber(ce.getString(ElementType.TARGET_AMOUNT));
+	}
+	
+	private String getTargetName()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET_NAME, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return ce.getString(ElementType.TARGET_NAME);
+	}
+
+	/*private int getTargetXOffset(int orig)
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET_X_OFFSET, ev);
+		if (me == null) return orig;
+		
+		ce = me;
+		return getNumber(ce.getString(ElementType.TARGET_X_OFFSET));
+	}
+	
+	private int getTargetYOffset(int orig)
+	{
+		MobsElement me= ce.getCurrentElement(ElementType.TARGET_Y_OFFSET, ev);
+		if (me == null) return orig;
+		
+		ce = me;
+		return getNumber(ce.getString(ElementType.TARGET_Y_OFFSET));
+	}
+	
+	private int getTargetZOffset(int orig)
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET_Z_OFFSET, ev);
+		if (me == null) return orig;
+		
+		ce = me;
+		return getNumber(ce.getString(ElementType.TARGET_Z_OFFSET));
+	}*/
 	
 	private String getValue()
 	{
-		ce = ce.getCurrentElement(ElementType.VALUE, ev);
-		if (ce == null) return null;
+		MobsElement me = ce.getCurrentElement(ElementType.VALUE, ev);
+		if (me == null) return null;
 		
+		ce = me;
 		return ce.getString(ElementType.VALUE);
 	}
 	
@@ -1615,42 +1678,30 @@ public class MobsOutcome extends MobsElement
 		return ValueType.valueOf(s.toUpperCase());
 	}
 	
-	private World getWorld()
-	{
-		MobsElement me = ce.getCurrentElement(ElementType.WORLD, ev);
-		if (me != null)
-		{//TODO bubble?
-			ce = me;
-			return Bukkit.getWorld(me.getString(ElementType.WORLD));
-		}
-		
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null) return le.getWorld();
-		
-		return null;
-	}
-	
 	private String getX()
 	{
-		ce = ce.getCurrentElement(ElementType.X, ev);
-		if (ce == null) return null;
+		MobsElement me = ce.getCurrentElement(ElementType.X, ev);
+		if (me == null) return null;
 		
+		ce = me;
 		return ce.getString(ElementType.X);
 	}
 	
 	private String getY()
 	{
-		ce = ce.getCurrentElement(ElementType.Y, ev);
-		if (ce == null) return null;
+		MobsElement me= ce.getCurrentElement(ElementType.Y, ev);
+		if (me == null) return null;
 		
+		ce = me;
 		return ce.getString(ElementType.Y);
 	}
 	
 	private String getZ()
 	{
-		ce = ce.getCurrentElement(ElementType.Z, ev);
-		if (ce == null) return null;
+		MobsElement me = ce.getCurrentElement(ElementType.Z, ev);
+		if (me == null) return null;
 		
+		ce = me;
 		return ce.getString(ElementType.Z);
 	}
 	
@@ -1667,7 +1718,7 @@ public class MobsOutcome extends MobsElement
 		
 		if (affected_worlds != null)
 		{
-			World w = getWorld();
+			World w = ev.getWorld();
 			if (w == null) return false;
 			if (!affected_worlds.contains(w.getName().toUpperCase())) return false;
 		}//TODO global?
@@ -1715,82 +1766,132 @@ public class MobsOutcome extends MobsElement
 		return "x:" + loc.getBlockX() + " y:" + loc.getBlockY() + " z:" + loc.getBlockZ() + " (" + loc.getWorld().getName() + ")";
 	}
 	
+	//TODO null values for everything?
+	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m)
+	{		
+		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
+		String name = getTargetName();
+		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
+		
+		for (Entity e : orig)
+		{
+			if (!temp.contains(e.getType().toString())) continue;
+			if (name != null)
+			{
+				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
+				if (s == null || !s.equalsIgnoreCase(name)) continue;
+			}
+			mobs.add((LivingEntity)e);
+		}
+		return mobs;
+	}
+		
 	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
 	public Object getMCTarget()
 	{		
-		TargetType tt = getTarget();
+		String tt = getTarget();
 		if (tt == null)
 		{
 			if (ev.getLivingEntity() != null) return ev.getLivingEntity();
 		}			
 		
-		switch (tt)
-		{//TODO split
-			case AUX_MOB:
-				Event orig_event = ev.getOrigEvent();
-				if (orig_event instanceof EntityDamageByEntityEvent)
-				{
-					Entity ee = ((EntityDamageByEntityEvent)orig_event).getDamager();
-					if (ee instanceof LivingEntity) target = ee;
-				}
-				else if (orig_event instanceof PlayerApproachLivingEntityEvent)
-					return ((PlayerApproachLivingEntityEvent)orig_event).getPlayer();
-				
-				else if (orig_event instanceof PlayerLeaveLivingEntityEvent)
-					return ((PlayerLeaveLivingEntityEvent)orig_event).getPlayer();
-				
-				else if (orig_event instanceof PlayerNearLivingEntityEvent)
-					return ((PlayerNearLivingEntityEvent)orig_event).getPlayer();
-				
-				else if (orig_event instanceof LivingEntityBlockEvent)
-					return ((LivingEntityBlockEvent)orig_event).getAttacker();
-				
-				else if (orig_event instanceof LivingEntityDamageEvent)
-					return ((LivingEntityDamageEvent)orig_event).getAttacker();
-				
-				else if (orig_event instanceof EntityTargetLivingEntityEvent)
-					return ((EntityTargetLivingEntityEvent)orig_event).getTarget();
-				
-				else if (orig_event instanceof PlayerShearEntityEvent)
-					return ((PlayerShearEntityEvent)orig_event).getPlayer();
+		if (tt.startsWith("CLOSEST_"))
+		{
+			LivingEntity orig = ev.getLivingEntity();
+			if (orig == null)
+			{
+				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+				return null;			
+			}
 			
-				break;	
-				
-			case KILLER:
-				if (!(ev.getOrigEvent() instanceof EntityDeathEvent || ev.getOrigEvent() instanceof PlayerDeathEvent))
-				{
-					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_DIES_EVENT);
-					return null;
-				}
-				if (ev.getOrigEvent() instanceof EntityDeathEvent)	return ((EntityDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
-				else return ((PlayerDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
-				
-			case OWNER:
-				if (!(ev.getOrigEvent() instanceof EntityTameEvent))
-				{
-					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TAMES_EVENT);
-					return null;
-				}
-				return ((EntityTameEvent)ev.getOrigEvent()).getOwner();
-				
-			case PLAYER:
-				String s = getPlayer();
-				if (s == null)
-				{
-					actionFailed(ev.getMobsEvent(), ReasonType.NO_PLAYER);
-					return null;
-				}
-				return Bukkit.getPlayer(s);
-			/*case NEAREST:
-				for (LivingEntity l : getNearest(le.getNearbyEntities(50, 10, 50), le))
-					targets.add(l);
-				break;
-			case RANDOM:
-				for (LivingEntity l : getNearby(le.getWorld().getEntities()))
-					targets.add(l);
-				break;*/
+			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""));
+			if (mobs.size() == 0)
+			{
+				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+				return null;			
+			}
+			
+			Location loc = orig.getLocation();
+			List<NearbyMob> nearby_mobs = new ArrayList<NearbyMob>();
+			for (LivingEntity le : mobs)
+			{
+				nearby_mobs.add(new NearbyMob(le, loc));
+			}
+
+			Collections.sort(nearby_mobs, new Comparator<NearbyMob>() 
+			{
+			    public int compare(NearbyMob m1, NearbyMob m2)
+			    {
+			        return m1.getDistance().compareTo(m2.getDistance());
+			    }
+			});
+			
+			int i = getTargetAmount(1);
+			if (i == 1) return nearby_mobs.get(0).getLivingEntity();
+			
+			if (i > nearby_mobs.size()) i = nearby_mobs.size();
+			nearby_mobs = nearby_mobs.subList(0, i);
+			mobs.clear();
+			for (NearbyMob m : nearby_mobs)
+			{
+				mobs.add(m.getLivingEntity());
+			}
+			
+			//closest_player -> target_name -> target_amount
+			//TODO docs closest_sheep, pig
+			return mobs;
+		}
+		else if (tt.startsWith("RANDOM_"))
+		{
+			World w = ev.getWorld();
+			if (w == null) return null;
+			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""));
+			if (mobs.size() == 0)
+			{
+				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+				return null;			
+			}
+			
+			int i = getTargetAmount(1);
+			Collections.shuffle(mobs);
+			if (i == 1) return mobs.get(0);
+			
+			if (i > mobs.size()) i = mobs.size();
+			return mobs.subList(0, i);
+		}
+		
+		switch (TargetType.valueOf(tt))
+		{			
+			case APPROACHED_PLAYER:
+			if (!(ev.getOrigEvent() instanceof PlayerApproachLivingEntityEvent))
+			{
+				actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_APPROACHES_EVENT);
+				return null;
+			}
+			return ((PlayerApproachLivingEntityEvent)ev.getOrigEvent()).getPlayer();
+			
+			case ATTACKER:
+			if (ev.getOrigEvent() instanceof EntityDamageByEntityEvent)
+			{
+				Entity ee = ((EntityDamageByEntityEvent)ev.getOrigEvent()).getDamager();
+				if (ee instanceof LivingEntity) target = ee;
+			}
+			else if (ev.getOrigEvent() instanceof LivingEntityBlockEvent)
+			{
+				return ((LivingEntityBlockEvent)ev.getOrigEvent()).getAttacker();
+			}
+			else if (ev.getOrigEvent() instanceof LivingEntityDamageEvent)
+			{
+				return ((LivingEntityDamageEvent)ev.getOrigEvent()).getAttacker();
+			}
+			else
+			{
+				actionFailed(ev.getMobsEvent(), ReasonType.NOT_AN_EVENT_WITH_AN_ATTACKER);
+				return null;
+			}
+			
 			case BLOCK:
-				World w = getWorld();
+				World w = ev.getWorld();
 				String temp = getX();
 				if (temp == null)
 				{
@@ -1821,6 +1922,116 @@ public class MobsOutcome extends MobsElement
 				int z = getNumber(temp);
 				
 				return new Location(w, x, y, z);
+				
+			case CLOSEST:	
+				LivingEntity orig = ev.getLivingEntity();
+				if (orig == null)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+					return null;			
+				}
+				
+				List<Entity> ents = orig.getNearbyEntities(50, 10, 50);
+				if (ents.size() == 0)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+					return null;			
+				}
+				
+				Location loc = orig.getLocation();
+				List<NearbyMob> nearby_mobs = new ArrayList<NearbyMob>();
+				for (Entity e : ents)
+				{
+					if (e instanceof LivingEntity) nearby_mobs.add(new NearbyMob((LivingEntity)e, loc));
+				}
+				
+				if (nearby_mobs.size() == 0)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+					return null;			
+				}
+				
+				Collections.sort(nearby_mobs, new Comparator<NearbyMob>() 
+				{
+				    public int compare(NearbyMob m1, NearbyMob m2)
+				    {
+				        return m1.getDistance().compareTo(m2.getDistance());
+				    }
+				});
+				
+				return nearby_mobs.get(0).getLivingEntity();
+				
+			case KILLER:
+				if (!(ev.getOrigEvent() instanceof EntityDeathEvent || ev.getOrigEvent() instanceof PlayerDeathEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_DIES_EVENT);
+					return null;
+				}
+				if (ev.getOrigEvent() instanceof EntityDeathEvent)	return ((EntityDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
+				else return ((PlayerDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
+				
+			case LEFT_PLAYER:
+				if (!(ev.getOrigEvent() instanceof PlayerLeaveLivingEntityEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_LEAVES_EVENT);
+					return null;
+				}
+				return ((PlayerLeaveLivingEntityEvent)ev.getOrigEvent()).getPlayer();
+				
+			case NEAR_PLAYER:
+				if (!(ev.getOrigEvent() instanceof PlayerNearLivingEntityEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_NEAR_EVENT);
+					return null;
+				}
+				return ((PlayerNearLivingEntityEvent)ev.getOrigEvent()).getPlayer();
+				
+			case OWNER:
+				if (!(ev.getOrigEvent() instanceof EntityTameEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TAMES_EVENT);
+					return null;
+				}
+				return ((EntityTameEvent)ev.getOrigEvent()).getOwner();
+				
+			case PLAYER:
+				String s = getTargetName();
+				if (s == null)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_PLAYER);
+					return null;
+				}
+				return Bukkit.getPlayer(s);
+				
+			case RANDOM:
+				w = ev.getWorld();
+				if (w == null) return null;
+				List<LivingEntity> mobs = w.getLivingEntities();
+				if (mobs.size() == 0)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+					return null;			
+				}
+				
+				Collections.shuffle(mobs);
+				return mobs.get(0);
+				
+			case SHEARER:
+				if (!(ev.getOrigEvent() instanceof PlayerShearEntityEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_SHEARS_EVENT);
+					return null;
+				}
+				return ((PlayerShearEntityEvent)ev.getOrigEvent()).getPlayer();
+				
+			case TARGETED:
+				if (!(ev.getOrigEvent() instanceof EntityTargetLivingEntityEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TARGETS_EVENT);
+					return null;
+				}
+				return ((EntityTargetLivingEntityEvent)ev.getOrigEvent()).getTarget();
+			
 			default: if (ev.getLivingEntity() != null) return ev.getLivingEntity();
 				break;
 		}
@@ -1830,7 +2041,7 @@ public class MobsOutcome extends MobsElement
 	
 	/** Returns a list of target locations, using livingentity if necessary */
 	private List<Location> getLocations()
-	{
+	{//TODO add chunk check here
 		List<Location> temp = new ArrayList<Location>();
 		if (target instanceof List<?>)
 		{
@@ -1867,7 +2078,7 @@ public class MobsOutcome extends MobsElement
 	/** Calls an event when an action is about to be performed, with the possibility of cancelling */
 	private boolean isActionCancelled(String attempting)
 	{
-		if (Mobs.allow_debug)
+		if (Mobs.canDebug())
 		{
 			MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(attempting, this);
 			Bukkit.getServer().getPluginManager().callEvent(mpae);
@@ -1877,9 +2088,9 @@ public class MobsOutcome extends MobsElement
 	}
 	
 	/** Calls an event when an action fails (due to wrong type of mob, etc.) */
-	private void actionFailed(String attempted, ReasonType reason)
+	private void actionFailed(Object attempted, ReasonType reason)
 	{
-		if (!Mobs.allow_debug) return;
-		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(attempted, reason, this));
+		if (!Mobs.canDebug()) return;
+		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(attempted.toString(), reason, this));
 	}
 }

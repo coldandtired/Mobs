@@ -4,7 +4,7 @@ author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
 website: coldandtired.binhoster.com
-softdepend: [Vault, TerrainControl, SpoutPlugin]
+softdepend: [Vault, SpoutPlugin]
 depend: [Extra Events]
 commands:
     reload_mobs:
@@ -12,15 +12,15 @@ commands:
         aliases: rm
         usage: "Usage: /reload_mobs"
         permission: mobs.can_reload_mobs      
-    repeating_outcomes:
+    timers:
         description: Adjust the repeating part of the plugin
-        aliases: ro
-        usage: "Usage: /repeating_outcomes [enable|disable|pause|unpause|check|set_interval|activate|force] [seconds] [name]"
+        aliases: mt
+        usage: "Usage: /timers [enable|disable|pause|unpause|check|set_interval|activate] [seconds] [name]"
         permission: mobs.can_change_repeating_outcomes
 permissions:
     mobs.can_reload_mobs:
-        description: Allows reloading of the config
+        description: Allows a user to reload the config
         default: op
-    mobs.can_change_repeating_outcomes:
-        description: Allows reloading of the config
+    mobs.can_change_timers:
+        description: Allows a user to change the timers (enable, disable, change interval, etc.)
         default: op

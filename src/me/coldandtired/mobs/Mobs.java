@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
@@ -17,8 +17,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import me.coldandtired.extra_events.Extra_events;
-import me.coldandtired.mobs.BukkitListener.EventType;
+import me.coldandtired.mobs.Enums.EventType;
 import me.coldandtired.mobs.Enums.MParam;
 import me.coldandtired.mobs.api.Data;
 import net.milkbowl.vault.economy.Economy;
@@ -35,29 +34,27 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 /**
- * the main plugin class
+ * The main plugin class
  *
- * @version 1.0
+ * @version 1.4.7 b1
  * @author 	coldandtired
  */
 public class Mobs extends JavaPlugin
 {
-	private static Logger logger = Logger.getLogger("Minecraft");
-	private static Mobs instance;
-	public static Economy economy = null;
-	public static Extra_events extra_events;
-	private BukkitListener event_listener;
-	private static XPath xpath;
-	public static boolean allow_debug;
-	public static boolean allow_bubbling; 
+	private XPath xpath;
+	private Economy economy = null;
+	private boolean allow_debug;	
+	private BukkitListener bukkit_listener;
+	private Map<String, Timer> timers;
+	private Set<EventType> prechecks = new HashSet<EventType>();
+	private boolean disabled_timer = false;
 	
 	@Override
 	public void onEnable()
 	{		
-		instance = this;
 		try 
 		{
-			if (!load_config()) setEnabled(false);
+			if (!loadConfig()) setEnabled(false);
 		} 
 		catch (XPathExpressionException e)
 		{
@@ -65,14 +62,9 @@ public class Mobs extends JavaPlugin
 			e.printStackTrace();
 		}
 	}
-
-	public static XPath getXPath()
-	{
-		return xpath;
-	}
 		
-	/** checks if the running version is the newest available (works with release versions only) */
-	boolean is_latest_version()
+	/** Checks if the running version is the newest available (works with release versions only) */
+	boolean isLatestVersion()
 	{
 		DocumentBuilder dbf;
 		try 
@@ -85,14 +77,14 @@ public class Mobs extends JavaPlugin
 		catch (Exception e) {return true;}		
 	}
 	
-	/** loads the config file and splits it into the relevant objects 
-	 * @throws XPathExpressionException */
+	/** Loads the config file and splits it into the relevant objects */
 	@SuppressWarnings("unchecked")
-	boolean load_config() throws XPathExpressionException
+	boolean loadConfig() throws XPathExpressionException
 	{
 		xpath = XPathFactory.newInstance().newXPath();
 		error("This is a new version of the plugin and the old config files won't work anymore!");
 		error("See for a guide to the new and improved config!");//TODO link
+		
 		FileConfiguration config = getConfig();
 		config.options().copyDefaults(true);
 		saveConfig();
@@ -135,7 +127,7 @@ public class Mobs extends JavaPlugin
 			Data.removeData(w, MParam.IGNORED_WORLD);
 			if (temp != null && temp.contains(w.getName())) Data.putData(w, MParam.IGNORED_WORLD);
 		}
-		
+		//TODO activate
 		//if (!disable_check && !is_latest_version()) log("There's a newer version of Mobs available!");
 		
 		if (getServer().getPluginManager().getPlugin("Vault") != null)
@@ -143,8 +135,6 @@ public class Mobs extends JavaPlugin
 	        RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
 	        if (economyProvider != null) economy = economyProvider.getProvider();
 		}
-		
-		extra_events = (Extra_events)getServer().getPluginManager().getPlugin("Extra Events");
 		
 		try 
 		{
@@ -157,10 +147,51 @@ public class Mobs extends JavaPlugin
 		}
 		
 		allow_debug = config.getBoolean("allow_debug", false);
-		allow_bubbling = config.getBoolean("allow_bubbling", false);
-		event_listener = new BukkitListener();
-		getServer().getPluginManager().registerEvents(event_listener, this);		
+		
+		if (config.contains("timers"))
+		{
+			timers = new HashMap<String, Timer>();
+			for (String s : config.getConfigurationSection("timers").getKeys(false))
+			{
+				String w = config.getString("timers." + s + ".world");
+				if (w == null)
+				{
+					error("The timer called " + s + " is missing the world value");
+					continue;
+				}
+				int interval = config.getInt("timers." + s + ".interval", 300);
+				timers.put(s, new Timer(s, interval, w));
+			}
+		}
+		
+		fillPrechecks(config);
+		
+		bukkit_listener = new BukkitListener();
+		getServer().getPluginManager().registerEvents(bukkit_listener, this);		
+		
 		return true;
+	}
+	
+	/** Fills a set of events that will have their values set before the actions are performed */
+	private void fillPrechecks(FileConfiguration config)
+	{
+		if (config.getBoolean("check_burns_before_actions", false)) prechecks.add(EventType.BURNS);
+		if (config.getBoolean("check_changes_block_before_actions", false)) prechecks.add(EventType.CHANGES_BLOCK);
+		if (config.getBoolean("check_creates_portal_before_actions", false)) prechecks.add(EventType.CREATES_PORTAL);
+		if (config.getBoolean("check_damaged_before_actions", false)) prechecks.add(EventType.DAMAGED);
+		if (config.getBoolean("check_dies_before_actions", false)) prechecks.add(EventType.DIES);
+		if (config.getBoolean("check_player_dies_before_actions", false)) prechecks.add(EventType.PLAYER_DIES);
+		if (config.getBoolean("check_dyed_before_actions", false)) prechecks.add(EventType.DYED);
+		if (config.getBoolean("check_evolves_before_actions", false)) prechecks.add(EventType.EVOLVES);
+		if (config.getBoolean("check_explodes_before_actions", false)) prechecks.add(EventType.EXPLODES);
+		if (config.getBoolean("check_grows_wool_before_actions", false)) prechecks.add(EventType.GROWS_WOOL);
+		if (config.getBoolean("check_heals_before_actions", false)) prechecks.add(EventType.HEALS);
+		if (config.getBoolean("check_picks_before_actions", false)) prechecks.add(EventType.PICKS_UP_ITEM);
+		if (config.getBoolean("check_sheared_before_actions", false)) prechecks.add(EventType.SHEARED);
+		if (config.getBoolean("check_splits_before_actions", false)) prechecks.add(EventType.SPLITS);
+		if (config.getBoolean("check_tamed_before_actions", false)) prechecks.add(EventType.TAMED);
+		if (config.getBoolean("check_targets_before_actions", false)) prechecks.add(EventType.TARGETS);
+		if (config.getBoolean("check_teleports_before_actions", false)) prechecks.add(EventType.TELEPORTS);
 	}
 		
 	@Override
@@ -168,60 +199,210 @@ public class Mobs extends JavaPlugin
 	{
 		if (cmd.getName().equalsIgnoreCase("reload_mobs"))
 		{
-			getServer().getScheduler().cancelTasks(this);
-			event_listener = null;
+			bukkit_listener = null;
 			HandlerList.unregisterAll(this);
+			timers = null;
+			prechecks = null;
 			try
-			{
-				load_config();
+			{//TODO check all this!
+				loadConfig();
 			}
 			catch (XPathExpressionException e) {e.printStackTrace();}
 			sender.sendMessage("Config reloaded!");
 			return true;
 		}
-		else if (cmd.getName().equalsIgnoreCase("repeating_outcomes"))
+		else if (cmd.getName().equalsIgnoreCase("timers"))
 		{
-			return event_listener.adjustRepeating_outcomes(sender, args);
+			if (args.length == 0)
+			{
+				sender.sendMessage("Timers are " + (disabled_timer ? "paused" : "running"));
+				return true;
+			}
+			if (timers == null)
+			{
+				sender.sendMessage("There are no timers set!");
+				sender.sendMessage("Timers are " + (disabled_timer ? "paused" : "running"));
+				return true;
+			}
+			
+			if (args[0].equalsIgnoreCase("enable"))
+			{
+				if (args.length == 1)
+				{
+					for (Timer t : timers.values())
+					{
+						t.setEnabled(true);
+					}
+					sender.sendMessage("Enabled all timers!");
+					return true;
+				}
+				else if (args.length == 2)
+				{
+					timers.get(args[1]).setEnabled(true);
+					sender.sendMessage("Enabled timer " + args[1] + "!");
+					return true;
+				}
+			}
+			else if (args[0].equalsIgnoreCase("disable"))
+			{
+				if (args.length == 1)
+				{
+					for (Timer t : timers.values())
+					{
+						t.setEnabled(false);
+					}
+					sender.sendMessage("Disabled all timers!");
+					return true;
+				}
+				else if (args.length == 2)
+				{
+					timers.get(args[1]).setEnabled(false);
+					sender.sendMessage("Disabled timer " + args[1] + "!");
+					return true;
+				}
+			}
+			if (args[0].equalsIgnoreCase("activate"))
+			{
+				if (args.length == 1)
+				{					
+					sender.sendMessage("Activating all timers!");
+					for (Timer t : timers.values())
+					{
+						t.activate();
+					}
+					return true;
+				}
+				else if (args.length == 2)
+				{
+					sender.sendMessage("Activating timer " + args[1] + "!");
+					timers.get(args[1]).activate();
+					return true;
+				}
+			}
+			else if (args[0].equalsIgnoreCase("unpause"))
+			{
+				if (args.length == 1)
+				{
+					disabled_timer = false;
+					sender.sendMessage("Timers are now running!");
+					return true;
+				}
+				return false;
+			}
+			else if (args[0].equalsIgnoreCase("pause"))
+			{
+				if (args.length == 1)
+				{
+					disabled_timer = true;
+					sender.sendMessage("Timers are now paused!");
+					return true;
+				}
+				return false;
+			}
+			else if (args[0].equalsIgnoreCase("check"))
+			{
+				if (args.length == 1)
+				{
+					for (Timer t : timers.values())
+					{
+						sender.sendMessage(t.check());
+					}
+					sender.sendMessage("Timers are " + (disabled_timer ? "paused" : "running"));
+					return true;
+				}
+				else if (args.length == 2)
+				{
+					Timer t = timers.get(args[1]);
+					
+					sender.sendMessage(t.check());
+					sender.sendMessage("Repeating outcomes are " + (disabled_timer ? "paused" : "running"));
+					return true;
+				}
+			}
+			else if (args[0].equalsIgnoreCase("set_interval"))
+			{
+				if (args.length == 1) return false;
+				int i = Integer.parseInt(args[1]);
+				if (args.length == 2)
+				{
+					for (Timer t : timers.values())
+					{
+						t.setInterval(i);
+					}
+					sender.sendMessage("All timer intervals set to " + i + "!");
+					return true;
+				}
+				else if (args.length == 3)
+				{
+					Timer t = timers.get(args[2]);
+					t.setInterval(i);
+					sender.sendMessage("Timer " + t.getName() + " interval set to " + i + "!");
+					return true;
+				}
+			}
+			return false;
 		}
 		return false;
 	}
 				
-	public void setMob_name(String name)
+	public void setMobName(String name)
 	{
-		event_listener.setMob_name(name);
+		bukkit_listener.setMobName(name);
 	}
-	
-	public static Mobs getInstance()
-	{
-		return instance;
-	}
-	
+		
 	/** clean up */
 	@Override
 	public void onDisable()
 	{
-		instance = null;
-		event_listener = null;
 		xpath = null;
-		logger = null;
 		economy = null;
+		bukkit_listener = null;
+		timers = null;
+		prechecks = null;
+	}
+
+// static getters	
+	
+	public static Mobs getPlugin()
+	{
+		return (Mobs)Bukkit.getServer().getPluginManager().getPlugin("Mobs");//instance;
+	}
+	
+	public static XPath getXPath()
+	{
+		return getPlugin().xpath;
+	}
+	
+	public static Economy getEconomy()
+	{
+		return getPlugin().economy;
+	}
+	
+	public static boolean canDebug()
+	{
+		return getPlugin().allow_debug;
+	}
+	
+	public static boolean checkBefore(EventType et)
+	{
+		return getPlugin().prechecks.contains(et);
 	}
 	
 	public static boolean isSpoutEnabled()
-	{
+	{//TODO move
 		return Bukkit.getServer().getPluginManager().isPluginEnabled("Spout");
 	}
 
 	public static void log(Object message)
 	{
-		logger.info(Ansi.ansi().fg(Ansi.Color.GREEN).toString() + "[Mobs] "
+		Bukkit.getLogger().info(Ansi.ansi().fg(Ansi.Color.GREEN).toString() + "[Mobs] "
 				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
 	}
 	
 	/** log error */
 	public static void error(Object message)
 	{
-		logger.warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
+		Bukkit.getLogger().warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
 				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
 	}
 }

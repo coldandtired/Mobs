@@ -33,7 +33,7 @@ public class Data
 		{
 			data = new HashMap<String, Object>();
 			data.put(param.toString(), null);
-			m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
+			m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
 		}
 	}
 	
@@ -50,7 +50,7 @@ public class Data
 		{
 			data = new HashMap<String, Object>();
 			data.put(param.toString(), value);
-			m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getInstance(), data));
+			m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
 		}
 	}
 	
@@ -71,23 +71,13 @@ public class Data
 		return	((Map<String, Object>)m.getMetadata("mobs_data").get(0).value()).get(param.toString());		
 	}
 	
-	/*public static void toggleData(Metadatable m, Object param)
-	{
-		if (hasData(m, param.toString())) removeData(m, param.toString()); else putData(m, param.toString());
-	}
-	
-	public static void putRandomData(Metadatable m, Object param)
-	{
-		if (new Random().nextBoolean()) removeData(m, param.toString()); else putData(m, param.toString());
-	}*/
-
 	public static void clearData(Metadatable m)
 	{
-		m.removeMetadata("mobs_data", Mobs.getInstance());
+		m.removeMetadata("mobs_data", Mobs.getPlugin());
 	}
 	
 	public static int adjustInt(Metadatable m, Object param, int orig)
-	{
+	{//TODO check
 		String ad = (String)getData(m, param.toString());
 		if (ad == null) return orig;
 		
