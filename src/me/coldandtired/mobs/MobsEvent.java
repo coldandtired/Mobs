@@ -1,11 +1,13 @@
 package me.coldandtired.mobs;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 import org.bukkit.Bukkit;
@@ -45,6 +47,8 @@ import org.bukkit.material.Openable;
 import org.getspout.spoutapi.Spout;
 import org.getspout.spoutapi.player.EntitySkinType;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
 import me.coldandtired.extra_events.LivingEntityBlockEvent;
 import me.coldandtired.extra_events.LivingEntityDamageEvent;
 import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
@@ -55,43 +59,80 @@ import me.coldandtired.mobs.api.MobsFailedActionEvent;
 import me.coldandtired.mobs.api.MobsPerformingActionEvent;
 import me.coldandtired.mobs.Enums.*;
 
-public class MobsAction extends MobsElement
+public class MobsEvent
 {	
 	private EventValues ev;
 	private MobsElement ce;
-	private Object target;
-	private List<String> affected_mobs;
-	private List<String> affected_worlds;
+	private Map<String, MobsElement> linked_actions;	
+	private Map<String, MobsCondition> linked_conditions;
+	private Map<String, MobsElement> linked_targets;
+	private MobsElement root;
 	
-	MobsAction(String event_name, Element element) throws XPathExpressionException
+	MobsEvent(Element element) throws XPathExpressionException
 	{
-		super(element, null);
-		ce = this;
-		if (element.hasAttribute("affected_mobs"))
+		//TODO players get "real player" meta data?
+				
+		NodeList list = (NodeList)Mobs.getXPath().evaluate("linked_condition", element, XPathConstants.NODESET);
+		if (list.getLength() != 0)
 		{
-			affected_mobs = new ArrayList<String>();
-			String s = element.getAttribute("affected_mobs").toUpperCase().replace(" ", "");
-			affected_mobs = Arrays.asList(s.split(","));
-		}//TODO players get "real player" meta data?
-		//TODO custom biomes
-
-		if (element.hasAttribute("affected_worlds"))
-		{
-			affected_worlds = new ArrayList<String>();
-			String s = element.getAttribute("affected_worlds").toUpperCase().replace(" ", "");
-			affected_worlds = Arrays.asList(s.split(","));
-		}//TODO pass target to ev?
+			linked_conditions = new HashMap<String, MobsCondition>();
+			for (int i = 0; i < list.getLength(); i++)
+			{
+				Element el = (Element)list.item(i);
+				String name = el.getAttribute("name");
+				if (name == null || name.isEmpty())
+				{
+					Mobs.error("A linked_condition is missing its name!");
+					continue;
+				}
+				MobsCondition mc = MobsCondition.fill(el);
+				if (mc != null) linked_conditions.put(name.toUpperCase(), mc);
+			}
+		}
 		
-		//ce.test();
+		root = new MobsElement(element, null, linked_conditions);		
+
+		list = (NodeList)Mobs.getXPath().evaluate("linked_action", element, XPathConstants.NODESET);
+		if (list.getLength() != 0)
+		{
+			linked_actions = new HashMap<String, MobsElement>();
+			for (int i = 0; i < list.getLength(); i++)
+			{
+				Element el = (Element)list.item(i);
+				String name = el.getAttribute("name");
+				if (name == null || name.isEmpty())
+				{
+					Mobs.error("A linked_action is missing its name!");
+					continue;
+				}
+				linked_actions.put(name.toUpperCase(), new MobsElement(el, root, linked_conditions));
+			}
+		}
+		
+		list = (NodeList)Mobs.getXPath().evaluate("linked_target", element, XPathConstants.NODESET);
+		if (list.getLength() != 0)
+		{
+			linked_targets = new HashMap<String, MobsElement>();
+			for (int i = 0; i < list.getLength(); i++)
+			{
+				Element el = (Element)list.item(i);
+				String name = el.getAttribute("name");
+				if (name == null || name.isEmpty())
+				{
+					Mobs.error("A linked_target is missing its name!");
+					continue;
+				}
+				linked_targets.put(name.toUpperCase(), new MobsElement(el, root, linked_conditions));
+			}
+		}
 	}
+	
 	
 	/** Performs all the actions on all the targets */
 	public void performActions(EventValues ev)
 	{
+		ce = root;
 		this.ev = ev;
-		if (!isAffected()) return;
-		//TODO world here
-		//target = getMCTarget();
 		
 		List<MobsElement> actions = getActions();
 		if (actions == null)
@@ -103,10 +144,13 @@ public class MobsAction extends MobsElement
 		for (MobsElement me : actions)
 		{		
 			ce = me;
-			ActionType at = getAction();
+			String s = getAction();
+			if (!Enums.isActionType(s)) continue;
 			
-			switch (at)
-			{					
+			switch (ActionType.valueOf(s))
+			{			
+				case BROADCAST: broadcastSomething();
+					break;
 				case CANCEL_EVENT: cancelEvent();
 					break;			
 				case CAUSE: causeSomething();
@@ -117,6 +161,8 @@ public class MobsAction extends MobsElement
 					break;	
 				case KILL: killSomething();
 					break;
+				case LOG: logSomething();
+					break;
 				case PLAY: playSomething();
 					break;				
 				case REMOVE: removeSomething();
@@ -125,13 +171,31 @@ public class MobsAction extends MobsElement
 					break;					
 				case SPAWN: spawnSomething();
 					break;					
-				case WRITE: writeSomething();
+				case TELL: tellSomething();
 					break;			
-			}	//TODO split log?
-			//TODO world only for repeating?
+			}	
 		}
 	}
 		
+// Broadcast action
+	
+	/** Sends a message to everyone on the server */
+	private void broadcastSomething()
+	{
+		String message = getMessage();
+		if (message == null)
+		{
+			actionFailed("broadcast", ReasonType.NO_MESSAGE);
+			return;
+		}		
+		
+		if (isActionCancelled("broadcast " + message)) return;
+		
+		Bukkit.getServer().broadcastMessage(message);
+	}
+	
+// Cancel_event action
+	
 	/** Cancels the original Bukkit event */
 	private void cancelEvent()
 	{
@@ -397,14 +461,29 @@ public class MobsAction extends MobsElement
 	private void killSomething()
 	{			
 		if (isActionCancelled("kill")) return;
-			
-		target = getMCTarget();
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
 			d.setHealth(0);
 		}
 	}	
+	
+// Log action
+	
+	/** Writes a message to the console */
+	private void logSomething()
+	{
+		String message = getMessage();
+		if (message == null)
+		{
+			actionFailed("log", ReasonType.NO_MESSAGE);
+			return;
+		}		
+		
+		if (isActionCancelled("log " + message)) return;
+		
+		Mobs.log(message);
+	}
 	
 // Play action
 	
@@ -843,7 +922,7 @@ public class MobsAction extends MobsElement
 		{
 			actionFailed("set weather", ReasonType.NO_VALUE);
 			return;
-		}//TODO before and after events
+		}
 		
 		int duration = getDuration();
 		
@@ -1384,107 +1463,63 @@ public class MobsAction extends MobsElement
 					continue;
 				}
 				
-				Mobs.getPlugin().setMobName(mob_name);
+				Mobs.setMobName(mob_name);
 				loc.getWorld().spawnEntity(loc, et);
 			}
 		}
 		//TODO mob description ?
 	}
 	
-// write action 	 
-	
-	/** Sends a message to the log/a player/the server */
-	private void writeSomething()
-	{
-		SubactionType st = getSubaction();
-		if (st == null)
-		{
-			actionFailed("write", ReasonType.NO_SUBACTION);
-			return;
-		}
-		
-		switch (st)
-		{
-			case BROADCAST: broadcastMessage();
-				break;
-			case LOG: logMessage();
-				break;
-			case MESSAGE: sendMessage();
-				break;
-		}
-	}
-	
-	/** Sends a message to everyone on the server */
-	private void broadcastMessage()
-	{
-		String message = getMessage();
-		if (message == null)
-		{
-			actionFailed("write broadcast", ReasonType.NO_MESSAGE);
-			return;
-		}		
-		
-		if (isActionCancelled("write broadcast " + message)) return;
-		
-		Bukkit.getServer().broadcastMessage(message);
-	}
-	
-	/** Writes a message to the console */
-	private void logMessage()
-	{
-		String message = getMessage();
-		if (message == null)
-		{
-			actionFailed("write log", ReasonType.NO_MESSAGE);
-			return;
-		}		
-		
-		if (isActionCancelled("write log " + message)) return;
-		
-		Mobs.log(message);
-	}
+// Tell action
 	
 	/** Sends a message to one player */
-	private void sendMessage()
+	private void tellSomething()
 	{		
 		String message = getMessage();
 		if (message == null)
 		{
-			actionFailed("write message", ReasonType.NO_MESSAGE);
+			actionFailed("tell", ReasonType.NO_MESSAGE);
 			return;
 		}		
 		
-		if (isActionCancelled("write message " + message)) return;
+		if (isActionCancelled("tell " + message)) return;
 			
 		for (Player p : getMobType(Player.class)) p.sendMessage(message);
 	}
 	
-	
 // MobsElement getters
 	
-	private ActionType getAction()
+	private String getAction()
 	{
-		MobsElement me = ce.getCurrentElement(ElementType.MAIN, ev);
+		MobsElement me = ce.getCurrentElement(ElementType.ACTION, ev);
 		if (me == null) return null;
 
 		ce = me;
-		return ActionType.valueOf(ce.getString(ElementType.MAIN).toUpperCase());
+		return ce.getString(ElementType.ACTION).toUpperCase();
 	}
 	
-	@SuppressWarnings("unchecked")
 	private List<MobsElement> getActions() 
 	{
-		Object o = ce.getActions(ev);
-		if (o == null) return null;
-		
-		if (o instanceof List<?>) return (List<MobsElement>)o;
-		
-			
+		String s = getAction();
 		List<MobsElement> list = new ArrayList<MobsElement>();
-		list.add((MobsElement)o);
+		if (Enums.isActionType(s)) list.add(ce);
+		
+		else if (linked_actions != null)
+		{
+			String[] temp = s.replace(" ", "").split(",");
+			String ss = temp[new Random().nextInt(temp.length)];
+			temp = ss.split("\\+");
+			for (String la : temp)
+			{
+				MobsElement me = linked_actions.get(la);
+				if (me == null) continue;
+				
+				me.setParent(ce); list.add(me);
+			}
+		}
 		return list;
 	}
-	
+		
 	private int getAmount(int orig)
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT, ev);
@@ -1606,14 +1641,47 @@ public class MobsAction extends MobsElement
 	
 	private String getTarget()
 	{
-		ce = ce.getCurrentElement(ElementType.TARGET, ev);
-		if (ce == null)
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET, ev);
+		if (me == null) return null;
+
+		ce = me;
+		return ce.getString(ElementType.TARGET).toUpperCase();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private List<Object> getTargets() 
+	{
+		String s = getTarget();
+		List<MobsElement> list = new ArrayList<MobsElement>();
+		if (Enums.isTargetType(s)) list.add(ce);
+		
+		else if (linked_targets != null)
 		{
-			ce = this;
-			return null;
+			String[] temp = s.replace(" ", "").split(",");
+			String ss = temp[new Random().nextInt(temp.length)];
+			temp = ss.split("\\+");
+			for (String la : temp)
+			{
+				MobsElement me = linked_targets.get(la);
+				if (me == null) continue;
+				
+				me.setParent(ce); list.add(me);
+			}
 		}
 		
-		return ce.getString(ElementType.TARGET).toUpperCase();
+		List<Object> mobs = new ArrayList<Object>();
+		for (MobsElement me : list)
+		{
+			ce = me;
+			Object o = getMCTarget();
+			if (o instanceof List<?>)
+			{
+				mobs.addAll((List<Object>)o);
+			}
+			else mobs.add(o);
+		}
+	
+		return mobs;
 	}
 	
 	private int getTargetAmount(int orig)
@@ -1706,25 +1774,7 @@ public class MobsAction extends MobsElement
 	}
 	
 // Utils
-	
-	private boolean isAffected()
-	{
-		if (affected_mobs != null)
-		{
-			LivingEntity le = ev.getLivingEntity();
-			if (le == null) return false;
-			if (!affected_mobs.contains(le.getType().toString())) return false;			
-		}
 		
-		if (affected_worlds != null)
-		{
-			World w = ev.getWorld();
-			if (w == null) return false;
-			if (!affected_worlds.contains(w.getName().toUpperCase())) return false;
-		}//TODO global?
-		return true;
-	}
-	
 	/** Returns a randomized int */
 	private int getNumber(String s)
 	{
@@ -1765,30 +1815,10 @@ public class MobsAction extends MobsElement
 	{
 		return "x:" + loc.getBlockX() + " y:" + loc.getBlockY() + " z:" + loc.getBlockZ() + " (" + loc.getWorld().getName() + ")";
 	}
-	
-	//TODO null values for everything?
-	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m)
-	{		
-		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
-		String name = getTargetName();
-		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
-		
-		for (Entity e : orig)
-		{
-			if (!temp.contains(e.getType().toString())) continue;
-			if (name != null)
-			{
-				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
-				if (s == null || !s.equalsIgnoreCase(name)) continue;
-			}
-			mobs.add((LivingEntity)e);
-		}
-		return mobs;
-	}
-		
+			
 	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
 	public Object getMCTarget()
-	{		
+	{
 		String tt = getTarget();
 		if (tt == null)
 		{
@@ -1804,7 +1834,7 @@ public class MobsAction extends MobsElement
 				return null;			
 			}
 			
-			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""));
+			List<LivingEntity> mobs = root.getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""), getTargetName());
 			if (mobs.size() == 0)
 			{
 				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -1837,15 +1867,14 @@ public class MobsAction extends MobsElement
 				mobs.add(m.getLivingEntity());
 			}
 			
-			//closest_player -> target_name -> target_amount
-			//TODO docs closest_sheep, pig
+			//TODO docs closest_player -> target_name -> target_amount
 			return mobs;
 		}
 		else if (tt.startsWith("RANDOM_"))
 		{
 			World w = ev.getWorld();
 			if (w == null) return null;
-			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""));
+			List<LivingEntity> mobs = root.getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""), getTargetName());
 			if (mobs.size() == 0)
 			{
 				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -1871,18 +1900,11 @@ public class MobsAction extends MobsElement
 			return ((PlayerApproachLivingEntityEvent)ev.getOrigEvent()).getPlayer();
 			
 			case ATTACKER:
-			if (ev.getOrigEvent() instanceof EntityDamageByEntityEvent)
+			if (ev.getOrigEvent() instanceof EntityDamageByEntityEvent
+					|| ev.getOrigEvent() instanceof LivingEntityBlockEvent
+					|| ev.getOrigEvent() instanceof LivingEntityDamageEvent)
 			{
-				Entity ee = ((EntityDamageByEntityEvent)ev.getOrigEvent()).getDamager();
-				if (ee instanceof LivingEntity) target = ee;
-			}
-			else if (ev.getOrigEvent() instanceof LivingEntityBlockEvent)
-			{
-				return ((LivingEntityBlockEvent)ev.getOrigEvent()).getAttacker();
-			}
-			else if (ev.getOrigEvent() instanceof LivingEntityDamageEvent)
-			{
-				return ((LivingEntityDamageEvent)ev.getOrigEvent()).getAttacker();
+				return ev.getAuxMob();
 			}
 			else
 			{
@@ -1967,8 +1989,7 @@ public class MobsAction extends MobsElement
 					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_DIES_EVENT);
 					return null;
 				}
-				if (ev.getOrigEvent() instanceof EntityDeathEvent)	return ((EntityDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
-				else return ((PlayerDeathEvent)ev.getOrigEvent()).getEntity().getKiller();
+				return ev.getAuxMob();
 				
 			case LEFT_PLAYER:
 				if (!(ev.getOrigEvent() instanceof PlayerLeaveLivingEntityEvent))
@@ -1976,7 +1997,7 @@ public class MobsAction extends MobsElement
 					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_LEAVES_EVENT);
 					return null;
 				}
-				return ((PlayerLeaveLivingEntityEvent)ev.getOrigEvent()).getPlayer();
+				return ev.getAuxMob();
 				
 			case NEAR_PLAYER:
 				if (!(ev.getOrigEvent() instanceof PlayerNearLivingEntityEvent))
@@ -1984,15 +2005,15 @@ public class MobsAction extends MobsElement
 					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_NEAR_EVENT);
 					return null;
 				}
-				return ((PlayerNearLivingEntityEvent)ev.getOrigEvent()).getPlayer();
+				return ev.getAuxMob();
 				
 			case OWNER:
-				if (!(ev.getOrigEvent() instanceof EntityTameEvent))
+				if (!(ev.getLivingEntity() instanceof Tameable))
 				{
-					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TAMES_EVENT);
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_A_TAMEABLE_MOB);
 					return null;
 				}
-				return ((EntityTameEvent)ev.getOrigEvent()).getOwner();
+				return ((Tameable)ev.getLivingEntity()).getOwner();
 				
 			case PLAYER:
 				String s = getTargetName();
@@ -2022,7 +2043,15 @@ public class MobsAction extends MobsElement
 					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_SHEARS_EVENT);
 					return null;
 				}
-				return ((PlayerShearEntityEvent)ev.getOrigEvent()).getPlayer();
+				return ev.getAuxMob();
+				
+			case TAMER:
+				if (!(ev.getOrigEvent() instanceof EntityTameEvent))
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TAMES_EVENT);
+					return null;
+				}
+				return ev.getAuxMob();
 				
 			case TARGETED:
 				if (!(ev.getOrigEvent() instanceof EntityTargetLivingEntityEvent))
@@ -2030,7 +2059,7 @@ public class MobsAction extends MobsElement
 					actionFailed(ev.getMobsEvent(), ReasonType.NOT_THE_TARGETS_EVENT);
 					return null;
 				}
-				return ((EntityTargetLivingEntityEvent)ev.getOrigEvent()).getTarget();
+				return ev.getAuxMob();
 			
 			default: if (ev.getLivingEntity() != null) return ev.getLivingEntity();
 				break;
@@ -2042,6 +2071,8 @@ public class MobsAction extends MobsElement
 	/** Returns a list of target locations, using livingentity if necessary */
 	private List<Location> getLocations()
 	{//TODO add chunk check here
+		Object target = getMCTarget();
+		
 		List<Location> temp = new ArrayList<Location>();
 		if (target instanceof List<?>)
 		{
@@ -2064,14 +2095,13 @@ public class MobsAction extends MobsElement
 	private <T> List<T> getMobType(Class<T> type)
 	{
 		List<T> temp = new ArrayList<T>();
-		if (target instanceof List<?>)
+		List<Object> targets = getTargets();
+		if (targets == null) return temp;
+		
+		for (Object o : targets)
 		{
-			for (Object o : (List<?>)target)
-			{
-				if (type.isInstance(o)) temp.add((T)o);
-			}
+			if (type.isInstance(o)) temp.add((T)o);
 		}
-		else if (type.isInstance(target)) temp.add((T)target);
 		return temp;
 	}
 	

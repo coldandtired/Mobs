@@ -26,7 +26,6 @@ import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
@@ -44,52 +43,77 @@ public class Mobs extends JavaPlugin
 	private XPath xpath;
 	private Economy economy = null;
 	private boolean allow_debug;	
-	private BukkitListener bukkit_listener;
+	private BukkitListener bukkit_listener = new BukkitListener();
 	private Map<String, Timer> timers;
-	private Set<EventType> prechecks = new HashSet<EventType>();
+	private Set<EventType> prechecks;
 	private boolean disabled_timer = false;
 	
 	@Override
 	public void onEnable()
-	{		
+	{	
+		error("This is a new version of the plugin and the old config files won't work anymore!");
+		error("See for a guide to the new and improved config!");//TODO link
+		xpath = XPathFactory.newInstance().newXPath();
+		getConfig().options().copyDefaults(true);
+		saveConfig();
+		
 		try 
 		{
-			if (!loadConfig()) setEnabled(false);
+			loadConfig();
 		} 
 		catch (XPathExpressionException e)
 		{
 			setEnabled(false);
 			e.printStackTrace();
+			return;
 		}
+		
+		if (getServer().getPluginManager().getPlugin("Vault") != null)
+		{
+	        RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
+	        if (economyProvider != null) economy = economyProvider.getProvider();
+		}
+		
+		try 
+		{
+		    new Metrics(this).start();
+		} 
+		catch (IOException e) 
+		{
+		    error("Something went wrong with Metrics - it will be disabled.");
+		}
+		
+		getServer().getPluginManager().registerEvents(bukkit_listener, this);
 	}
 		
 	/** Checks if the running version is the newest available (works with release versions only) */
-	boolean isLatestVersion()
+	void versionCheck()
 	{
+		//TODO activate
+		if (!getConfig().getBoolean("check_for_newer_version", true)) return;
+		
 		DocumentBuilder dbf;
 		try 
 		{
 			dbf = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			Document doc = dbf.parse("http://dev.bukkit.org/server-mods/mobs/files.rss");
 			String s = ((Element) xpath.evaluate("//item[1]/title", doc, XPathConstants.NODE)).getTextContent();
-			return (s.equalsIgnoreCase(getDescription().getVersion()));
+			if (!s.equalsIgnoreCase(getDescription().getVersion())) log("There's a more recent version available!");
 		} 
-		catch (Exception e) {return true;}		
+		catch (Exception e) {}		
 	}
 	
 	/** Loads the config file and splits it into the relevant objects */
 	@SuppressWarnings("unchecked")
-	boolean loadConfig() throws XPathExpressionException
-	{
-		xpath = XPathFactory.newInstance().newXPath();
-		error("This is a new version of the plugin and the old config files won't work anymore!");
-		error("See for a guide to the new and improved config!");//TODO link
+	void loadConfig() throws XPathExpressionException
+	{		
+		reloadConfig();
+		bukkit_listener.fillEvents();
 		
-		FileConfiguration config = getConfig();
-		config.options().copyDefaults(true);
-		saveConfig();
+		timers = null;
+		prechecks = new HashSet<EventType>();
 		
-		if (config.getBoolean("generate_templates"))
+		if (getConfig().getBoolean("generate_templates"))
 		{
 			for (EventType event : EventType.values())
 			{
@@ -101,7 +125,7 @@ public class Mobs extends JavaPlugin
 					if (f.exists()) continue;
 					
 					inputstream = getClass().getClassLoader().getResourceAsStream("template.txt");
-					if (inputstream == null) return false;
+					if (inputstream == null) break;
 					out = new FileOutputStream(f);
 					byte buf[] = new byte[1024];
 					int len;
@@ -121,33 +145,22 @@ public class Mobs extends JavaPlugin
 			}
 		}
 		
-		Set<String> temp = new HashSet<String>((Collection<? extends String>)config.getList("worlds_to_ignore"));
+		Set<String> temp = new HashSet<String>((Collection<? extends String>)getConfig().getList("worlds_to_ignore"));
 		for (World w : Bukkit.getWorlds())
 		{
 			Data.removeData(w, MParam.IGNORED_WORLD);
 			if (temp != null && temp.contains(w.getName())) Data.putData(w, MParam.IGNORED_WORLD);
 		}
-		//TODO activate
-		//if (!disable_check && !is_latest_version()) log("There's a newer version of Mobs available!");
 		
-		if (getServer().getPluginManager().getPlugin("Vault") != null)
-		{
-	        RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
-	        if (economyProvider != null) economy = economyProvider.getProvider();
-		}
+		allow_debug = getConfig().getBoolean("allow_debug", false);		
 		
-		try 
-		{
-		    Metrics metrics = new Metrics(this);
-		    metrics.start();
-		} 
-		catch (IOException e) 
-		{
-		    error("Something went wrong with Metrics - it will be disabled.");
-		}
-		
-		allow_debug = config.getBoolean("allow_debug", false);
-		
+		fillTimers();
+		fillPrechecks();
+	}
+	
+	private void fillTimers()
+	{
+		FileConfiguration config = getConfig();
 		if (config.contains("timers"))
 		{
 			timers = new HashMap<String, Timer>();
@@ -156,25 +169,27 @@ public class Mobs extends JavaPlugin
 				String w = config.getString("timers." + s + ".world");
 				if (w == null)
 				{
-					error("The timer called " + s + " is missing the world value");
+					error("The timer called " + s + " is missing the world value!");
 					continue;
 				}
+				
+				if (Bukkit.getWorld(w) == null)
+				{
+					error("The timer called " + s + " has an unknown world!");
+					continue;
+				}
+				
 				int interval = config.getInt("timers." + s + ".interval", 300);
 				timers.put(s, new Timer(s, interval, w));
 			}
 		}
-		
-		fillPrechecks(config);
-		
-		bukkit_listener = new BukkitListener();
-		getServer().getPluginManager().registerEvents(bukkit_listener, this);		
-		
-		return true;
 	}
 	
 	/** Fills a set of events that will have their values set before the actions are performed */
-	private void fillPrechecks(FileConfiguration config)
+	private void fillPrechecks()
 	{
+		FileConfiguration config = getConfig();
+		
 		if (config.getBoolean("check_burns_before_actions", false)) prechecks.add(EventType.BURNS);
 		if (config.getBoolean("check_changes_block_before_actions", false)) prechecks.add(EventType.CHANGES_BLOCK);
 		if (config.getBoolean("check_creates_portal_before_actions", false)) prechecks.add(EventType.CREATES_PORTAL);
@@ -198,13 +213,9 @@ public class Mobs extends JavaPlugin
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args)
 	{
 		if (cmd.getName().equalsIgnoreCase("reload_mobs"))
-		{
-			bukkit_listener = null;
-			HandlerList.unregisterAll(this);
-			timers = null;
-			prechecks = null;
+		{			
 			try
-			{//TODO check all this!
+			{
 				loadConfig();
 			}
 			catch (XPathExpressionException e) {e.printStackTrace();}
@@ -345,9 +356,9 @@ public class Mobs extends JavaPlugin
 		return false;
 	}
 				
-	public void setMobName(String name)
+	public static void setMobName(String name)
 	{
-		bukkit_listener.setMobName(name);
+		getPlugin().bukkit_listener.setMobName(name);
 	}
 		
 	/** clean up */
@@ -396,13 +407,13 @@ public class Mobs extends JavaPlugin
 	public static void log(Object message)
 	{
 		Bukkit.getLogger().info(Ansi.ansi().fg(Ansi.Color.GREEN).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+				+ message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 	
 	/** log error */
 	public static void error(Object message)
 	{
 		Bukkit.getLogger().warning(Ansi.ansi().fg(Ansi.Color.RED).toString() + "[Mobs] "
-				+ message + Ansi.ansi().fg(Ansi.Color.WHITE).toString());
+				+ message + Ansi.ansi().fg(Ansi.Color.DEFAULT).toString());
 	}
 }

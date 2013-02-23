@@ -1,6 +1,6 @@
 package me.coldandtired.mobs.api;
 
-import me.coldandtired.mobs.MobsAction;
+import me.coldandtired.mobs.MobsEvent;
 
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -11,9 +11,9 @@ public class MobsPerformingActionEvent extends Event implements Cancellable
 	private static final HandlerList handlers = new HandlerList();
 	private boolean cancelled = false;
 	private final String attempting;
-	private final MobsAction outcome;
+	private final MobsEvent outcome;
 
-	public MobsPerformingActionEvent(String attempting, MobsAction outcome)
+	public MobsPerformingActionEvent(String attempting, MobsEvent outcome)
 	{
 		this.attempting = attempting;
 		this.outcome = outcome;
@@ -24,7 +24,7 @@ public class MobsPerformingActionEvent extends Event implements Cancellable
 		return attempting;
 	}
 	
-	public MobsAction getOutcome()
+	public MobsEvent getOutcome()
 	{
 		return outcome;
 	}	

@@ -1,5 +1,8 @@
 package me.coldandtired.mobs;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import me.coldandtired.mobs.Enums.EventType;
 
 import org.bukkit.Bukkit;
@@ -16,6 +19,7 @@ public class EventValues
 	private LivingEntity aux_mob;
 	private Projectile projectile;
 	private Timer timer;
+	private Set<Integer> checked_elements = new HashSet<Integer>();	
 	
 	public EventValues(Event orig_event, EventType mobs_event, LivingEntity le, LivingEntity aux_mob, Projectile projectile, Timer timer)
 	{
@@ -59,5 +63,15 @@ public class EventValues
 		if (timer == null) return null;
 		
 		return Bukkit.getWorld(timer.getWorld());
+	}
+
+	public void addCheckedElement(MobsElement me)
+	{
+		checked_elements.add(me.hashCode());
+	}
+	
+	public boolean alreadyPassed(MobsElement me)
+	{
+		return checked_elements.contains(me.hashCode());
 	}
 }

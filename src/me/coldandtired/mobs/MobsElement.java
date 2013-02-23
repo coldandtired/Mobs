@@ -1,6 +1,7 @@
 package me.coldandtired.mobs;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,40 +12,28 @@ import java.util.TreeMap;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
-
-import me.coldandtired.mobs.Enums.ConditionType;
 import me.coldandtired.mobs.Enums.ElementType;
-import me.coldandtired.mobs.Enums.ReasonType;
-import me.coldandtired.mobs.api.MobsConditionEvent;
-
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.entity.Ageable;
-import org.bukkit.entity.Creeper;
+import me.coldandtired.mobs.Enums.SubactionType;
+import me.coldandtired.mobs.api.Data;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Pig;
-import org.bukkit.entity.PigZombie;
-import org.bukkit.entity.Sheep;
-import org.bukkit.entity.Tameable;
-import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Player;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 public class MobsElement
 {
 	private MobsElement parent;
-	private boolean use_all = false;
-	private Map<ElementType, Object> values = new HashMap<ElementType, Object>();	
-	private Map<ConditionType, String> conditions = new HashMap<ConditionType, String>();
-	
-	public boolean hasConditions()
+	private Map<ElementType, Object> values = new HashMap<ElementType, Object>();
+	private List<List<MobsCondition>> conditions;
+		
+	public void setParent(MobsElement parent)
 	{
-		return conditions != null;
+		this.parent = parent;
 	}
 	
-	public MobsElement(Element element, MobsElement parent) throws XPathExpressionException
-	{//TODO one outcome? no affected? bring back continue?
-		fillConditions(element);
+	public MobsElement(Element element, MobsElement parent, Map<String, MobsCondition> linked_conditions) throws XPathExpressionException
+	{		
 		this.parent = parent;
 		for (ElementType et : ElementType.values())
 		{
@@ -55,45 +44,8 @@ public class MobsElement
 				continue;
 			}
 			
-			if (et.equals(ElementType.MAIN))
-			{
-				Element u = (Element)Mobs.getXPath().evaluate(name, element, XPathConstants.NODE);
-				if (u == null) continue;
-				
-				if (u.hasAttribute("use_all"))
-				{
-					use_all = getBool(u.getAttribute("use"));
-				}
-			}
-			
 			NodeList list = (NodeList)Mobs.getXPath().evaluate(name + "/entry", element, XPathConstants.NODESET);
-			if (list.getLength() == 0) continue;
-			
-			boolean conditional = false;
-			if (list.getLength() > 1 && !use_all)
-			{
-				for (int i = 0; i < list.getLength(); i++)
-				{
-					boolean b = isConditional((Element)list.item(i));
-					if (b)
-					{
-						conditional = b;
-						break;
-					}
-				}
-			}
-			else conditional = true;
-			
-			if (conditional)
-			{
-				List<MobsElement> temp = new ArrayList<MobsElement>();
-				for (int i = 0; i < list.getLength(); i++)
-				{
-					temp.add(new MobsElement((Element)list.item(i), this));
-				}
-				values.put(et, temp);
-				continue;
-			}
+			if (list.getLength() == 0) continue;			
 			
 			int count = 0;
 			SortedMap<Integer, MobsElement> temp = new TreeMap<Integer, MobsElement>();
@@ -102,60 +54,41 @@ public class MobsElement
 				Element el = (Element)list.item(i);
 				int ratio = el.hasAttribute("ratio") ? Integer.parseInt(el.getAttribute("ratio")) : 1; 
 				count += ratio;
-				temp.put(count, new MobsElement(el, this));
+				temp.put(count, new MobsElement(el, this, linked_conditions));
 			}
 			values.put(et, temp);
 		}
+		conditions = fillConditions(element, linked_conditions);
 	}
 	
-	private boolean isConditional(Element element)
+	/*Object getTargets(EventValues ev)
 	{
-		for (ConditionType ct : ConditionType.values())
-		{
-			String s = ct.toString().toLowerCase();
-			if (element.hasAttribute(s)) return true;
-		}
-		
-		return false;
-	}
-	
-	private void fillConditions(Element element)
-	{		
-		for (ConditionType ct : ConditionType.values())
-		{
-			String s = ct.toString().toLowerCase();
-			if (element.hasAttribute(s))
-			{
-				conditions.put(ct, element.getAttribute(s));
-			}
-		}
-		
-		if (conditions.values().size() == 0) conditions = null;
+		return getActionsOrTargets(ElementType.TARGET, ev, use_all_targets);
 	}
 	
 	@SuppressWarnings("unchecked")
-	Object getActions(EventValues ev) 
+	Object getActionsOrTargets(ElementType et, EventValues ev, boolean use)
 	{
 		MobsElement mv = this;
 		
-		while (mv != null && !mv.values.containsKey(ElementType.MAIN)) mv = mv.parent;
+		while (mv != null && !mv.values.containsKey(et)) mv = mv.parent;
 		if (mv == null) return null;
 		
-		Object o = mv.values.get(ElementType.MAIN);
+		Object o = mv.values.get(et);
 		if (o instanceof String)
 		{
-			if (mv.passesConditions(false, ev)) return mv;
+			if (mv.passesConditions(ev)) return mv;
 			return null;
 		}
 		
 		if (o instanceof List<?>)
 		{
 			List<MobsElement> list = (List<MobsElement>)o;
-			if (use_all) return list;
+			if (use) return list;
 			
 			for (MobsElement me : list)
 			{
-				if (me.passesConditions(false, ev)) return me;
+				if (me.passesConditions(ev)) return me;
 			}
 			
 			return null;
@@ -175,7 +108,7 @@ public class MobsElement
 		}
 		
 		return null;
-	}
+	}*/
 
 	@SuppressWarnings("unchecked")
 	MobsElement getCurrentElement(ElementType et, EventValues ev)
@@ -186,25 +119,34 @@ public class MobsElement
 		if (mv == null) return null;
 		
 		Object o = mv.values.get(et);
-		boolean b = mv == this;
 		
 		if (o instanceof String)
 		{
-			if (mv.passesConditions(b, ev)) 	return mv;
-		}
-		
-		if (o instanceof List<?>)
-		{
-			List<MobsElement> list = (List<MobsElement>)o;
-			for (MobsElement me : list)
-			{
-				if (me.passesConditions(b, ev)) return me;
-			}
-			
+			if (mv.passesConditions(ev)) return mv;
 			return null;
 		}
 		
 		Map<Integer, MobsElement> map = (Map<Integer, MobsElement>)o;
+		
+		boolean conditional = false;
+		for (MobsElement me : map.values())
+		{
+			if (me.hasConditions())
+			{
+				conditional = true;
+				break;
+			}
+		}
+		
+		if (conditional)
+		{
+			for (MobsElement me : map.values())
+			{
+				if (me.passesConditions(ev)) return me;
+			}
+			return null;
+		}
+		
 		int temp = 0;
 		for (int i : map.keySet())
 		{
@@ -222,241 +164,93 @@ public class MobsElement
 	
 	String getString(ElementType et)
 	{
-		return (String)values.get(et);
+		Object o = values.get(et);
+		if (o != null) return (String)o;
+		
+		return null;
 	}
 	
 // condition stuff	
 	
-	private boolean passesConditions(boolean b, EventValues ev)
-	{//TODO different target? aux only?
-		if (!hasConditions() || b) return true;
+	public boolean hasConditions()
+	{
+		return conditions != null;
+	}
+	
+	List<List<MobsCondition>> fillConditions(Element element, Map<String, MobsCondition> linked_conditions)
+	{
+		MobsCondition conditions = MobsCondition.fill(element);
 		
-		for (ConditionType ct : conditions.keySet())
+		List<MobsCondition> list = new ArrayList<MobsCondition>();
+		List<List<MobsCondition>> main_list = new ArrayList<List<MobsCondition>>();
+		if (conditions != null)
 		{
-			String s = conditions.get(ct);
-			switch (ct)
-			{
-				case ADULT: if (!matchesAdult(ct, getBool(s), ev)) return false;
-					break;
-				case ANGRY: if (!matchesAngry(ct, getBool(s), ev)) return false;
-					break;
-				case AREA: if (!matchesArea(ct, s, ev)) return false;
-					break;
-				case POWERED: if (!matchesPowered(ct, getBool(s), ev)) return false;
-					break;
-				case RAINING: if (!matchesRaining(ct, getBool(s), ev)) return false;
-					break;
-				case SADDLED: if (!matchesSaddled(ct, getBool(s), ev)) return false;
-					break;
-				case SHEARED: if (!matchesSheared(ct, getBool(s), ev)) return false;
-					break;
-				case TAMED: if (!matchesTamed(ct, getBool(s), ev)) return false;
-					break;
-				case THUNDERING: if (!matchesThundering(ct, getBool(s), ev)) return false;
-					break;
-			}
+			list.add(conditions);
+			main_list.add(list);
 		}
-		return true;
-	}
-	
-	private boolean matchesAdult(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Ageable)
-			{
-				boolean b = ((Ageable)le).isAdult();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b == needed;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesAngry(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Wolf)
-			{
-				boolean b = ((Wolf)le).isAngry();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b;
-			}
-			else if (le instanceof PigZombie)
-			{
-				boolean b = ((PigZombie)le).isAngry();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_AN_ANGERABLE_MOB, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesArea(ConditionType ct, String needed, EventValues ev)
-	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
+		
+		String s = getString(ElementType.CONDITION);
+		if (s == null) return main_list;
 			
+		s = s.toUpperCase();
+		
+		if (linked_conditions != null)
+		{
+			String[] temp = s.replace(" ", "").split(",");
+			for (String c : temp)
+			{
+				list = new ArrayList<MobsCondition>();
+				String[] temp2 = c.split("\\+");
+				for (String la : temp2)
+				{
+					MobsCondition mc = linked_conditions.get(la);
+					if (mc == null) continue;
+					
+					list.add(mc);
+				}
+				main_list.add(list);
+			}
 		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
+		
+		return main_list;
+	}
+		
+	public boolean passesConditions(EventValues ev)
+	{		
+		if (conditions == null || ev.alreadyPassed(this) || conditions.size() == 0) return true;
+
+		ev.addCheckedElement(this);	
+		
+		for (List<MobsCondition> lmc : conditions)
+		{
+			boolean b = true;
+			for (MobsCondition mc : lmc)
+			{
+				if (!mc.passes(ev)) b = false;
+			}
+			if (b) return true;
+		}
 		return false;
 		
-		/*for (String value : values)
-		{
-			String s = value.contains(":") ? "" : loc.getWorld().getName() + ":";
-			s += value;
-			cr.setCheck_value(s);
-			Area area = Mobs.extra_events.getArea(s);
-			cr.setActual_value(get_string_from_loc(loc));
-			if (area != null && area.isIn_area(loc)) return true;
-		}
-		break;*/
-		
-	}
-	
-	private boolean matchesPowered(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Creeper)
-			{
-				boolean b = ((Creeper)le).isPowered();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b == needed;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_A_CREEPER, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesRaining(ConditionType ct, boolean needed, EventValues ev)
-	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			boolean b = w.hasStorm();
-			callConditionEvent(ev, ct, needed, "" + b, b == needed);
-			return b == needed;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
-	}
-	
-	private boolean matchesSaddled(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Pig)
-			{
-				boolean b = ((Pig)le).hasSaddle();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b == needed;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_A_PIG, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesSheared(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Sheep)
-			{
-				boolean b = ((Sheep)le).isAdult();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b == needed;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_A_SHEEP, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesTamed(ConditionType ct, boolean needed, EventValues ev)
-	{
-		LivingEntity le = ev.getLivingEntity();
-		if (le != null)
-		{
-			if (le instanceof Tameable)
-			{
-				boolean b = ((Tameable)le).isTamed();
-				callConditionEvent(ev, ct, needed, b, b == needed);
-				return b == needed;
-			}
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NOT_A_TAMEABLE_MOB, false);
-				return false;
-			}
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
-		return false;
-	}
-	
-	private boolean matchesThundering(ConditionType ct, boolean needed, EventValues ev)
-	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			boolean b = w.isThundering();
-			callConditionEvent(ev, ct, needed, "" + b, b == needed);
-			return b == needed;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
-	}
+	}	
 	
 // Utils
 	
-	private boolean getBool(String s)
-	{//TODO all yes/no values through this!
-		s = s.toUpperCase();
-		if (s == null) return false;
-		if (s.equalsIgnoreCase("yes")) return true;
-		if (s.equalsIgnoreCase("no")) return false;
+	protected List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
+	{		
+		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
+		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
 		
-		return Boolean.valueOf(s);
-	}
-	
-	/** Calls an event when a condition is checked */
-	private void callConditionEvent(EventValues ev, ConditionType ct, Object needed, Object got, boolean passed)
-	{
-		if (!Mobs.canDebug()) return;
-		
-		Bukkit.getServer().getPluginManager().callEvent(new MobsConditionEvent(ct.toString(), "" + needed, "" + got, passed, ev));
-	}
+		for (Entity e : orig)
+		{
+			if (!temp.contains(e.getType().toString())) continue;
+			if (name != null)
+			{
+				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
+				if (s == null || !s.equalsIgnoreCase(name)) continue;
+			}
+			mobs.add((LivingEntity)e);
+		}
+		return mobs;
+	}	
 }

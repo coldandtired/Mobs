@@ -1,9 +1,7 @@
 package me.coldandtired.mobs;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.xml.xpath.XPathConstants;
@@ -19,7 +17,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -50,37 +47,31 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 public class BukkitListener implements Listener
 {		
 	private String mob_name = null;
 	private String spawn_reason = null;
-	private Map<EventType, List<MobsAction>> events = new HashMap<EventType, List<MobsAction>>();		
+	private Map<EventType, MobsEvent> events;	
 	
-	public BukkitListener() throws XPathExpressionException
-	{		
+	public void fillEvents() throws XPathExpressionException
+	{
+		events = new HashMap<EventType, MobsEvent>();
 		File f = null;
-		NodeList list = null;
+		Element element = null;
 		for (EventType e : EventType.values())
 		{
 			f = new File(Mobs.getPlugin().getDataFolder(), e.toString().toLowerCase() + ".txt");
 			if (!f.exists()) continue;
 			
-			list = (NodeList)Mobs.getXPath().evaluate("actions/action", new InputSource(f.getPath()), XPathConstants.NODESET);
+			element = (Element)Mobs.getXPath().evaluate("event", new InputSource(f.getPath()), XPathConstants.NODE);
 			
-			if (list.getLength() == 0) continue;
+			if (element == null) continue;
 			
-			List<MobsAction> temp = new ArrayList<MobsAction>();
-			for (int i = 0; i < list.getLength(); i++)
-			{
-				temp.add(new MobsAction(e.toString(), (Element)list.item(i)));
-			}
-			
-			events.put(e, temp);
-		}		
-	}	
+			events.put(e, new MobsEvent(element));
+		}
+	}
 	
 	private boolean ignoreWorld(World world)
 	{
@@ -92,11 +83,11 @@ public class BukkitListener implements Listener
 	{
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
-		EventType et = EventType.APPROACHED;		
+		EventType et = EventType.PLAYER_APPROACHES;		
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 		
@@ -109,7 +100,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -131,7 +122,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -159,7 +150,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -185,7 +176,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, event.getEntity(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -229,7 +220,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -261,7 +252,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -293,7 +284,7 @@ public class BukkitListener implements Listener
 			Entity e = le.getLastDamageCause().getEntity();
 			LivingEntity attacker = e instanceof LivingEntity ? (LivingEntity)e : null;
 			EventValues ev = new EventValues(event, et, le, attacker, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		
 		if (!check_before)
@@ -339,7 +330,7 @@ public class BukkitListener implements Listener
 			Entity e = p.getLastDamageCause().getEntity();
 			LivingEntity attacker = e instanceof LivingEntity ? (LivingEntity)e : null;			
 			EventValues ev = new EventValues(event, et, p, attacker, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		
 		if (!check_before)
@@ -364,7 +355,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -385,7 +376,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -412,7 +403,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -439,7 +430,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -458,7 +449,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -502,7 +493,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -548,7 +539,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -576,7 +567,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -598,7 +589,7 @@ public class BukkitListener implements Listener
 			Entity e = event instanceof EntityDamageByEntityEvent ? ((EntityDamageByEntityEvent)event).getDamager() : null;
 			LivingEntity le = e instanceof LivingEntity ? (LivingEntity)e : null;
 			EventValues ev = new EventValues(event, et, (LivingEntity)event.getEntity(), le, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -611,7 +602,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), event.getProjectile(), null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -622,7 +613,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -635,7 +626,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -652,7 +643,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, p, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -665,7 +656,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -678,7 +669,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -689,7 +680,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -700,7 +691,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -709,11 +700,11 @@ public class BukkitListener implements Listener
 	{
 		if (ignoreWorld(event.getEntity().getWorld())) return;
 		
-		EventType et = EventType.NEAR;		
+		EventType et = EventType.PLAYER_NEAR;		
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -724,7 +715,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -744,7 +735,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -772,7 +763,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -790,14 +781,11 @@ public class BukkitListener implements Listener
  	
 	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void spawns(CreatureSpawnEvent event)
-	{//TODO affected here?
+	{
 		if (ignoreWorld(event.getEntity().getWorld())) return;
 		
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.SPAWNS;
-		
-		//TODO remove!!!
-		if (!le.getType().equals(EntityType.PIG)) return;
 		
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
@@ -808,7 +796,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		mob_name = null;
 		spawn_reason = null;
@@ -827,7 +815,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, p, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
@@ -850,7 +838,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -878,7 +866,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, event.getEntity(), null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -905,8 +893,8 @@ public class BukkitListener implements Listener
 		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			EventValues ev = new EventValues(event, et, le, event.getTarget(), null, null);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -934,7 +922,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{						
 			EventValues ev = new EventValues(event, et, le, null, null, null);
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 		if (event.isCancelled()) return;
 		
@@ -953,7 +941,7 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null, null, null, event.getTimer());
-			for (MobsAction ma : events.get(et)) ma.performActions(ev);
+			events.get(et).performActions(ev);
 		}
 	}
 	
