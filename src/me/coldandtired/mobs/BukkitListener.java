@@ -636,7 +636,7 @@ public class BukkitListener implements Listener
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
 		Player p = event.getPlayer();
-		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
+		Data.putData(p, SubactionType.SPAWN_REASON, "NATURAL");
 		Data.putData(p, SubactionType.NAME, p.getName());
 		
 		EventType et = EventType.PLAYER_JOINS;		
@@ -789,7 +789,7 @@ public class BukkitListener implements Listener
 		
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put(MParam.SPAWN_REASON.toString(), spawn_reason);
+		data.put(SubactionType.SPAWN_REASON.toString(), spawn_reason);
 		if (mob_name != null) data.put(SubactionType.NAME.toString(), mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
 		
@@ -808,7 +808,7 @@ public class BukkitListener implements Listener
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
 		Player p = event.getPlayer();
-		Data.putData(p, MParam.SPAWN_REASON, "NATURAL");
+		Data.putData(p, SubactionType.SPAWN_REASON, "NATURAL");
 		Data.putData(p, SubactionType.NAME, p.getName());		
 		
 		EventType et = EventType.PLAYER_SPAWNS;		

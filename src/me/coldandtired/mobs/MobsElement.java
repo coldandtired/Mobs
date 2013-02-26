@@ -1,7 +1,6 @@
 package me.coldandtired.mobs;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,11 +12,6 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.mobs.Enums.ElementType;
-import me.coldandtired.mobs.Enums.SubactionType;
-import me.coldandtired.mobs.api.Data;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
@@ -232,25 +226,5 @@ public class MobsElement
 		}
 		return false;
 		
-	}	
-	
-// Utils
-	
-	protected List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
-	{		
-		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
-		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
-		
-		for (Entity e : orig)
-		{
-			if (!temp.contains(e.getType().toString())) continue;
-			if (name != null)
-			{
-				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
-				if (s == null || !s.equalsIgnoreCase(name)) continue;
-			}
-			mobs.add((LivingEntity)e);
-		}
-		return mobs;
 	}	
 }

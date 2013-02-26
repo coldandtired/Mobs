@@ -1,6 +1,7 @@
 package me.coldandtired.mobs;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -1817,7 +1818,7 @@ public class MobsEvent
 	}
 			
 	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
-	public Object getMCTarget()
+	private Object getMCTarget()
 	{
 		String tt = getTarget();
 		if (tt == null)
@@ -1834,7 +1835,7 @@ public class MobsEvent
 				return null;			
 			}
 			
-			List<LivingEntity> mobs = root.getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""), getTargetName());
+			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""), getTargetName());
 			if (mobs.size() == 0)
 			{
 				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -1874,7 +1875,7 @@ public class MobsEvent
 		{
 			World w = ev.getWorld();
 			if (w == null) return null;
-			List<LivingEntity> mobs = root.getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""), getTargetName());
+			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""), getTargetName());
 			if (mobs.size() == 0)
 			{
 				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -2066,6 +2067,24 @@ public class MobsEvent
 		}
 		
 		return null;
+	}
+	
+	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
+	{		
+		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
+		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
+		
+		for (Entity e : orig)
+		{
+			if (!temp.contains(e.getType().toString())) continue;
+			if (name != null)
+			{
+				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
+				if (s == null || !s.equalsIgnoreCase(name)) continue;
+			}
+			mobs.add((LivingEntity)e);
+		}
+		return mobs;
 	}
 	
 	/** Returns a list of target locations, using livingentity if necessary */
