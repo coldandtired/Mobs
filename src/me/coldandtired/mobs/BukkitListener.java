@@ -9,7 +9,6 @@ import javax.xml.xpath.XPathExpressionException;
 
 import me.coldandtired.extra_events.*;
 import me.coldandtired.mobs.Enums.EventType;
-import me.coldandtired.mobs.Enums.MParam;
 import me.coldandtired.mobs.Enums.SubactionType;
 import me.coldandtired.mobs.api.Data;
 
@@ -75,7 +74,7 @@ public class BukkitListener implements Listener
 	
 	private boolean ignoreWorld(World world)
 	{
-		return Data.hasData(world, MParam.IGNORED_WORLD);
+		return Data.hasData(world, "IGNORED_WORLD");
 	}
 	
 	@EventHandler
@@ -950,7 +949,7 @@ public class BukkitListener implements Listener
 	{
 		for (World w : Bukkit.getWorlds())
 		{
-			if (Data.hasData(w, MParam.IGNORED_WORLD)) continue;
+			if (Data.hasData(w, "IGNORED_WORLD")) continue;
 			
 			for (LivingEntity le : w.getEntitiesByClass(LivingEntity.class))
 			{

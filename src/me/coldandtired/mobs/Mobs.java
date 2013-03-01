@@ -17,8 +17,8 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import me.coldandtired.extra_events.Extra_events;
 import me.coldandtired.mobs.Enums.EventType;
-import me.coldandtired.mobs.Enums.MParam;
 import me.coldandtired.mobs.api.Data;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -26,6 +26,7 @@ import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
@@ -42,6 +43,7 @@ public class Mobs extends JavaPlugin
 {
 	private XPath xpath;
 	private Economy economy = null;
+	private Extra_events extra_events;
 	private boolean allow_debug;	
 	private BukkitListener bukkit_listener = new BukkitListener();
 	private Map<String, Timer> timers;
@@ -68,11 +70,15 @@ public class Mobs extends JavaPlugin
 			return;
 		}
 		
-		if (getServer().getPluginManager().getPlugin("Vault") != null)
+		PluginManager pm = getServer().getPluginManager();
+		
+		if (pm.getPlugin("Vault") != null)
 		{
 	        RegisteredServiceProvider<Economy> economyProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
 	        if (economyProvider != null) economy = economyProvider.getProvider();
 		}
+		
+		extra_events = (Extra_events)pm.getPlugin("Extra events");
 		
 		try 
 		{
@@ -83,7 +89,7 @@ public class Mobs extends JavaPlugin
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
 		
-		getServer().getPluginManager().registerEvents(bukkit_listener, this);
+		pm.registerEvents(bukkit_listener, this);
 	}
 		
 	/** Checks if the running version is the newest available (works with release versions only) */
@@ -148,8 +154,8 @@ public class Mobs extends JavaPlugin
 		Set<String> temp = new HashSet<String>((Collection<? extends String>)getConfig().getList("worlds_to_ignore"));
 		for (World w : Bukkit.getWorlds())
 		{
-			Data.removeData(w, MParam.IGNORED_WORLD);
-			if (temp != null && temp.contains(w.getName())) Data.putData(w, MParam.IGNORED_WORLD);
+			Data.removeData(w, "IGNORED_WORLD");
+			if (temp != null && temp.contains(w.getName())) Data.putData(w, "IGNORED_WORLD");
 		}
 		
 		allow_debug = getConfig().getBoolean("allow_debug", false);		
@@ -387,6 +393,11 @@ public class Mobs extends JavaPlugin
 	public static Economy getEconomy()
 	{
 		return getPlugin().economy;
+	}
+	
+	public static Extra_events getExtraEvents()
+	{
+		return getPlugin().extra_events;
 	}
 	
 	public static boolean canDebug()

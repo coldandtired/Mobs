@@ -2,6 +2,7 @@ package me.coldandtired.mobs;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -12,6 +13,8 @@ import java.util.Random;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Entity;
@@ -31,8 +34,10 @@ import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.inventory.ItemStack;
 import org.w3c.dom.Element;
 
+import me.coldandtired.extra_events.Area;
 import me.coldandtired.extra_events.LivingEntityBlockEvent;
 import me.coldandtired.extra_events.LivingEntityDamageEvent;
 import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
@@ -47,7 +52,7 @@ import me.coldandtired.mobs.api.MobsConditionEvent;
 
 public class MobsCondition
 {
-	//private String name;
+	private EventValues ev;
 	private Map<ConditionType, String> conditions = new HashMap<ConditionType, String>();
 	
 	private MobsCondition() {}
@@ -68,7 +73,7 @@ public class MobsCondition
 		return null;
 	}
 	
-	private boolean matchesLivingEntity(ConditionType ct, EventValues ev, Object o)
+	private boolean matchesLivingEntity(ConditionType ct, Object o)
 	{
 		LivingEntity le = ev.getLivingEntity();
 		if (o != null)
@@ -76,22 +81,28 @@ public class MobsCondition
 			if (o instanceof LivingEntity) le = (LivingEntity)o;
 			else
 			{
-				callConditionEvent(ev, ct, conditions.get(ct), ReasonType.NO_TARGET, false);
+				callConditionEvent(ct, conditions.get(ct), ReasonType.NO_TARGET, false);
 				return false;
 			}
 		}
 		
 		if (le == null)
 		{
-			callConditionEvent(ev, ct, conditions.get(ct), ReasonType.NO_MOB, false);
+			callConditionEvent(ct, conditions.get(ct), ReasonType.NO_MOB, false);
 			return false;
 		}
 		
 		switch (ct)
 		{
-			case IF_ADULT: return matchesAdult(ct, ev, le);		
-			case IF_AGE: return matchesAge(ct, ev, le);			
-			case IF_ANGRY: return matchesAngry(ct, ev, le);
+			case IF_ADULT: return matchesAdult(ct, le);		
+			case IF_AGE: return matchesAge(ct, le);			
+			case IF_ANGRY: return matchesAngry(ct, le);
+			
+			case IF_CARRYING:
+			case IF_NOT_CARRYING: return matchesCarrying(ct, le);
+			
+			case IF_CHUNK_COUNT: return matchesChunkCount(ct, le);
+			
 			case IF_CUSTOM_FLAG_1:
 			case IF_CUSTOM_FLAG_2:
 			case IF_CUSTOM_FLAG_3:
@@ -101,7 +112,7 @@ public class MobsCondition
 			case IF_CUSTOM_FLAG_7:
 			case IF_CUSTOM_FLAG_8:
 			case IF_CUSTOM_FLAG_9:
-			case IF_CUSTOM_FLAG_10: return matchesCustomFlag(ct, ev, le);
+			case IF_CUSTOM_FLAG_10: return matchesCustomFlag(ct, le);
 
 			case IF_CUSTOM_INT_1:
 			case IF_CUSTOM_INT_2:
@@ -112,7 +123,7 @@ public class MobsCondition
 			case IF_CUSTOM_INT_7:
 			case IF_CUSTOM_INT_8:
 			case IF_CUSTOM_INT_9:
-			case IF_CUSTOM_INT_10: return matchesCustomInt(ct, ev, le);
+			case IF_CUSTOM_INT_10: return matchesCustomInt(ct, le);
 					
 			case IF_CUSTOM_STRING_1:
 			case IF_CUSTOM_STRING_2:
@@ -123,18 +134,23 @@ public class MobsCondition
 			case IF_CUSTOM_STRING_7:
 			case IF_CUSTOM_STRING_8:
 			case IF_CUSTOM_STRING_9:
-			case IF_CUSTOM_STRING_10: return matchesCustomString(ct, ev, le);
+			case IF_CUSTOM_STRING_10: return matchesCustomString(ct, le);
 				
 			case IF_DEATH_CAUSE:
-			case IF_NOT_DEATH_CAUSE: return matchesDeathCause(ct, ev, le);
+			case IF_NOT_DEATH_CAUSE: return matchesDeathCause(ct, le);
 				
-			case IF_KILLED_BY_PLAYER: return matchesKilledByPlayer(ct, ev, le);
+			case IF_HOLDING:
+			case IF_NOT_HOLDING: return matchesHolding(ct, le);
+				
+			case IF_KILLED_BY_PLAYER: return matchesKilledByPlayer(ct, le);
 			
 			case IF_MOB:
-			case IF_NOT_MOB: return matchesMob(ct, ev, le);
+			case IF_NOT_MOB: return matchesMob(ct, le);
 				
+			case IF_MONEY: return matchesMoney(ct, le);
+			
 			case IF_NAME:
-			case IF_NOT_NAME: return matchesName(ct, ev, le);
+			case IF_NOT_NAME: return matchesName(ct, le);
 				
 			case IF_NOT_CUSTOM_STRING_1:
 			case IF_NOT_CUSTOM_STRING_2:
@@ -145,80 +161,88 @@ public class MobsCondition
 			case IF_NOT_CUSTOM_STRING_7:
 			case IF_NOT_CUSTOM_STRING_8:
 			case IF_NOT_CUSTOM_STRING_9:
-			case IF_NOT_CUSTOM_STRING_10: return matchesNotCustomString(ct, ev, le);
+			case IF_NOT_CUSTOM_STRING_10: return matchesNotCustomString(ct, le);
 				
 			case IF_OCELOT:
-			case IF_NOT_OCELOT: return matchesOcelot(ct, ev, le);
+			case IF_NOT_OCELOT: return matchesOcelot(ct, le);
 				
 			case IF_OWNER:
-			case IF_NOT_OWNER: return matchesOwner(ct, ev, le);
+			case IF_NOT_OWNER: return matchesOwner(ct, le);
 			
 			case IF_PLAYER_HAS_PERMISSION:
-			case IF_NOT_PLAYER_HAS_PERMISSION: return matchesPlayerHasPermission(ct, ev, le);
+			case IF_NOT_PLAYER_HAS_PERMISSION: return matchesPlayerHasPermission(ct, le);
 				
-			case IF_PLAYER_IS_OP: return matchesPlayerIsOp(ct, ev,le);
+			case IF_PLAYER_IS_OP: return matchesPlayerIsOp(ct, le);
 			
-			case IF_POWERED: return matchesPowered(ct, ev, le);
+			case IF_POWERED: return matchesPowered(ct, le);
 			
-			case IF_SADDLED: return matchesSaddled(ct, ev, le);
+			case IF_REMAINING_LIFETIME: return matchesRemainingLifetime(ct, le);
+			
+			case IF_SADDLED: return matchesSaddled(ct, le);
 				
-			case IF_SHEARED: return matchesSheared(ct, ev, le);
+			case IF_SHEARED: return matchesSheared(ct, le);
 				
 			case IF_SPAWN_REASON:
-			case IF_NOT_SPAWN_REASON: return matchesSpawnReason(ct,ev, le);
-				
-			case IF_TAMED: return matchesTamed(ct, ev, le);
+			case IF_NOT_SPAWN_REASON: return matchesSpawnReason(ct, le);
+
+			case IF_STANDING_ON:
+			case IF_NOT_STANDING_ON: return matchesStandingOn(ct, le);
+			
+			case IF_TAMED: return matchesTamed(ct, le);
 				
 			case IF_VILLAGER:
-			case IF_NOT_VILLAGER: return matchesVillager(ct, ev, le);
+			case IF_NOT_VILLAGER: return matchesVillager(ct, le);
 				
+			case IF_WEARING:
+			case IF_NOT_WEARING: return matchesWearing(ct, le);
+			
 			case IF_WOOL:
-			case IF_NOT_WOOL: return matchesWool(ct, ev, le);
+			case IF_NOT_WOOL: return matchesWool(ct, le);
 		}
 		
 		return false;
 	}
 	
-	private boolean matchesLocation(ConditionType ct, EventValues ev, Object o)
-	{
-		Location loc;
-		if (ev.getLivingEntity() != null) loc = ev.getLivingEntity().getLocation();
+	private boolean matchesBlock(ConditionType ct, Object o)
+	{//TODO check
+		Block block = null;
+		if (ev.getLivingEntity() != null) block = ev.getLivingEntity().getLocation().getBlock();
 		if (o != null)
 		{
-			if (o instanceof Location) loc = (Location)o;
-			else if (o instanceof LivingEntity) loc = ((LivingEntity)o).getLocation();
+			if (o instanceof Block) block = (Block)o;
+			else if (o instanceof LivingEntity) block = ((LivingEntity)o).getLocation().getBlock();
 			else
 			{
-				callConditionEvent(ev, ct, conditions.get(ct), ReasonType.NO_TARGET, false);
+				callConditionEvent(ct, conditions.get(ct), ReasonType.NO_TARGET, false);
 				return false;
 			}
 		}
 		
-		if (loc == null)
+		if (block == null)
 		{
-			callConditionEvent(ev, ct, conditions.get(ct), ReasonType.NO_LOCATION, false);
+			callConditionEvent(ct, conditions.get(ct), ReasonType.NO_LOCATION, false);
 			return false;
 		}
 		
 		switch (ct)
 		{
-			case IF_AREA: return matchesArea(ct, ev, loc);		
+			case IF_AREA: return matchesArea(ct, block);
+			case IF_AREA_COUNT: return matchesAreaCount(ct, block);
+			case IF_BLOCK:
+			case IF_NOT_BLOCK: return matchesBlockType(ct, block);
 			case IF_BIOME:
-			case IF_NOT_BIOME: return matchesBiome(ct, ev, loc);		
-			case IF_BLOCK_LIGHT_LEVEL: return matchesBlockLightLevel(ct, ev, loc);		
-			case IF_LIGHT_LEVEL: return matchesLightLevel(ct, ev, loc);
-			case IF_SKY_LIGHT_LEVEL: return matchesSkyLightLevel(ct, ev, loc);		
-			case IF_X: return matchesX(ct, ev, loc);		
-			case IF_Y: return matchesY(ct, ev, loc);		
-			case IF_Z: return matchesZ(ct, ev, loc);
+			case IF_NOT_BIOME: return matchesBiome(ct, block);		
+			case IF_BLOCK_LIGHT_LEVEL: return matchesBlockLightLevel(ct, block);		
+			case IF_LIGHT_LEVEL: return matchesLightLevel(ct, block);
+			case IF_SKY_LIGHT_LEVEL: return matchesSkyLightLevel(ct, block);		
+			case IF_X: return matchesX(ct, block);		
+			case IF_Y: return matchesY(ct, block);		
+			case IF_Z: return matchesZ(ct, block);
 		}
-	}
-	
-	private boolean matchesWorld(ConditionType ct, EventValues ev, Object o)
-	{
 		
+		return false;
 	}
-	
+		
 	public boolean passes(EventValues ev)
 	{//TODO remove
 		Mobs.log("checking...");
@@ -229,10 +253,12 @@ public class MobsCondition
 			o = getConditionsTarget(ev);
 			if (o == null)
 			{
-				callConditionEvent(ev, null, null, ReasonType.NO_TARGET, false);
+				callConditionEvent(null, null, ReasonType.NO_TARGET, false);
 				return false;
 			}
-		}		
+		}	
+		
+		this.ev = ev;
 		
 		for (ConditionType ct : conditions.keySet())
 		{
@@ -241,6 +267,9 @@ public class MobsCondition
 				case IF_ADULT:
 				case IF_AGE:
 				case IF_ANGRY:
+				case IF_CARRYING:
+				case IF_NOT_CARRYING:
+				case IF_CHUNK_COUNT:
 				case IF_CUSTOM_FLAG_1:
 				case IF_CUSTOM_FLAG_2:
 				case IF_CUSTOM_FLAG_3:
@@ -273,9 +302,12 @@ public class MobsCondition
 				case IF_CUSTOM_STRING_10:
 				case IF_DEATH_CAUSE:
 				case IF_NOT_DEATH_CAUSE:
+				case IF_HOLDING:
+				case IF_NOT_HOLDING:
 				case IF_KILLED_BY_PLAYER:
 				case IF_MOB:
 				case IF_NOT_MOB:
+				case IF_MONEY:
 				case IF_NAME:
 				case IF_NOT_NAME:
 				case IF_NOT_CUSTOM_STRING_1:
@@ -296,18 +328,27 @@ public class MobsCondition
 				case IF_NOT_PLAYER_HAS_PERMISSION:
 				case IF_PLAYER_IS_OP:
 				case IF_POWERED:
+				case IF_REMAINING_LIFETIME:
 				case IF_SADDLED:
 				case IF_SHEARED:
 				case IF_SPAWN_REASON:
+				case IF_STANDING_ON:
+				case IF_NOT_STANDING_ON:
 				case IF_NOT_SPAWN_REASON:
 				case IF_TAMED:
 				case IF_VILLAGER:
 				case IF_NOT_VILLAGER:
+				case IF_WEARING:
+				case IF_NOT_WEARING:
 				case IF_WOOL:
-				case IF_NOT_WOOL: if (!matchesLivingEntity(ct, ev, o)) return false;
+				case IF_NOT_WOOL: if (!matchesLivingEntity(ct, o)) return false;
 					break;
 					
-				case IF_AREA:				
+				case IF_AREA:
+				case IF_AREA_COUNT:
+				case IF_BLOCK:
+				case IF_NOT_BLOCK:
+				case IF_NOT_AREA:
 				case IF_BIOME:
 				case IF_NOT_BIOME:					
 				case IF_BLOCK_LIGHT_LEVEL:					
@@ -315,80 +356,88 @@ public class MobsCondition
 				case IF_SKY_LIGHT_LEVEL:					
 				case IF_X:					
 				case IF_Y: 					
-				case IF_Z: if (!matchesLocation(ct, ev, o)) return false;
+				case IF_Z: if (!matchesBlock(ct, o)) return false;
 					break;
 			}
 		}
 		
 		for (ConditionType ct : conditions.keySet())
 		{
-			String s = conditions.get(ct);
 			switch (ct)
-			{					
-				
-					
-				case IF_LUNAR_PHASE: if (!matchesLunarPhase(ct, s, ev, o)) return false;
+			{
+				case IF_DATE: if (!matchesDate(ct)) return false;
 					break;
-									
-				case IF_PERCENT: if (!matchesPercent(ct, s, ev, o)) return false;
+				case IF_DAY: if (!matchesDay(ct)) return false;
 					break;
-					
+				case IF_DAY_OF_YEAR: if (!matchesDayOfYear(ct)) return false;
+					break;
+				case IF_HOUR: if (!matchesHour(ct)) return false;
+					break;
+				case IF_LUNAR_PHASE: if (!matchesLunarPhase(ct)) return false;
+					break;									
+				case IF_PERCENT: if (!matchesPercent(ct)) return false;
+					break;	
+				case IF_MINUTE: if (!matchesMinute(ct)) return false;
+					break;	
+				case IF_MONTH: if (!matchesMonth(ct)) return false;
+					break;			
 				case IF_IN_WORLD:
-				case IF_NOT_IN_WORLD: if (!matchesInWorld(ct, s, ev, o, ct.equals(ConditionType.IF_NOT_IN_WORLD))) return false;
-					break;
-					
+				case IF_NOT_IN_WORLD: if (!matchesInWorld(ct)) return false;
+					break;					
 				case IF_ON_SERVER:
-				case IF_NOT_ON_SERVER: if (!matchesOnServer(ct, s, ev, o, ct.equals(ConditionType.IF_NOT_ON_SERVER))) return false;
+				case IF_NOT_ON_SERVER: if (!matchesOnServer(ct)) return false;
 					break;
 					
 				case IF_PROJECTILE:
-				case IF_NOT_PROJECTILE: if (!matchesProjectile(ct, s, ev, o, ct.equals(ConditionType.IF_NOT_PROJECTILE))) return false;
+				case IF_NOT_PROJECTILE: if (!matchesProjectile(ct)) return false;
 					break;
 					
-				case IF_RAINING: if (!matchesRaining(ct, getBool(s), ev)) return false;
+				case IF_RAINING: if (!matchesRaining(ct)) return false;
+					break;	
+				case IF_SECOND: if (!matchesSecond(ct)) return false;
 					break;
-					
-				case IF_SERVER_PLAYER_COUNT: if (!matchesServerPlayerCount(ct, s, ev, o)) return false;
+				case IF_SERVER_PLAYER_COUNT: if (!matchesServerPlayerCount(ct)) return false;
 					break;
-					
-				
-					
-				case IF_THUNDERING: if (!matchesThundering(ct, getBool(s), ev)) return false;
+				case IF_THUNDERING: if (!matchesThundering(ct)) return false;
+					break;	
+				case IF_WEEK: if (!matchesWeek(ct)) return false;
 					break;
-					
+				case IF_WEEK_OF_MONTH: if (!matchesWeekOfMonth(ct)) return false;
+					break;				
 				case IF_WORLD:
-				case IF_NOT_WORLD: if (!matchesWorld(ct, s, ev, o, ct.equals(ConditionType.IF_NOT_WORLD))) return false;
+				case IF_NOT_WORLD: if (!matchesWorld(ct)) return false;
 					break;
-					
-				case IF_WORLD_TIME: if (!matchesWorldTime(ct, s, ev, o)) return false;
-					break;
-					
+				case IF_WORLD_COUNT: if (!matchesWorldCount(ct)) return false;
+				case IF_WORLD_TIME: if (!matchesWorldTime(ct)) return false;
+					break;					
 				case IF_WORLD_TYPE:
-				case IF_NOT_WORLD_TYPE: if (!matchesWorldType(ct, s, ev, o, ct.equals(ConditionType.IF_NOT_WORLD_TYPE))) return false;
+				case IF_NOT_WORLD_TYPE: if (!matchesWorldType(ct)) return false;
+					break;
+				case IF_YEAR: if (!matchesYear(ct)) return false;
 					break;
 			}
 		}
 		return true;
 	}
 	
-	private boolean matchesAdult(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesAdult(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Ageable)
 		{
 			boolean b = ((Ageable)le).isAdult();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesAge(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesAge(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -396,88 +445,143 @@ public class MobsCondition
 		{
 			Integer i = ((Ageable)le).getAge();
 			boolean b = matchesInt(i, needed);
-			callConditionEvent(ev, ct, needed, i, b);
+			callConditionEvent(ct, needed, i, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesAngry(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesAngry(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Wolf)
 		{
 			boolean b = ((Wolf)le).isAngry();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b;
 		}
 		else if (le instanceof PigZombie)
 		{
 			boolean b = ((PigZombie)le).isAngry();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_AN_ANGERABLE_MOB, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_AN_ANGERABLE_MOB, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesArea(ConditionType ct, String needed, EventValues ev, Object o)
+	private boolean matchesArea(ConditionType ct, Block block)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		String s = conditions.get(ct);
+		String needed = s.contains(":") ? "" : block.getWorld().getName() + ":";
+		needed = s + needed;		
 		
-		//Area area = Mobs.extra_events.getArea(s);
-		
-		/*for (String value : values)
-		{
-			String s = value.contains(":") ? "" : loc.getWorld().getName() + ":";
-			s += value;
-			cr.setCheck_value(s);
-			Area area = Mobs.extra_events.getArea(s);
-			if (area != null && area.isIn_area(loc)) return true;
-		}
-		break;*/		
+		Area area = Mobs.getExtraEvents().getArea(needed);
+		boolean b = area != null && area.isIn_area(block.getLocation());
+		if (ct.equals(ConditionType.IF_NOT_AREA)) b = !b;
+		callConditionEvent(ct, needed, s, b);
+		return b;
 	}
 	
-	private boolean matchesBiome(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
-	{//TODO fix for custom biomes and location objects
-		LivingEntity le = ev.getLivingEntity();
-		if (o != null)
+	private boolean matchesAreaCount(ConditionType ct, Block block)
+	{		
+		String s = conditions.get(ConditionType.CONDITION_TARGET_AREA);
+		if (s == null)
 		{
-			if (o instanceof LivingEntity) le = (LivingEntity)o;
-			else
-			{
-				callConditionEvent(ev, ct, needed, ReasonType.NO_TARGET, false);
-				return false;
-			}
+			callConditionEvent(ct, conditions.get(ct), ReasonType.NO_AREA, false);
+			return false;
 		}
 		
-		if (le != null) 
+		String area_name = s.contains(":") ? "" : block.getWorld().getName() + ":";
+		area_name = s + area_name;	
+		Area area = Mobs.getExtraEvents().getArea(area_name);
+		String[] temp = conditions.get(ct).split(":");
+		String mob = ct.toString().replace("AREA", "").replace("COUNT", "").replace("_", "");
+		String needed = temp[0];
+		
+		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
+		int i = 0;
+		for (LivingEntity le : getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null))
 		{
-			String s = le.getType().toString();
-			boolean b = matchesString(s, needed);
-			if (reversed) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			if (area.isIn_area(le.getLocation())) i++;
+		}
+		
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
+		callConditionEvent(ct, needed + ", " + area_name, i, b);
+		return b;
+	}
+	
+	private boolean matchesBiome(ConditionType ct, Block block)
+	{//TODO fix for custom biomes
+		String needed = conditions.get(ct);
+		
+		String s = block.getBiome().name();
+		boolean b = matchesString(s, needed);
+		if (ct.equals(ConditionType.IF_NOT_BIOME)) b = !b;
+		callConditionEvent(ct, needed, s, b);
+		return b;
+	}
+	
+	private boolean matchesBlockLightLevel(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = block.getLightFromBlocks();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesBlockType(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		boolean b = matchesBlock(block, needed);
+		callConditionEvent(ct, needed, block.toString(), b);
+		return b;
+	}
+	
+	private boolean matchesCarrying(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		if (le instanceof Player)
+		{		
+			ItemStack is = ((Player)le).getItemInHand();
+			boolean b = matchesItem(is, needed);
+			if (ct.equals(ConditionType.IF_NOT_HOLDING)) b = !b;
+			callConditionEvent(ct, needed, is.toString(), b);
 			return b;
 		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_MOB, false);
+		
+		callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
 		return false;
 	}
 	
-	private boolean matchesCustomFlag(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesChunkCount(ConditionType ct, LivingEntity le)
+	{
+		String[] temp = conditions.get(ct).split(":");
+		String mob = ct.toString().replace("CHUNK", "").replace("COUNT", "").replace("_", "");
+		String needed = temp[0];
+		
+		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
+		int i = getRelevantMobs(Arrays.asList(le.getLocation().getChunk().getEntities()), mob, temp.length > 1 ? temp[1] : null).size();
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesCustomFlag(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
@@ -485,17 +589,17 @@ public class MobsCondition
 		if (Data.hasData(le, st))
 		{
 			boolean b = (Boolean)Data.getData(le, st);
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_METADATA, false);
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesCustomInt(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesCustomInt(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -504,17 +608,17 @@ public class MobsCondition
 		{
 			Integer i = (Integer)Data.getData(le, st);
 			boolean b = matchesInt(i, needed);
-			callConditionEvent(ev, ct, needed, i, b);
+			callConditionEvent(ct, needed, i, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_METADATA, false);
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesCustomString(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesCustomString(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -523,59 +627,143 @@ public class MobsCondition
 		{
 			String s = (String)Data.getData(le, st);
 			boolean b = matchesString(s, needed);
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_METADATA, false);
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
 			return false;
 		}
 	}
 		
-	private boolean matchesKilledByPlayer(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesDate(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.DATE);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesDay(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.DAY_OF_WEEK);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesDayOfYear(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesHolding(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		if (le instanceof Player)
+		{		
+			for (ItemStack is : ((Player)le).getInventory().getContents())
+			{
+				boolean b = matchesItem(is, needed);
+				if (b)
+				{
+					if (ct.equals(ConditionType.IF_NOT_CARRYING)) b = !b;
+					callConditionEvent(ct, needed, is.toString(), b);
+					return b;
+				}
+			}
+			return ct.equals(ConditionType.IF_NOT_CARRYING) ? true : false;			
+		}
+		
+		callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
+		return false;
+	}
+	
+	private boolean matchesHour(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.HOUR);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesKilledByPlayer(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le.isDead())
 		{
 			boolean b = le.getKiller() != null;
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_DEAD, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_DEAD, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesLunarPhase(ConditionType ct, String needed, EventValues ev, Object o)
+	private boolean matchesLightLevel(ConditionType ct, Block block)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			long i = (w.getFullTime()/24000) % 8;
-			boolean b = matchesInt((int)i, needed);
-			callConditionEvent(ev, ct, needed, i, b);
-			return b;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		String needed = conditions.get(ct);
+		
+		int i = block.getLightLevel();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
 	}
 	
-	private boolean matchesMob(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesLunarPhase(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		long i = (ev.getWorld().getFullTime()/24000) % 8;
+		boolean b = matchesInt((int)i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesMob(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
 		String s = le.getType().toString();
 		boolean b = matchesString(s, needed);
 		if (ct.equals(ConditionType.IF_NOT_MOB)) b = !b;
-		callConditionEvent(ev, ct, needed, s, b);
+		callConditionEvent(ct, needed, s, b);
 		return b;
 	}
 
-	private boolean matchesDeathCause(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesMonth(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.MONTH);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesDeathCause(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -584,41 +772,75 @@ public class MobsCondition
 			String s = le.getLastDamageCause().toString();	
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_DEATH_CAUSE)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_DEAD, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_DEAD, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesInWorld(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
+	private boolean matchesInWorld(ConditionType ct)
 	{
+		String needed = conditions.get(ct);
+		
 		World w = ev.getWorld();
-		if (w != null)
+		boolean b = false;
+		for (Player p : w.getPlayers())
 		{
-			boolean b = false;
-			for (Player p : w.getPlayers())
+			String s = p.getName();
+			if (matchesString(s, needed))
 			{
-				String s = p.getName();
-				if (matchesString(s, needed))
-				{
-					b = true;
-					break;
-				}
+				b = true;
+				break;
 			}
-			
-			if (reversed) b = !b;
-			callConditionEvent(ev, ct, needed, w.getName() + "'s players", b);
-			return b;
 		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		
+		if (ct.equals(ConditionType.IF_NOT_IN_WORLD)) b = !b;
+		callConditionEvent(ct, needed, w.getName() + "'s players", b);
+		return b;
 	}
 	
-	private boolean matchesName(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesMinute(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.MINUTE);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesMoney(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		if (le instanceof Player)
+		{
+			if (Mobs.getEconomy() != null)
+			{
+				int i = (int)Mobs.getEconomy().getBalance(((Player)le).getName());				
+				boolean b = matchesInt(i, needed);
+				callConditionEvent(ct, needed, i, b);
+				return b;
+			}
+			else
+			{
+				callConditionEvent(ct, needed, ReasonType.NO_VAULT, false);
+				return false;
+			}
+		}
+		else
+		{
+			callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
+			return false;
+		}
+	}
+	
+	private boolean matchesName(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -627,7 +849,7 @@ public class MobsCondition
 			String s = ((Player)le).getName();
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_NAME)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else if (!Data.hasData(le, SubactionType.NAME)) return false;
@@ -635,11 +857,11 @@ public class MobsCondition
 		String s = (String)Data.getData(le, SubactionType.NAME);
 		boolean b = matchesString(s, needed);
 		if (ct.equals(ConditionType.IF_NOT_NAME)) b = !b;
-		callConditionEvent(ev, ct, needed, s, b);
+		callConditionEvent(ct, needed, s, b);
 		return b;
 	}
 		
-	private boolean matchesNotCustomString(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesNotCustomString(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -648,17 +870,17 @@ public class MobsCondition
 		{
 			String s = (String)Data.getData(le, st);
 			boolean b = !matchesString(s, needed);
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_METADATA, false);
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesOcelot(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesOcelot(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -667,18 +889,20 @@ public class MobsCondition
 			String s = ((Ocelot)le).getCatType().name();
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_OCELOT)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_TARGET, false);
+			callConditionEvent(ct, needed, ReasonType.NO_TARGET, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesOnServer(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
+	private boolean matchesOnServer(ConditionType ct)
 	{
+		String needed = conditions.get(ct);
+		
 		boolean b = false;
 		for (Player p : Bukkit.getOnlinePlayers())
 		{
@@ -690,12 +914,12 @@ public class MobsCondition
 			}
 		}
 		
-		if (reversed) b = !b;
-		callConditionEvent(ev, ct, needed, "Server players", b);
+		if (ct.equals(ConditionType.IF_NOT_ON_SERVER)) b = !b;
+		callConditionEvent(ct, needed, "Server players", b);
 		return b;
 	}
 	
-	private boolean matchesOwner(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesOwner(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -704,42 +928,44 @@ public class MobsCondition
 			String s = ((Tameable)le).getOwner().getName();
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_OWNER)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_TAMEABLE_MOB, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_TAMEABLE_MOB, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesPercent(ConditionType ct, String needed, EventValues ev, Object o)
+	private boolean matchesPercent(ConditionType ct)
 	{
+		String needed = conditions.get(ct);
+		
 		int i = new Random().nextInt(101);
 		boolean b = i >= Integer.valueOf(needed);
-		callConditionEvent(ev, ct, needed, i, b);
+		callConditionEvent(ct, needed, i, b);
 		return b;
 	}
 	
-	private boolean matchesPlayerIsOp(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesPlayerIsOp(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Player)
 		{
 			boolean b = ((Player)le).isOp();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_PLAYER, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesPlayerHasPermission(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesPlayerHasPermission(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -747,105 +973,144 @@ public class MobsCondition
 		{
 			boolean b = ((Player)le).hasPermission(needed);
 			if (ct.equals(ConditionType.IF_NOT_PLAYER_HAS_PERMISSION)) b = !b;
-			callConditionEvent(ev, ct, needed, ((Player)le).getName() + "'s permissions", b);
+			callConditionEvent(ct, needed, ((Player)le).getName() + "'s permissions", b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_PLAYER, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesPowered(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesPowered(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Creeper)
 		{
 			boolean b = ((Creeper)le).isPowered();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_CREEPER, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_CREEPER, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesProjectile(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
+	private boolean matchesProjectile(ConditionType ct)
 	{
+		String needed = conditions.get(ct);		
 		Projectile p = ev.getProjectile();
 		
 		if (p != null) 
 		{
 			String s = p.getType().toString();
 			boolean b = matchesString(s, needed);
-			if (reversed) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			if (ct.equals(ConditionType.IF_NOT_PROJECTILE)) b = !b;
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_PROJECTILE, false);
+		callConditionEvent(ct, needed, ReasonType.NO_PROJECTILE, false);
 		return false;
 	}
 	
-	private boolean matchesRaining(ConditionType ct, boolean needed, EventValues ev)
+	private boolean matchesRaining(ConditionType ct)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			boolean b = w.hasStorm();
-			callConditionEvent(ev, ct, needed, "" + b, b == needed);
-			return b == needed;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		boolean needed = getBool(conditions.get(ct));
+		
+		boolean b = ev.getWorld().hasStorm();
+		callConditionEvent(ct, needed, "" + b, b == needed);
+		return b == needed;
 	}
 	
-	private boolean matchesSaddled(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesRemainingLifetime(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		SubactionType st = SubactionType.MAX_LIFE;
+		if (Data.hasData(le, st))
+		{
+			Integer i = (Integer)Data.getData(le, st);
+			boolean b = matchesInt(i, needed);
+			callConditionEvent(ct, needed, i, b);
+			return b;
+		}
+		else
+		{
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
+			return false;
+		}
+	}
+	
+	private boolean matchesSaddled(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Pig)
 		{
 			boolean b = ((Pig)le).hasSaddle();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_PIG, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_PIG, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesServerPlayerCount(ConditionType ct, String needed, EventValues ev, Object o)
+	private boolean matchesSecond(ConditionType ct)
 	{
-		int i = Bukkit.getOnlinePlayers().length;
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.SECOND);
 		boolean b = matchesInt(i, needed);
-		callConditionEvent(ev, ct, needed, i, b);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
 		return b;
 	}
 	
-	private boolean matchesSheared(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesServerPlayerCount(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Bukkit.getOnlinePlayers().length;
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesSheared(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Sheep)
 		{
 			boolean b = ((Sheep)le).isAdult();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_SHEEP, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_SHEEP, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesSpawnReason(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesSkyLightLevel(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = block.getLightFromSky();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesSpawnReason(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -854,52 +1119,54 @@ public class MobsCondition
 			String s = (String)Data.getData(le, SubactionType.SPAWN_REASON);
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_SPAWN_REASON)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NO_METADATA, false);
+			callConditionEvent(ct, needed, ReasonType.NO_METADATA, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesStandinOn(ConditionType ct, EventValues ev, LivingEntity le)
-	{//TODO do
-		return true;
+	private boolean matchesStandingOn(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		Block block = le.getLocation().getBlock().getRelative(BlockFace.DOWN);
+		
+		boolean b = matchesBlock(block, needed);
+		callConditionEvent(ct, needed, block.toString(), b);
+		return b;
 	}
 	
-	private boolean matchesTamed(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesTamed(ConditionType ct, LivingEntity le)
 	{
 		boolean needed = getBool(conditions.get(ct));
 		
 		if (le instanceof Tameable)
 		{
 			boolean b = ((Tameable)le).isTamed();
-			callConditionEvent(ev, ct, needed, b, b == needed);
+			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_TAMEABLE_MOB, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_TAMEABLE_MOB, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesThundering(ConditionType ct, boolean needed, EventValues ev)
+	private boolean matchesThundering(ConditionType ct)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			boolean b = w.isThundering();
-			callConditionEvent(ev, ct, needed, "" + b, b == needed);
-			return b == needed;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		boolean needed = getBool(conditions.get(ct));
+		
+		boolean b = ev.getWorld().isThundering();
+		callConditionEvent(ct, needed, "" + b, b == needed);
+		return b == needed;
 	}
 	
-	private boolean matchesVillager(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesVillager(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -908,17 +1175,76 @@ public class MobsCondition
 			String s = ((Villager)le).getProfession().name();
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_VILLAGER)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_VILLAGER, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_VILLAGER, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesWool(ConditionType ct, EventValues ev, LivingEntity le)
+	private boolean matchesWearing(ConditionType ct, LivingEntity le)
+	{
+		String needed = conditions.get(ct);
+		
+		if (le instanceof Player)
+		{		
+			Player p = (Player)le;
+			ItemStack is = p.getInventory().getBoots();
+			boolean b = matchesItem(is, needed);
+			
+			if (!b)
+			{
+				is = p.getInventory().getChestplate();
+				b = matchesItem(is, needed);
+			}
+			
+			if (!b)
+			{
+				is = p.getInventory().getHelmet();
+				b = matchesItem(is, needed);
+			}
+			
+			if (!b)
+			{
+				is = p.getInventory().getLeggings();
+				b = matchesItem(is, needed);
+			}
+
+			if (ct.equals(ConditionType.IF_NOT_WEARING)) b = !b;
+			callConditionEvent(ct, needed, p.getName() + "'s armour", b);
+			return b;
+		}
+		
+		callConditionEvent(ct, needed, ReasonType.NOT_A_PLAYER, false);
+		return false;
+	}
+		
+	private boolean matchesWeek(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.WEEK_OF_YEAR);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesWeekOfMonth(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.WEEK_OF_MONTH);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesWool(ConditionType ct, LivingEntity le)
 	{
 		String needed = conditions.get(ct);
 		
@@ -927,58 +1253,101 @@ public class MobsCondition
 			String s = ((Sheep)le).getColor().name();
 			boolean b = matchesString(s, needed);
 			if (ct.equals(ConditionType.IF_NOT_WOOL)) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
+			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
 		else
 		{
-			callConditionEvent(ev, ct, needed, ReasonType.NOT_A_SHEEP, false);
+			callConditionEvent(ct, needed, ReasonType.NOT_A_SHEEP, false);
 			return false;
 		}
 	}
 	
-	private boolean matchesWorld(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
+	private boolean matchesWorld(ConditionType ct)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			String s = w.getName();
-			boolean b = matchesString(s, needed);
-			if (reversed) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
-			return b;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		String needed = conditions.get(ct);
+		
+		String s = ev.getWorld().getName();
+		boolean b = matchesString(s, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, s, b);
+		return b;
 	}
 	
-	private boolean matchesWorldTime(ConditionType ct, String needed, EventValues ev, Object o)
+	private boolean matchesWorldCount(ConditionType ct)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			long i = w.getTime();
-			boolean b = matchesInt((int)i, needed);
-			callConditionEvent(ev, ct, needed, i, b);
-			return b;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		String[] temp = conditions.get(ct).split(":");
+		String mob = ct.toString().replace("WORLD", "").replace("COUNT", "").replace("_", "");
+		String needed = temp[0];
+		
+		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
+		int i = getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null).size();
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
 	}
 	
-	private boolean matchesWorldType(ConditionType ct, String needed, EventValues ev, Object o, boolean reversed)
+	private boolean matchesWorldTime(ConditionType ct)
 	{
-		World w = ev.getWorld();
-		if (w != null)
-		{
-			String s = w.getEnvironment().toString();
-			boolean b = matchesString(s, needed);
-			if (reversed) b = !b;
-			callConditionEvent(ev, ct, needed, s, b);
-			return b;
-		}
-		callConditionEvent(ev, ct, needed, ReasonType.NO_WORLD, false);
-		return false;
+		String needed = conditions.get(ct);
+		
+		long i = ev.getWorld().getTime();
+		boolean b = matchesInt((int)i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesWorldType(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		String s = ev.getWorld().getEnvironment().toString();
+		boolean b = matchesString(s, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
+		callConditionEvent(ct, needed, s, b);
+		return b;
+	}
+	
+	private boolean matchesX(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = block.getX();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesY(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = block.getY();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesYear(ConditionType ct)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = Calendar.getInstance().get(Calendar.YEAR);
+		boolean b = matchesInt(i, needed);
+		if (ct.equals(ConditionType.IF_NOT_WORLD)) b = !b;
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesZ(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = block.getZ();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
 	}
 	
 // Utils	
@@ -1017,16 +1386,62 @@ public class MobsCondition
 		return false;
 	}
 	
+	private boolean matchesBlock(Block orig, String needed)
+	{
+		needed = needed.replace(" ", "").toUpperCase();
+		int id = orig.getTypeId();
+		int data = orig.getData();
+		for (String s :needed.split(","))
+		{
+			if (s.contains(":"))
+			{
+				String[] temp = s.split(":");
+				if (Integer.valueOf(temp[0]) == id && Integer.valueOf(temp[1]) == data) return true;
+			}
+			else if (Integer.valueOf(s) == id) return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean matchesItem(ItemStack orig, String needed)
+	{
+		if (orig == null) return false;
+		
+		needed = needed.replace(" ", "").toUpperCase();
+		int id = orig.getTypeId();
+		int data = orig.getData().getData();
+		for (String s :needed.split(","))
+		{
+			if (s.contains(":"))
+			{
+				String[] temp = s.split(":");
+				if (Integer.valueOf(temp[0]) == id && Integer.valueOf(temp[1]) == data) return true;
+			}
+			else if (Integer.valueOf(s) == id) return true;
+		}
+		
+		return false;
+	}
+	
+	/** Returns either a LivingEntity or a Block, or null */
 	private Object getConditionsTarget(EventValues ev)
 	{		
 		String condition_target = conditions.get(ConditionType.CONDITION_TARGET);
+		
+		String name = "";
+		if (condition_target.contains(":"))
+		{
+			name = condition_target.split(":")[1];
+			condition_target = condition_target.split(":")[0];
+		}
 		
 		if (condition_target.startsWith("CLOSEST_"))
 		{
 			LivingEntity orig = ev.getLivingEntity();
 			if (orig == null) return null;
 			
-			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), condition_target.replace("CLOSEST_", ""));
+			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), condition_target.replace("CLOSEST_", ""), name);
 			if (mobs.size() == 0) return null;	
 			
 			Location loc = orig.getLocation();
@@ -1050,7 +1465,7 @@ public class MobsCondition
 		{
 			World w = ev.getWorld();
 			if (w == null) return null;
-			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), condition_target.replace("RANDOM_", ""));
+			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), condition_target.replace("RANDOM_", ""), name);
 			if (mobs.size() == 0) return null;	
 			
 			Collections.shuffle(mobs);
@@ -1074,12 +1489,11 @@ public class MobsCondition
 			
 			case BLOCK:
 				World w = ev.getWorld();
-				if (conditions.containsKey(ConditionType.CONDITION_TARGET_X) && 
-						conditions.containsKey(ConditionType.CONDITION_TARGET_Y) &&
-						conditions.containsKey(ConditionType.CONDITION_TARGET_Z)) 
-					return new Location(w, Integer.valueOf(conditions.get(ConditionType.CONDITION_TARGET_X)), 
-							Integer.valueOf(conditions.get(ConditionType.CONDITION_TARGET_Y)), 
-							Integer.valueOf(conditions.get(ConditionType.CONDITION_TARGET_Z)));
+				if (conditions.containsKey(ConditionType.CONDITION_TARGET_BLOCK))
+				{
+					String[] temp = conditions.get(ConditionType.CONDITION_TARGET_BLOCK).replace(" ", "").split(":");
+					return w.getBlockAt(Integer.valueOf(temp[0]), Integer.valueOf(temp[1]), Integer.valueOf(temp[2]));
+				}
 				else return null;
 				
 			case CLOSEST:	
@@ -1125,8 +1539,8 @@ public class MobsCondition
 				else return ((Tameable)ev.getLivingEntity()).getOwner();
 				
 			case PLAYER:
-				if (conditions.containsKey(ConditionType.CONDITION_TARGET_NAME)) return null;
-				else return Bukkit.getPlayer(conditions.get(ConditionType.CONDITION_TARGET_NAME));
+				if (name == null) return null;
+				else return Bukkit.getPlayer(name);
 				
 			case RANDOM:
 				w = ev.getWorld();
@@ -1163,7 +1577,7 @@ public class MobsCondition
 		return Boolean.valueOf(s);
 	}
 
-	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m)
+	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
 	{		
 		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
 		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
@@ -1171,10 +1585,10 @@ public class MobsCondition
 		for (Entity e : orig)
 		{
 			if (!temp.contains(e.getType().toString())) continue;
-			if (conditions.containsKey(ConditionType.CONDITION_TARGET_NAME))
+			if (name != null)
 			{
 				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
-				if (s == null || !s.equalsIgnoreCase(conditions.get(ConditionType.CONDITION_TARGET_NAME))) continue;
+				if (s == null || !s.equalsIgnoreCase(name)) continue;
 			}
 			mobs.add((LivingEntity)e);
 		}
@@ -1182,7 +1596,7 @@ public class MobsCondition
 	}
 		
 	/** Calls an event when a condition is checked */
-	private void callConditionEvent(EventValues ev, ConditionType ct, Object needed, Object got, boolean passed)
+	private void callConditionEvent(ConditionType ct, Object needed, Object got, boolean passed)
 	{
 		if (!Mobs.canDebug()) return;
 		

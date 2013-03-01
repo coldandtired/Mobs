@@ -60,8 +60,6 @@ public class EventValues
 	{
 		if (le != null) return le.getWorld();
 		
-		if (timer == null) return null;
-		
 		return Bukkit.getWorld(timer.getWorld());
 	}
 
