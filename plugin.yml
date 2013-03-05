@@ -4,7 +4,7 @@ author: coldandtired
 main: me.coldandtired.mobs.Mobs
 description: THE mob plugin
 website: coldandtired.binhoster.com
-softdepend: [Vault, SpoutPlugin]
+softdepend: [Vault, SpoutPlugin, TerrainControl]
 depend: [Extra Events]
 commands:
     reload_mobs:

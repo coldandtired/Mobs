@@ -37,6 +37,8 @@ import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.w3c.dom.Element;
 
+import com.khorn.terraincontrol.LocalWorld;
+import com.khorn.terraincontrol.TerrainControl;
 import me.coldandtired.extra_events.Area;
 import me.coldandtired.extra_events.LivingEntityBlockEvent;
 import me.coldandtired.extra_events.LivingEntityDamageEvent;
@@ -204,7 +206,7 @@ public class MobsCondition
 	}
 	
 	private boolean matchesBlock(ConditionType ct, Object o)
-	{//TODO check
+	{
 		Block block = null;
 		if (ev.getLivingEntity() != null) block = ev.getLivingEntity().getLocation().getBlock();
 		if (o != null)
@@ -244,9 +246,7 @@ public class MobsCondition
 	}
 		
 	public boolean passes(EventValues ev)
-	{//TODO remove
-		Mobs.log("checking...");
-		
+	{
 		Object o = null;
 		if (conditions.containsKey(ConditionType.CONDITION_TARGET))
 		{
@@ -521,10 +521,20 @@ public class MobsCondition
 	}
 	
 	private boolean matchesBiome(ConditionType ct, Block block)
-	{//TODO fix for custom biomes
+	{
 		String needed = conditions.get(ct);
 		
-		String s = block.getBiome().name();
+		String s = null;
+	    if (Bukkit.getPluginManager().isPluginEnabled("TerrainControl"))
+	    {
+	    	LocalWorld lw = TerrainControl.getWorld(ev.getWorld().getName());
+	    	if (lw != null)
+	    	{
+	    		s = lw.getBiome(block.getX(), block.getZ()).getName();
+	    	}
+	    }
+
+	    if (s == null) block.getBiome().name();
 		boolean b = matchesString(s, needed);
 		if (ct.equals(ConditionType.IF_NOT_BIOME)) b = !b;
 		callConditionEvent(ct, needed, s, b);
@@ -1568,7 +1578,7 @@ public class MobsCondition
 	}	
 	
 	private boolean getBool(String s)
-	{//TODO all yes/no values through this!
+	{
 		s = s.toUpperCase();
 		if (s == null) return false;
 		if (s.equalsIgnoreCase("yes")) return true;

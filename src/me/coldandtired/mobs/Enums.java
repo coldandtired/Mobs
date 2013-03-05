@@ -1,5 +1,7 @@
 package me.coldandtired.mobs;
 
+import org.bukkit.Material;
+
 public class Enums
 {
 	public enum EventType
@@ -33,6 +35,7 @@ public class Enums
 		PLAYER_JOINS,
 		PLAYER_NEAR,
 		PLAYER_SPAWNS,
+		PLAYER_TARGETED,
 		SHEARED,
 		SPAWNS,
 		SPLITS,
@@ -46,6 +49,7 @@ public class Enums
 	{  
 		ACTION,
 		AMOUNT,
+		AMOUNT_TYPE,
 		//AREA_NAME,
 		CONDITION,
 		DURATION,
@@ -78,7 +82,8 @@ public class Enums
 	
 	enum ActionType
 	{
-		//TODO ACTIVATE_BUTTON?
+		//ACTIVATE_BUTTON,
+		//TODO Bukkit bug
 		BROADCAST,
 		CANCEL_EVENT,
 		CAUSE,
@@ -93,10 +98,22 @@ public class Enums
 		TELL
 	}
 	
+	enum AmountType
+	{
+		ABSOLUTE,
+		DEC,
+		DEC_PERCENT,
+		INC,
+		INC_PERCENT,
+		PERCENT,
+	}
+	
 	enum SubactionType
 	{
 		ADULT,
+		ALL_DATA,
 		ALL_DROPS,
+	    ALL_ITEMS,
 		ANGRY,
 		ATTACK_POWER,
 		BLOCK,
@@ -151,7 +168,6 @@ public class Enums
 		DAMAGE_FROM_SUICIDE,
 		DAMAGE_FROM_VOID,
 		DAMAGE_FROM_WITHER,
-		DATA,
 		DROPPED_EXP,
 		DROPPED_ITEMS,		
 		EFFECT,
@@ -162,7 +178,6 @@ public class Enums
 	    FRIENDLY,
 	    HP,
 	    ITEM,
-	    ITEMS,
 	    LEVEL,
 	    LIGHTNING,
 	    LIGHTNING_EFFECT,
@@ -216,11 +231,71 @@ public class Enums
 		ATTACKER,
 		BLOCK,
 		CLOSEST,
+		CLOSEST_BAT,
+		CLOSEST_BLAZE,
+		CLOSEST_CAVE_SPIDER,
+		CLOSEST_CHICKEN,
+		CLOSEST_COW,
+		CLOSEST_CREEPER,
+		CLOSEST_ENDER_DRAGON,
+		CLOSEST_ENDERMAN,
+		CLOSEST_GHAST,
+		CLOSEST_GIANT,
+		CLOSEST_GOLEM,
+		CLOSEST_IRON_GOLEM,
+		CLOSEST_MAGMA_CUBE,
+		CLOSEST_MUSHROOM_COW,
+		CLOSEST_OCELOT,
+		CLOSEST_PIG,
+		CLOSEST_PIG_ZOMBIE,
+		CLOSEST_PLAYER,
+		CLOSEST_SILVERFISH,
+		CLOSEST_SHEEP,
+		CLOSEST_SKELETON,
+		CLOSEST_SLIME,
+		CLOSEST_SNOWMAN,
+		CLOSEST_SPIDER,
+		CLOSEST_SQUID,
+		CLOSEST_VILLAGER,
+		CLOSEST_WITCH,
+		CLOSEST_WITHER,
+		CLOSEST_WOLF,
+		CLOSEST_ZOMBIE,
 		KILLER,
 		LEFT_PLAYER,
 		NEAR_PLAYER,
 		PLAYER,
 		RANDOM,
+		RANDOM_BAT,
+		RANDOM_BLAZE,
+		RANDOM_CAVE_SPIDER,
+		RANDOM_CHICKEN,
+		RANDOM_COW,
+		RANDOM_CREEPER,
+		RANDOM_ENDER_DRAGON,
+		RANDOM_ENDERMAN,
+		RANDOM_GHAST,
+		RANDOM_GIANT,
+		RANDOM_GOLEM,
+		RANDOM_IRON_GOLEM,
+		RANDOM_MAGMA_CUBE,
+		RANDOM_MUSHROOM_COW,
+		RANDOM_OCELOT,
+		RANDOM_PIG,
+		RANDOM_PIG_ZOMBIE,
+		RANDOM_PLAYER,
+		RANDOM_SILVERFISH,
+		RANDOM_SHEEP,
+		RANDOM_SKELETON,
+		RANDOM_SLIME,
+		RANDOM_SNOWMAN,
+		RANDOM_SPIDER,
+		RANDOM_SQUID,
+		RANDOM_VILLAGER,
+		RANDOM_WITCH,
+		RANDOM_WITHER,
+		RANDOM_WOLF,
+		RANDOM_ZOMBIE,
 		OWNER,
 		SELF,
 		SHEARER,
@@ -374,6 +449,7 @@ public class Enums
 		NO_ACTION,
 		NO_AREA,
 		NO_EFFECT,
+		NO_ITEM,
 		NO_LOCATION,
 		NO_MATCHING_TARGET,
 		NO_MESSAGE,
@@ -390,6 +466,7 @@ public class Enums
 		NO_X,
 		NO_Y,
 		NO_Z,
+		NOT_A_BUTTON,
 		NOT_A_CREEPER,
 		NOT_A_PIG,
 		NOT_A_PLAYER,
@@ -428,7 +505,15 @@ public class Enums
 		return false;
 	}
 	
-//	TIME,	
+	public static boolean isMaterial(String s)
+	{
+		for (Material m : Material.values())
+		{
+			if (m.toString().equalsIgnoreCase(s)) return true;
+		}
+		return false;
+	}
+	
 //HP_PER_SIZE,
 //INVINCIBILITY_TICKS,
 }

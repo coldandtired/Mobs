@@ -200,17 +200,21 @@ public class BukkitListener implements Listener
 		{
 			int damage = event.getDamage();		
 			
-			String s = "DAMAGE_FROM" + event.getCause();
+			SubactionType st = SubactionType.valueOf("DAMAGE_FROM" + event.getCause());
 			switch (event.getCause())
 			{
 				case ENTITY_ATTACK:
 					LivingEntity damager = event.getAttacker();
-					if (damager != null) damage = Data.adjustInt(damager, SubactionType.ATTACK_POWER, damage);
-					
-					damage = Data.adjustInt(le, s, damage);
+					if (damager != null && Data.hasData(damager, SubactionType.ATTACK_POWER))
+					{
+						damage = (Integer)Data.getData(damager, SubactionType.ATTACK_POWER);
+					}
+					if (!Data.hasData(le, st)) break;
+					damage = (Integer)Data.getData(le, st);
 					break;
 				default:
-					damage = Data.adjustInt(le, s, damage);
+					if (!Data.hasData(le, st)) break;
+					damage = (Integer)Data.getData(le, st);
 					break;
 			}
 			event.setDamage(damage);
@@ -227,17 +231,21 @@ public class BukkitListener implements Listener
 		{
 			int damage = event.getDamage();		
 			
-			String s = "DAMAGE_FROM" + event.getCause();
+			SubactionType st = SubactionType.valueOf("DAMAGE_FROM" + event.getCause());
 			switch (event.getCause())
 			{
 				case ENTITY_ATTACK:
 					LivingEntity damager = event.getAttacker();
-					if (damager != null) damage = Data.adjustInt(damager, SubactionType.ATTACK_POWER, damage);
-					
-					damage = Data.adjustInt(le, s, damage);
+					if (damager != null && Data.hasData(damager, SubactionType.ATTACK_POWER))
+					{
+						damage = (Integer)Data.getData(damager, SubactionType.ATTACK_POWER);
+					}
+					if (!Data.hasData(le, st)) break;
+					damage = (Integer)Data.getData(le, st);
 					break;
 				default:
-					damage = Data.adjustInt(le, s, damage);
+					if (!Data.hasData(le, st)) break;
+					damage = (Integer)Data.getData(le, st);
 					break;
 			}
 			event.setDamage(damage);
@@ -454,11 +462,11 @@ public class BukkitListener implements Listener
 	
 	@EventHandler
 	public void explodes(EntityExplodeEvent event)
-	{
-		if (ignoreWorld(event.getEntity().getWorld())) return;
-		
+	{		
 		Entity entity = event.getEntity();		
-		if (entity == null) return;		
+		if (entity == null) return;			
+		if (ignoreWorld(entity.getWorld())) return;	
+		
 		if (entity instanceof Fireball) entity = ((Fireball)entity).getShooter();
 		if (!(entity instanceof LivingEntity)) return;
 
@@ -708,6 +716,33 @@ public class BukkitListener implements Listener
 	}
 	
 	@EventHandler
+	public void playerTargeted(PlayerTargetedEvent event)
+	{
+		if (ignoreWorld(event.getEntity().getWorld())) return;		
+		
+		LivingEntity le = event.getEntity();
+		EventType et = EventType.PLAYER_TARGETED; 
+		
+		boolean check_before = Mobs.checkBefore(et);
+		if (check_before)
+		{
+			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
+		}
+		
+		if (events.containsKey(et))
+		{						
+			EventValues ev = new EventValues(event, et, event.getPlayer(), le, null, null);
+			events.get(et).performActions(ev);
+		}
+		if (event.isCancelled()) return;
+		
+		if (!check_before)
+		{
+			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
+		}
+	}
+	
+	@EventHandler
 	public void night(NightEvent event)
 	{
 		EventType et = EventType.NIGHT;		
@@ -882,7 +917,7 @@ public class BukkitListener implements Listener
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		
 		LivingEntity le = (LivingEntity)event.getEntity();
-		EventType et = EventType.TARGETS; //TODO targeted event?
+		EventType et = EventType.TARGETS; 
 		
 		boolean check_before = Mobs.checkBefore(et);
 		if (check_before)

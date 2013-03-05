@@ -55,55 +55,6 @@ public class MobsElement
 		conditions = fillConditions(element, linked_conditions);
 	}
 	
-	/*Object getTargets(EventValues ev)
-	{
-		return getActionsOrTargets(ElementType.TARGET, ev, use_all_targets);
-	}
-	
-	@SuppressWarnings("unchecked")
-	Object getActionsOrTargets(ElementType et, EventValues ev, boolean use)
-	{
-		MobsElement mv = this;
-		
-		while (mv != null && !mv.values.containsKey(et)) mv = mv.parent;
-		if (mv == null) return null;
-		
-		Object o = mv.values.get(et);
-		if (o instanceof String)
-		{
-			if (mv.passesConditions(ev)) return mv;
-			return null;
-		}
-		
-		if (o instanceof List<?>)
-		{
-			List<MobsElement> list = (List<MobsElement>)o;
-			if (use) return list;
-			
-			for (MobsElement me : list)
-			{
-				if (me.passesConditions(ev)) return me;
-			}
-			
-			return null;
-		}
-		
-		Map<Integer, MobsElement> map = (Map<Integer, MobsElement>)o;
-		int temp = 0;
-		for (int i : map.keySet())
-		{
-			temp += i;
-		}
-		
-		temp = new Random().nextInt(temp - 1) + 1;
-		for (int i : map.keySet())
-		{
-			if (temp <= i) return map.get(i);
-		}
-		
-		return null;
-	}*/
-
 	@SuppressWarnings("unchecked")
 	MobsElement getCurrentElement(ElementType et, EventValues ev)
 	{

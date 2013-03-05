@@ -17,7 +17,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import me.coldandtired.extra_events.Extra_events;
+import me.coldandtired.extra_events.ExtraEvents;
 import me.coldandtired.mobs.Enums.EventType;
 import me.coldandtired.mobs.api.Data;
 import net.milkbowl.vault.economy.Economy;
@@ -43,7 +43,7 @@ public class Mobs extends JavaPlugin
 {
 	private XPath xpath;
 	private Economy economy = null;
-	private Extra_events extra_events;
+	private ExtraEvents extra_events;
 	private boolean allow_debug;	
 	private BukkitListener bukkit_listener = new BukkitListener();
 	private Map<String, Timer> timers;
@@ -53,9 +53,9 @@ public class Mobs extends JavaPlugin
 	@Override
 	public void onEnable()
 	{	
-		error("This is a new version of the plugin and the old config files won't work anymore!");
-		error("See for a guide to the new and improved config!");//TODO link
+		error("See coldandtired.binhoster.com for a guide to the new and improved config!");
 		xpath = XPathFactory.newInstance().newXPath();
+		checkVersion();
 		getConfig().options().copyDefaults(true);
 		saveConfig();
 		
@@ -78,13 +78,13 @@ public class Mobs extends JavaPlugin
 	        if (economyProvider != null) economy = economyProvider.getProvider();
 		}
 		
-		extra_events = (Extra_events)pm.getPlugin("Extra events");
+		extra_events = (ExtraEvents)pm.getPlugin("Extra events");
 		
 		try 
 		{
 		    new Metrics(this).start();
 		} 
-		catch (IOException e) 
+		catch (IOException e)
 		{
 		    error("Something went wrong with Metrics - it will be disabled.");
 		}
@@ -93,9 +93,8 @@ public class Mobs extends JavaPlugin
 	}
 		
 	/** Checks if the running version is the newest available (works with release versions only) */
-	void versionCheck()
+	private void checkVersion()
 	{
-		//TODO activate
 		if (!getConfig().getBoolean("check_for_newer_version", true)) return;
 		
 		DocumentBuilder dbf;
@@ -211,6 +210,7 @@ public class Mobs extends JavaPlugin
 		if (config.getBoolean("check_sheared_before_actions", false)) prechecks.add(EventType.SHEARED);
 		if (config.getBoolean("check_splits_before_actions", false)) prechecks.add(EventType.SPLITS);
 		if (config.getBoolean("check_tamed_before_actions", false)) prechecks.add(EventType.TAMED);
+		if (config.getBoolean("check_player_targeted_before_actions", false)) prechecks.add(EventType.PLAYER_TARGETED);
 		if (config.getBoolean("check_targets_before_actions", false)) prechecks.add(EventType.TARGETS);
 		if (config.getBoolean("check_teleports_before_actions", false)) prechecks.add(EventType.TELEPORTS);
 	}
@@ -395,7 +395,7 @@ public class Mobs extends JavaPlugin
 		return getPlugin().economy;
 	}
 	
-	public static Extra_events getExtraEvents()
+	public static ExtraEvents getExtraEvents()
 	{
 		return getPlugin().extra_events;
 	}
@@ -411,7 +411,7 @@ public class Mobs extends JavaPlugin
 	}
 	
 	public static boolean isSpoutEnabled()
-	{//TODO move
+	{
 		return Bukkit.getServer().getPluginManager().isPluginEnabled("Spout");
 	}
 

@@ -1,7 +1,6 @@
 package me.coldandtired.mobs;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -15,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
@@ -41,6 +41,7 @@ import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
@@ -70,9 +71,7 @@ public class MobsEvent
 	private MobsElement root;
 	
 	MobsEvent(Element element) throws XPathExpressionException
-	{
-		//TODO players get "real player" meta data?
-				
+	{				
 		NodeList list = (NodeList)Mobs.getXPath().evaluate("linked_condition", element, XPathConstants.NODESET);
 		if (list.getLength() != 0)
 		{
@@ -127,8 +126,7 @@ public class MobsEvent
 			}
 		}
 	}
-	
-	
+		
 	/** Performs all the actions on all the targets */
 	public void performActions(EventValues ev)
 	{
@@ -149,7 +147,9 @@ public class MobsEvent
 			if (!Enums.isActionType(s)) continue;
 			
 			switch (ActionType.valueOf(s))
-			{			
+			{	
+				//case ACTIVATE_BUTTON: activateSomething();
+					//break;
 				case BROADCAST: broadcastSomething();
 					break;
 				case CANCEL_EVENT: cancelEvent();
@@ -177,7 +177,38 @@ public class MobsEvent
 			}	
 		}
 	}
-		
+
+// Activate_button action
+	
+	/*private void activateSomething()
+	{
+		for (Location loc : getLocations())
+		{
+			if (!loc.getChunk().isLoaded())
+			{
+				actionFailed("activate_button", ReasonType.CHUNK_NOT_LOADED);
+				continue;
+			}
+			Mobs.log(loc.toString());
+			
+			BlockState bs = loc.getBlock().getState();
+			MaterialData md = bs.getData();
+			if (md instanceof Button)
+			{
+				((Button)md).setPowered(true);
+				((Button)md).setPowered(false);
+			}
+			else
+			{
+				actionFailed("activate_button", ReasonType.NOT_A_BUTTON);
+				return;
+			}
+			bs.setData(md);
+			bs.update(true);
+		}
+	}*/
+	
+	
 // Broadcast action
 	
 	/** Sends a message to everyone on the server */
@@ -343,7 +374,7 @@ public class MobsEvent
 			return;
 		}
 		
-		int data = getItemData();
+		int data = getItemData(0);
 		
 		ItemStack is = new ItemStack(id, 1, (short)data);
 		if (isActionCancelled("damage block, " + getPrettyItem(is))) return;
@@ -425,7 +456,7 @@ public class MobsEvent
 			return;		
 		}
 		
-		int data = getItemData();
+		int data = getItemData(0);
 		int amount = getAmount(1);		
 		
 		ItemStack is = new ItemStack(id, amount, (short)data);
@@ -443,11 +474,10 @@ public class MobsEvent
 			return;
 		}
 		
-		//TODO minus amount? remove money
 		int amount = getAmount(0);
 		if (amount < 0)
 		{
-			actionFailed("give money", ReasonType.BAD_AMOUNT);
+			actionFailed("give exp", ReasonType.BAD_AMOUNT);
 			return;		
 		}
 		
@@ -570,17 +600,17 @@ public class MobsEvent
 		
 		switch (st)
 		{
+			case ALL_DATA: removeData();
+				break;
 			case ALL_DROPS: removeAllDrops();
 				break;
-			case DATA: removeData();
+			case ALL_ITEMS: removeInventory();
 				break;
 			case DROPPED_EXP: removeDroppedExp();
 				break;
 			case DROPPED_ITEMS: removeDroppedItems();
 				break;
 			case ITEM: removeItem();
-				break;//TODO all_items?
-			case ITEMS: removeInventory();
 				break;
 			case MAX_HP: removeMaxHp();
 				break;
@@ -638,7 +668,28 @@ public class MobsEvent
 	/** Removes all matching items from a player's inventory */
 	private void removeItem()
 	{
-		//TODO item stuff
+		int id = getItemId();		
+		int data = getItemData(-1);
+		int amount = getAmount(0);
+		
+		if (id == 0 && data == -1 && amount == 0)
+		{
+			actionFailed("remove item", ReasonType.NO_ITEM);
+			return;
+		}
+		
+		for (Player p : getMobType(Player.class))
+		{
+			Inventory inv = p.getInventory();
+			for (ItemStack is : inv.getContents())
+			{
+				if (is == null) continue;
+				if (id > 0 && is.getTypeId() != id) continue;
+				if (data > -1 && is.getData().getData() != data) continue;
+				if (amount > 0 && is.getAmount() != amount) continue;
+				inv.remove(is);
+			}
+		}
 	}
 	
 	/** Clears all items from a player */
@@ -840,10 +891,11 @@ public class MobsEvent
 		//TODO flexidamage?
 	}
 
+	
 	private void setBlock()
 	{
 		int id = getItemId();		
-		int data = getItemData();
+		int data = getItemData(0);
 		
 		if (isActionCancelled("set block " + id + ":" + data)) return;
 		
@@ -895,6 +947,7 @@ public class MobsEvent
 		}
 	}
 	
+	
 	private void setTime()
 	{		
 		String value = getValue();
@@ -902,13 +955,12 @@ public class MobsEvent
 		{
 			actionFailed("set time", ReasonType.NO_VALUE);
 			return;
-		}	//TODO +/-/%
-		
-		int time = getNumber(value);
-		
-		if (isActionCancelled("set time" + ", " + value)) return;
+		}	
 		
 		World w = ev.getWorld();
+		int time = adjustNumber((int)w.getTime(), getNumber(value));
+		
+		if (isActionCancelled("set time" + ", " + time)) return;
 		
 		long i = time % 24000; 
 		if (i < 0) i += 24000;
@@ -1036,7 +1088,7 @@ public class MobsEvent
 		{
 			actionFailed("set " + st, ReasonType.NO_VALUE);
 			return;
-		}	
+		}			
 		
 		int amount = getNumber(value);
 		
@@ -1044,6 +1096,8 @@ public class MobsEvent
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
+			int i = Data.hasData(le, st) ? (Integer)Data.getData(le, st) : 0;
+			amount = adjustNumber(amount, i);
 			Data.putData(le, st, amount);
 		}
 	}
@@ -1081,6 +1135,7 @@ public class MobsEvent
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
+			amount = adjustNumber(amount, d.getHealth());
 			if (amount > d.getMaxHealth()) d.setHealth(d.getMaxHealth()); else d.setHealth(amount);
 		}
 	}
@@ -1101,6 +1156,7 @@ public class MobsEvent
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
+			amount = adjustNumber(amount, d.getMaxHealth());
 			d.setMaxHealth(amount);
 		}
 	}
@@ -1121,6 +1177,7 @@ public class MobsEvent
 		
 		for (Player p : getMobType(Player.class))
 		{
+			amount = adjustNumber(amount, p.getLevel());
 			p.setLevel(amount);
 		}
 	}
@@ -1254,7 +1311,11 @@ public class MobsEvent
 		
 		if (isActionCancelled("set size " + size)) return;
 		
-		for (Slime s : getMobType(Slime.class)) s.setSize(size);
+		for (Slime s : getMobType(Slime.class))
+		{
+			size = adjustNumber(size, s.getSize());
+			s.setSize(size);
+		}
 	}
 	
 	private void setSkin()
@@ -1422,7 +1483,7 @@ public class MobsEvent
 			return;
 		}
 		
-		int data = getItemData();
+		int data = getItemData(0);
 		int amount = getAmount(1);
 		
 		ItemStack is = new ItemStack(id, amount, (short)data);
@@ -1530,6 +1591,15 @@ public class MobsEvent
 		return getNumber(ce.getString(ElementType.AMOUNT));
 	}
 	
+	private AmountType getAmountType()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT_TYPE, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return AmountType.valueOf(ce.getString(ElementType.AMOUNT_TYPE));
+	}
+	
 	private int getDuration()
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.DURATION, ev);
@@ -1548,10 +1618,10 @@ public class MobsEvent
 		return Effect.valueOf(ce.getString(ElementType.EFFECT).toUpperCase());	
 	}
 	
-	private int getItemData()
+	private int getItemData(int orig)
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.ITEM_DATA, ev);
-		if (me == null) return 0;
+		if (me == null) return orig;
 
 		ce = me;
 		return getNumber(ce.getString(ElementType.ITEM_DATA));
@@ -1618,7 +1688,6 @@ public class MobsEvent
 
 		ce = me;
 		return Float.parseFloat(ce.getString(ElementType.SOUND_PITCH)) / 100;
-		//TODO docs
 	}
 	
 	private float getSoundVolume()
@@ -1628,7 +1697,6 @@ public class MobsEvent
 
 		ce = me;
 		return Float.parseFloat(ce.getString(ElementType.SOUND_VOLUME)) / 100;
-		//TODO docs
 	}
 	
 	private SubactionType getSubaction()
@@ -1653,6 +1721,7 @@ public class MobsEvent
 	private List<Object> getTargets() 
 	{
 		String s = getTarget();
+		if (s == null) s = "SELF";
 		List<MobsElement> list = new ArrayList<MobsElement>();
 		if (Enums.isTargetType(s)) list.add(ce);
 		
@@ -1779,7 +1848,7 @@ public class MobsEvent
 	/** Returns a randomized int */
 	private int getNumber(String s)
 	{
-		s = s.replace(" ", "");
+		s = s.replace(" ", "").toUpperCase();
 		String[] temp = s.split(",");
 		String s2 = temp[new Random().nextInt(temp.length)];
 		if (s2.contains("TO"))
@@ -1788,7 +1857,29 @@ public class MobsEvent
 			return new Random().nextInt(Integer.parseInt(temp2[1]) - Integer.parseInt(temp2[0])) +
 					Integer.parseInt(temp2[0]);
 		}
+		else if (Enums.isMaterial(s2))
+		{
+			return Material.valueOf(s2).getId();
+		}
 		else return Integer.parseInt(s2);
+	}
+	
+	/** Adjusts an int by percentage */
+	private int adjustNumber(int orig, int value)
+	{
+		AmountType at = getAmountType();
+		if (at == null) return orig;
+		
+		switch (at)
+		{
+			case ABSOLUTE: return orig;
+			case DEC: return orig - value;
+			case DEC_PERCENT: return orig - ((orig / 100) * value);
+			case INC: return orig + value;
+			case INC_PERCENT: return orig + ((orig / 100) * value);
+			case PERCENT: return (orig / 100) * value;
+		}
+		return orig;
 	}
 	
 	/** Returns a boolean calculated from the original value and the valuetype */
@@ -1824,71 +1915,7 @@ public class MobsEvent
 		if (tt == null)
 		{
 			if (ev.getLivingEntity() != null) return ev.getLivingEntity();
-		}			
-		
-		if (tt.startsWith("CLOSEST_"))
-		{
-			LivingEntity orig = ev.getLivingEntity();
-			if (orig == null)
-			{
-				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
-				return null;			
-			}
-			
-			List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), tt.replace("CLOSEST_", ""), getTargetName());
-			if (mobs.size() == 0)
-			{
-				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
-				return null;			
-			}
-			
-			Location loc = orig.getLocation();
-			List<NearbyMob> nearby_mobs = new ArrayList<NearbyMob>();
-			for (LivingEntity le : mobs)
-			{
-				nearby_mobs.add(new NearbyMob(le, loc));
-			}
-
-			Collections.sort(nearby_mobs, new Comparator<NearbyMob>() 
-			{
-			    public int compare(NearbyMob m1, NearbyMob m2)
-			    {
-			        return m1.getDistance().compareTo(m2.getDistance());
-			    }
-			});
-			
-			int i = getTargetAmount(1);
-			if (i == 1) return nearby_mobs.get(0).getLivingEntity();
-			
-			if (i > nearby_mobs.size()) i = nearby_mobs.size();
-			nearby_mobs = nearby_mobs.subList(0, i);
-			mobs.clear();
-			for (NearbyMob m : nearby_mobs)
-			{
-				mobs.add(m.getLivingEntity());
-			}
-			
-			//TODO docs closest_player -> target_name -> target_amount
-			return mobs;
-		}
-		else if (tt.startsWith("RANDOM_"))
-		{
-			World w = ev.getWorld();
-			if (w == null) return null;
-			List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), tt.replace("RANDOM_", ""), getTargetName());
-			if (mobs.size() == 0)
-			{
-				actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
-				return null;			
-			}
-			
-			int i = getTargetAmount(1);
-			Collections.shuffle(mobs);
-			if (i == 1) return mobs.get(0);
-			
-			if (i > mobs.size()) i = mobs.size();
-			return mobs.subList(0, i);
-		}
+		}	
 		
 		switch (TargetType.valueOf(tt))
 		{			
@@ -1947,6 +1974,36 @@ public class MobsEvent
 				return new Location(w, x, y, z);
 				
 			case CLOSEST:	
+			case CLOSEST_BAT:
+			case CLOSEST_BLAZE:
+			case CLOSEST_CAVE_SPIDER:
+			case CLOSEST_CHICKEN:
+			case CLOSEST_COW:
+			case CLOSEST_CREEPER:
+			case CLOSEST_ENDER_DRAGON:
+			case CLOSEST_ENDERMAN:
+			case CLOSEST_GHAST:
+			case CLOSEST_GIANT:
+			case CLOSEST_GOLEM:
+			case CLOSEST_IRON_GOLEM:
+			case CLOSEST_MAGMA_CUBE:
+			case CLOSEST_MUSHROOM_COW:
+			case CLOSEST_OCELOT:
+			case CLOSEST_PIG:
+			case CLOSEST_PIG_ZOMBIE:
+			case CLOSEST_PLAYER:
+			case CLOSEST_SILVERFISH:
+			case CLOSEST_SHEEP:
+			case CLOSEST_SKELETON:
+			case CLOSEST_SLIME:
+			case CLOSEST_SNOWMAN:
+			case CLOSEST_SPIDER:
+			case CLOSEST_SQUID:
+			case CLOSEST_VILLAGER:
+			case CLOSEST_WITCH:
+			case CLOSEST_WITHER:
+			case CLOSEST_WOLF:
+			case CLOSEST_ZOMBIE:
 				LivingEntity orig = ev.getLivingEntity();
 				if (orig == null)
 				{
@@ -1954,8 +2011,12 @@ public class MobsEvent
 					return null;			
 				}
 				
-				List<Entity> ents = orig.getNearbyEntities(50, 10, 50);
-				if (ents.size() == 0)
+				String s = tt.replace("CLOSEST", "");
+				if (s == "") s = "LIVINGENTITY";
+				else if (s.startsWith("_")) s = s.replaceFirst("_", "");
+				
+				List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), s, getTargetName());
+				if (mobs.size() == 0)
 				{
 					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
 					return null;			
@@ -1963,17 +2024,11 @@ public class MobsEvent
 				
 				Location loc = orig.getLocation();
 				List<NearbyMob> nearby_mobs = new ArrayList<NearbyMob>();
-				for (Entity e : ents)
+				for (LivingEntity le : mobs)
 				{
-					if (e instanceof LivingEntity) nearby_mobs.add(new NearbyMob((LivingEntity)e, loc));
+					nearby_mobs.add(new NearbyMob(le, loc));
 				}
-				
-				if (nearby_mobs.size() == 0)
-				{
-					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
-					return null;			
-				}
-				
+
 				Collections.sort(nearby_mobs, new Comparator<NearbyMob>() 
 				{
 				    public int compare(NearbyMob m1, NearbyMob m2)
@@ -1982,7 +2037,17 @@ public class MobsEvent
 				    }
 				});
 				
-				return nearby_mobs.get(0).getLivingEntity();
+				int i = getTargetAmount(1);
+				if (i == 1) return nearby_mobs.get(0).getLivingEntity();
+				
+				if (i > nearby_mobs.size()) i = nearby_mobs.size();
+				nearby_mobs = nearby_mobs.subList(0, i);
+				mobs.clear();
+				for (NearbyMob m : nearby_mobs)
+				{
+					mobs.add(m.getLivingEntity());
+				}
+				return mobs;
 				
 			case KILLER:
 				if (!(ev.getOrigEvent() instanceof EntityDeathEvent || ev.getOrigEvent() instanceof PlayerDeathEvent))
@@ -2017,7 +2082,7 @@ public class MobsEvent
 				return ((Tameable)ev.getLivingEntity()).getOwner();
 				
 			case PLAYER:
-				String s = getTargetName();
+				s = getTargetName();
 				if (s == null)
 				{
 					actionFailed(ev.getMobsEvent(), ReasonType.NO_PLAYER);
@@ -2025,18 +2090,56 @@ public class MobsEvent
 				}
 				return Bukkit.getPlayer(s);
 				
-			case RANDOM:
+			case RANDOM:	
+			case RANDOM_BAT:
+			case RANDOM_BLAZE:
+			case RANDOM_CAVE_SPIDER:
+			case RANDOM_CHICKEN:
+			case RANDOM_COW:
+			case RANDOM_CREEPER:
+			case RANDOM_ENDER_DRAGON:
+			case RANDOM_ENDERMAN:
+			case RANDOM_GHAST:
+			case RANDOM_GIANT:
+			case RANDOM_GOLEM:
+			case RANDOM_IRON_GOLEM:
+			case RANDOM_MAGMA_CUBE:
+			case RANDOM_MUSHROOM_COW:
+			case RANDOM_OCELOT:
+			case RANDOM_PIG:
+			case RANDOM_PIG_ZOMBIE:
+			case RANDOM_PLAYER:
+			case RANDOM_SILVERFISH:
+			case RANDOM_SHEEP:
+			case RANDOM_SKELETON:
+			case RANDOM_SLIME:
+			case RANDOM_SNOWMAN:
+			case RANDOM_SPIDER:
+			case RANDOM_SQUID:
+			case RANDOM_VILLAGER:
+			case RANDOM_WITCH:
+			case RANDOM_WITHER:
+			case RANDOM_WOLF:
+			case RANDOM_ZOMBIE:
 				w = ev.getWorld();
-				if (w == null) return null;
-				List<LivingEntity> mobs = w.getLivingEntities();
+				
+				s = tt.replace("RANDOM", "");
+				if (s == "") s = "LIVINGENTITY";
+				else if (s.startsWith("_")) s = s.replaceFirst("_", "");
+				
+				mobs = getRelevantMobs(w.getEntities(), s, getTargetName());
 				if (mobs.size() == 0)
 				{
 					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
 					return null;			
 				}
 				
+				i = getTargetAmount(1);
 				Collections.shuffle(mobs);
-				return mobs.get(0);
+				if (i == 1) return mobs.get(0);
+				
+				if (i > mobs.size()) i = mobs.size();
+				return mobs.subList(0, i);
 				
 			case SHEARER:
 				if (!(ev.getOrigEvent() instanceof PlayerShearEntityEvent))
@@ -2071,12 +2174,11 @@ public class MobsEvent
 	
 	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
 	{		
-		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
 		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
 		
 		for (Entity e : orig)
 		{
-			if (!temp.contains(e.getType().toString())) continue;
+			if (!m.equalsIgnoreCase(e.getType().toString())) continue;
 			if (name != null)
 			{
 				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
@@ -2119,7 +2221,11 @@ public class MobsEvent
 		
 		for (Object o : targets)
 		{
-			if (type.isInstance(o)) temp.add((T)o);
+			if (type.isInstance(o))
+			{
+				if (o instanceof Player && !((Player)o).isOnline()) continue;
+				temp.add((T)o);
+			}
 		}
 		return temp;
 	}
