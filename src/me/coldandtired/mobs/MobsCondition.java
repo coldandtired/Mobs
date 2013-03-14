@@ -404,8 +404,8 @@ public class MobsCondition
 				case IF_THUNDERING: if (!matchesThundering(ct)) return false;
 					break;
 					
-				case IF_TIMER_NAME:
-				case IF_NOT_TIMER_NAME: if (!matchesTimerName(ct)) return false;
+				case IF_TIMER:
+				case IF_NOT_TIMER: if (!matchesTimer(ct)) return false;
 					break;
 					
 				case IF_WEEK: if (!matchesWeek(ct)) return false;
@@ -1194,7 +1194,7 @@ public class MobsCondition
 		return b == needed;
 	}
 	
-	private boolean matchesTimerName(ConditionType ct)
+	private boolean matchesTimer(ConditionType ct)
 	{
 		String needed = conditions.get(ct);		
 		Timer t = ev.getTimer();
@@ -1203,7 +1203,7 @@ public class MobsCondition
 		{
 			String s = t.getName();
 			boolean b = matchesString(s, needed);
-			if (ct.equals(ConditionType.IF_NOT_TIMER_NAME)) b = !b;
+			if (ct.equals(ConditionType.IF_NOT_TIMER)) b = !b;
 			callConditionEvent(ct, needed, s, b);
 			return b;
 		}

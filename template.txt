@@ -1,4 +1,2 @@
-<actions>
-	<action/>
-	<!-- see coldandtired.binhoster.com to learn how to edit this file -->
-</actions>
+<event/>
+<!-- see coldandtired.binhoster.com to learn how to edit this file -->

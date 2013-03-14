@@ -2549,7 +2549,7 @@ public class MobsEvent
 	{
 		if (Mobs.canDebug())
 		{
-			MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(attempting, this);
+			MobsPerformingActionEvent mpae = new MobsPerformingActionEvent(attempting, ev);
 			Bukkit.getServer().getPluginManager().callEvent(mpae);
 			return mpae.isCancelled();
 		}
@@ -2560,6 +2560,6 @@ public class MobsEvent
 	private void actionFailed(Object attempted, ReasonType reason)
 	{
 		if (!Mobs.canDebug()) return;
-		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(attempted.toString(), reason, this));
+		Bukkit.getServer().getPluginManager().callEvent(new MobsFailedActionEvent(attempted.toString(), reason, ev));
 	}
 }
