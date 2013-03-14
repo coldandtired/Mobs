@@ -2,26 +2,3 @@ check_for_newer_version: yes
 generate_templates: yes
 worlds_to_ignore: []
 allow_debug: no
-check_burns_before_actions: no
-check_changes_block_before_actions: no
-check_creates_portal_before_actions: no
-check_damaged_before_actions: no
-check_dies_before_actions: no
-check_player_dies_before_actions: no
-check_dyed_before_actions: no
-check_evolves_before_actions: no
-check_explodes_before_actions: no
-check_grows_wool_before_actions: no
-check_heals_before_actions: no
-check_picks_before_actions: no
-check_sheared_before_actions: no
-check_splits_before_actions: no
-check_tamed_before_actions: no
-check_player_targeted_before_actions: no
-check_targets_before_actions: no
-check_teleports_before_actions: no
-timers:
-  example:
-    interval_in_seconds: 300
-    enabled: no
-    world: world_name

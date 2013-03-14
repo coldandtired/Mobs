@@ -1,13 +1,14 @@
 package me.coldandtired.mobs;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 
-import me.coldandtired.extra_events.*;
+import me.coldandtired.extraevents.*;
 import me.coldandtired.mobs.Enums.EventType;
 import me.coldandtired.mobs.Enums.SubactionType;
 import me.coldandtired.mobs.api.Data;
@@ -44,6 +45,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
@@ -85,7 +87,8 @@ public class BukkitListener implements Listener
 		EventType et = EventType.PLAYER_APPROACHES;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -98,7 +101,8 @@ public class BukkitListener implements Listener
 		EventType et = EventType.BLOCKS;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getAttacker());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -112,23 +116,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();
 		EventType et = EventType.BURNS;	
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_BURN)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_BURN)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.NO_BURN)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -140,23 +134,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();		
 		EventType et = EventType.CHANGES_BLOCK;		
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_MOVE_BLOCKS) || Data.hasData(le, SubactionType.NO_GRAZE)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_MOVE_BLOCKS) || Data.hasData(le, SubactionType.NO_GRAZE)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.NO_MOVE_BLOCKS) || Data.hasData(le, SubactionType.NO_GRAZE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -166,90 +150,52 @@ public class BukkitListener implements Listener
 		
 		EventType et = EventType.CREATES_PORTAL;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_CREATE_PORTALS)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, event.getEntity(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
-		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_CREATE_PORTALS)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getEntity(), SubactionType.NO_CREATE_PORTALS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
 	public void damaged(LivingEntityDamageEvent event)
 	{
-		if (ignoreWorld(event.getEntity().getWorld())) return;		
+		if (ignoreWorld(event.getEntity().getWorld())) return;	
 		if (!(event.getEntity() instanceof LivingEntity)) return;
 		
 		LivingEntity le = (LivingEntity)event.getEntity();
 
 		EventType et = EventType.DAMAGED;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			int damage = event.getDamage();		
-			
-			SubactionType st = SubactionType.valueOf("DAMAGE_FROM" + event.getCause());
-			switch (event.getCause())
-			{
-				case ENTITY_ATTACK:
-					LivingEntity damager = event.getAttacker();
-					if (damager != null && Data.hasData(damager, SubactionType.ATTACK_POWER))
-					{
-						damage = (Integer)Data.getData(damager, SubactionType.ATTACK_POWER);
-					}
-					if (!Data.hasData(le, st)) break;
-					damage = (Integer)Data.getData(le, st);
-					break;
-				default:
-					if (!Data.hasData(le, st)) break;
-					damage = (Integer)Data.getData(le, st);
-					break;
-			}
-			event.setDamage(damage);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getAttacker());
+			ev.setProjectile(event.getProjectile());
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			int damage = event.getDamage();		
+		int damage = event.getDamage();		
 			
-			SubactionType st = SubactionType.valueOf("DAMAGE_FROM" + event.getCause());
-			switch (event.getCause())
-			{
-				case ENTITY_ATTACK:
-					LivingEntity damager = event.getAttacker();
-					if (damager != null && Data.hasData(damager, SubactionType.ATTACK_POWER))
-					{
-						damage = (Integer)Data.getData(damager, SubactionType.ATTACK_POWER);
-					}
-					if (!Data.hasData(le, st)) break;
-					damage = (Integer)Data.getData(le, st);
-					break;
-				default:
-					if (!Data.hasData(le, st)) break;
-					damage = (Integer)Data.getData(le, st);
-					break;
-			}
-			event.setDamage(damage);
+		SubactionType st = SubactionType.valueOf("DAMAGE_FROM_" + event.getCause());
+		switch (event.getCause())
+		{
+			case ENTITY_ATTACK:
+				LivingEntity damager = event.getAttacker();
+				if (damager != null && Data.hasData(damager, SubactionType.ATTACK_POWER))
+				{
+					damage = (Integer)Data.getData(damager, SubactionType.ATTACK_POWER);
+				}
+				if (!Data.hasData(le, st)) break;
+				damage = (Integer)Data.getData(le, st);
+				break;
+			default:
+				if (!Data.hasData(le, st)) break;
+				damage = (Integer)Data.getData(le, st);
+				break;
 		}
+		event.setDamage(damage);
 	}
 	
 	@EventHandler
@@ -258,11 +204,12 @@ public class BukkitListener implements Listener
 		EventType et = EventType.DAWN;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	@EventHandler
 	public void dies(EntityDeathEvent event)
 	{
@@ -270,45 +217,47 @@ public class BukkitListener implements Listener
 		
 		LivingEntity le = event.getEntity();		
 		EventType et = EventType.DIES;
-		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_DROPS))
-			{
-				event.getDrops().clear();
-				event.setDroppedExp(0);
-			}
-			else
-			{
-				if (Data.hasData(le, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
-				if (Data.hasData(le, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
-			}
-		}
-		
+				
 		if (events.containsKey(et))
 		{
 			Entity e = le.getLastDamageCause().getEntity();
 			LivingEntity attacker = e instanceof LivingEntity ? (LivingEntity)e : null;
-			EventValues ev = new EventValues(event, et, le, attacker, null, null);
+			EventValues ev = new EventValues(event, et, le);
+			ev.setAuxMob(attacker);
 			events.get(et).performActions(ev);
 		}
 		
-		if (!check_before)
+		if (Data.hasData(le, SubactionType.NO_DROPS))
 		{
-			if (Data.hasData(le, SubactionType.NO_DROPS))
+			event.getDrops().clear();
+			event.setDroppedExp(0);
+			return;
+		}
+		
+		if (Data.hasData(le, SubactionType.NO_DEFAULT_DROPS))
+		{
+			event.getDrops().clear();
+		}
+		
+		if (Data.hasData(le, SubactionType.CUSTOM_DROPS))
+		{
+			Object o = Data.getData(le, SubactionType.CUSTOM_DROPS);
+			if (o != null)
 			{
-				event.getDrops().clear();
-				event.setDroppedExp(0);
+				for (ItemStack is : (ArrayList<ItemStack>)o)
+				{
+					event.getDrops().add(is);
+				}
 			}
-			else
-			{
-				if (Data.hasData(le, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
-				if (Data.hasData(le, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
-			}
+		}
+			
+		if (Data.hasData(le, SubactionType.DROPPED_EXP))
+		{
+			event.setDroppedExp((Integer)Data.getData(le, SubactionType.DROPPED_EXP));
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	@EventHandler
 	public void playerDies(PlayerDeathEvent event)
 	{		
@@ -317,41 +266,42 @@ public class BukkitListener implements Listener
 		Player p = event.getEntity();
 		EventType et = EventType.PLAYER_DIES;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(p, SubactionType.NO_DROPS))
-			{
-				event.getDrops().clear();
-				event.setDroppedExp(0);
-			}
-			else
-			{
-				if (Data.hasData(p, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
-				if (Data.hasData(p, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
-			}
-		}
-		
 		if (events.containsKey(et))
 		{			
 			Entity e = p.getLastDamageCause().getEntity();
 			LivingEntity attacker = e instanceof LivingEntity ? (LivingEntity)e : null;			
-			EventValues ev = new EventValues(event, et, p, attacker, null, null);
+			EventValues ev = new EventValues(event, et, p);
+			ev.setAuxMob(attacker);
 			events.get(et).performActions(ev);
 		}
 		
-		if (!check_before)
+		if (Data.hasData(p, SubactionType.NO_DROPS))
 		{
-			if (Data.hasData(p, SubactionType.NO_DROPS))
+			event.getDrops().clear();
+			event.setDroppedExp(0);
+			return;
+		}
+		
+		if (Data.hasData(p, SubactionType.NO_DEFAULT_DROPS))
+		{
+			event.getDrops().clear();
+		}
+		
+		if (Data.hasData(p, SubactionType.CUSTOM_DROPS))
+		{
+			Object o = Data.getData(p, SubactionType.CUSTOM_DROPS);
+			if (o != null)
 			{
-				event.getDrops().clear();
-				event.setDroppedExp(0);
+				for (ItemStack is : (ArrayList<ItemStack>)o)
+				{
+					event.getDrops().add(is);
+				}
 			}
-			else
-			{
-				if (Data.hasData(p, SubactionType.NO_DROPPED_ITEMS)) event.getDrops().clear();
-				if (Data.hasData(p, SubactionType.NO_DROPPED_EXP)) event.setDroppedExp(0);
-			}
+		}
+			
+		if (Data.hasData(p, SubactionType.DROPPED_EXP))
+		{
+			event.setDroppedExp((Integer)Data.getData(p, SubactionType.DROPPED_EXP));
 		}
 	}
 	
@@ -361,7 +311,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.DUSK;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -374,23 +324,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.DYED;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_DYED)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_DYED)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getEntity(), SubactionType.NO_DYED)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -401,23 +341,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.EVOLVES;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -428,23 +358,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.EVOLVES;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getEntity(), SubactionType.NO_EVOLVE)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -455,7 +375,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.ENTERS_AREA;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -473,60 +393,32 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)entity;
 		EventType et = EventType.EXPLODES;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
-			
-			if (!event.isCancelled())//TODO fix
-			{			
-				if (Data.hasData(le, SubactionType.NO_DESTROY_BLOCKS)) event.blockList().clear();
-				else
-				{
-					if (Data.hasData(le, SubactionType.EXPLOSION_SIZE))
-					{
-						Integer size = (Integer)Data.getData(le, SubactionType.EXPLOSION_SIZE);
-						if (size != null)
-						{
-							Location loc = event.getLocation();
-							if (Data.hasData(le, SubactionType.FIERY_EXPLOSION)) loc.getWorld().createExplosion(loc, size, true);
-							else loc.getWorld().createExplosion(loc, size);
-						}
-					}
-				}
-			}
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
+		if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
 			
-			if (event.isCancelled()) return;
+		if (event.isCancelled()) return;
+		else
+		{			
+			if (Data.hasData(le, SubactionType.NO_DESTROY_BLOCKS)) event.blockList().clear();
 			else
-			{			
-				if (Data.hasData(le, SubactionType.NO_DESTROY_BLOCKS)) event.blockList().clear();
-				else
+			{
+				if (Data.hasData(le, SubactionType.EXPLOSION_SIZE))
 				{
-					if (Data.hasData(le, SubactionType.EXPLOSION_SIZE))
-					{
-						Integer size = (Integer)Data.getData(le, SubactionType.EXPLOSION_SIZE);
-						if (size == null) return;
-						
-						event.setCancelled(true);
-						Location loc = event.getLocation();
-						if (Data.hasData(le, SubactionType.FIERY_EXPLOSION)) loc.getWorld().createExplosion(loc, size, true);
-						else loc.getWorld().createExplosion(loc, size);
-					}
+					Integer size = (Integer)Data.getData(le, SubactionType.EXPLOSION_SIZE);
+					if (size == null) return;
+					
+					event.setCancelled(true);
+					Location loc = event.getLocation();
+					if (Data.hasData(le, SubactionType.FIERY_EXPLOSION)) loc.getWorld().createExplosion(loc, size, true);
+					else loc.getWorld().createExplosion(loc, size);
 				}
 			}
-		}			
+		}		
 	}
 	
 	@EventHandler
@@ -537,23 +429,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.GROWS_WOOL;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_GROW_WOOL)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_GROW_WOOL)) event.setCancelled(true);
-		}		
+		if (Data.hasData(event.getEntity(), SubactionType.NO_GROW_WOOL)) event.setCancelled(true);		
 	}
 	
 	@EventHandler
@@ -565,23 +447,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();
 		EventType et = EventType.HEALS;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_HEAL)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_HEAL)) event.setCancelled(true);
-		}		
+		if (Data.hasData(le, SubactionType.NO_HEAL)) event.setCancelled(true);		
 	}	
 	
 	@EventHandler
@@ -595,7 +467,8 @@ public class BukkitListener implements Listener
 		{
 			Entity e = event instanceof EntityDamageByEntityEvent ? ((EntityDamageByEntityEvent)event).getDamager() : null;
 			LivingEntity le = e instanceof LivingEntity ? (LivingEntity)e : null;
-			EventValues ev = new EventValues(event, et, (LivingEntity)event.getEntity(), le, null, null);
+			EventValues ev = new EventValues(event, et, (LivingEntity)event.getEntity());
+			ev.setAuxMob(le);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -608,7 +481,9 @@ public class BukkitListener implements Listener
 		EventType et = EventType.HIT_BY_PROJECTILE;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getAttacker(), event.getProjectile(), null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getAttacker());
+			ev.setProjectile(event.getProjectile());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -619,7 +494,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.HOUR_CHANGE;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -632,7 +507,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.IN_AREA;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -649,7 +524,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.PLAYER_JOINS;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, p, null, null, null);
+			EventValues ev = new EventValues(event, et, p);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -662,7 +537,8 @@ public class BukkitListener implements Listener
 		EventType et = EventType.LEAVES;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -675,7 +551,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.LEAVES_AREA;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -686,7 +562,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.MIDDAY;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -697,7 +573,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.MIDNIGHT;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -710,7 +586,8 @@ public class BukkitListener implements Listener
 		EventType et = EventType.PLAYER_NEAR;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, event.getEntity(), event.getPlayer(), null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
+			ev.setAuxMob(event.getPlayer());
 			events.get(et).performActions(ev);
 		}
 	}
@@ -723,23 +600,14 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.PLAYER_TARGETED; 
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, event.getPlayer(), le, null, null);
+			EventValues ev = new EventValues(event, et, event.getPlayer());
+			ev.setAuxMob(le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -748,7 +616,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.NIGHT;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, null);
+			EventValues ev = new EventValues(event, et, null);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -760,23 +628,13 @@ public class BukkitListener implements Listener
 		
 		EventType et = EventType.PICKS_UP_ITEM;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getPlayer(), SubactionType.NO_PICK_UP_ITEMS)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, event.getPlayer(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getPlayer());
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getPlayer(), SubactionType.NO_PICK_UP_ITEMS)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getPlayer(), SubactionType.NO_PICK_UP_ITEMS)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -788,23 +646,13 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();
 		EventType et = EventType.SHEARED;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_SHEARING)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_SHEARING)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.NO_SHEARING)) event.setCancelled(true);
 	}
 	
  	public void setMobName(String name)
@@ -829,7 +677,7 @@ public class BukkitListener implements Listener
 		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
 		mob_name = null;
@@ -848,7 +696,7 @@ public class BukkitListener implements Listener
 		EventType et = EventType.PLAYER_SPAWNS;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, p, null, null, null);
+			EventValues ev = new EventValues(event, et, p);
 			events.get(et).performActions(ev);
 		}
 	}
@@ -861,27 +709,15 @@ public class BukkitListener implements Listener
 		LivingEntity le = event.getEntity();
 		EventType et = EventType.SPLITS;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			Integer i = (Integer)Data.getData(event.getEntity(), SubactionType.SPLIT_INTO);
-			if (i == null) return;
-			if (i == 0) event.setCancelled(true); else event.setCount(i);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			Integer i = (Integer)Data.getData(event.getEntity(), SubactionType.SPLIT_INTO);
-			if (i == null) return;
-			if (i == 0) event.setCancelled(true); else event.setCount(i);
-		}
+		Integer i = (Integer)Data.getData(event.getEntity(), SubactionType.SPLIT_INTO);
+		if (i == null) return;
+		if (i == 0) event.setCancelled(true); else event.setCount(i);
 	}
 	
 	@EventHandler
@@ -891,23 +727,13 @@ public class BukkitListener implements Listener
 		
 		EventType et = EventType.TAMED;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_TAMING)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, event.getEntity(), null, null, null);
+			EventValues ev = new EventValues(event, et, event.getEntity());
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(event.getEntity(), SubactionType.NO_TAMING)) event.setCancelled(true);
-		}
+		if (Data.hasData(event.getEntity(), SubactionType.NO_TAMING)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -919,23 +745,14 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();
 		EventType et = EventType.TARGETS; 
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, event.getTarget(), null, null);
+			EventValues ev = new EventValues(event, et, le);
+			ev.setAuxMob(event.getTarget());
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.FRIENDLY)) event.setCancelled(true);
 	}
 	
 	@EventHandler
@@ -947,34 +764,27 @@ public class BukkitListener implements Listener
 		LivingEntity le = (LivingEntity)event.getEntity();
 		EventType et = EventType.TELEPORTS;
 		
-		boolean check_before = Mobs.checkBefore(et);
-		if (check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_TELEPORT)) event.setCancelled(true);
-		}
-		
 		if (events.containsKey(et))
 		{						
-			EventValues ev = new EventValues(event, et, le, null, null, null);
+			EventValues ev = new EventValues(event, et, le);
 			events.get(et).performActions(ev);
 		}
-		if (event.isCancelled()) return;
 		
-		if (!check_before)
-		{
-			if (Data.hasData(le, SubactionType.NO_TELEPORT)) event.setCancelled(true);
-		}
+		if (Data.hasData(le, SubactionType.NO_TELEPORT)) event.setCancelled(true);
 	}
 		
 // timer stuff
 	
 	@EventHandler
-	public void timerTick(MobsTimerTickEvent event)
+	public void timerTick(TimerActivateEvent event)
 	{
+		if (ignoreWorld(Bukkit.getWorld(event.getTimer().getWorld()))) return;
+		
 		EventType et = EventType.TIMER;		
 		if (events.containsKey(et))
 		{
-			EventValues ev = new EventValues(event, et, null, null, null, event.getTimer());
+			EventValues ev = new EventValues(event, et, null);
+			ev.setTimer(event.getTimer());
 			events.get(et).performActions(ev);
 		}
 	}

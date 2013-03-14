@@ -11,16 +11,8 @@ commands:
         description: Reload the config without reloading the plugin itself
         aliases: rm
         usage: "Usage: /reload_mobs"
-        permission: mobs.can_reload_mobs      
-    timers:
-        description: Adjust the repeating part of the plugin
-        aliases: mt
-        usage: "Usage: /timers [enable|disable|pause|unpause|check|set_interval|activate] [seconds] [name]"
-        permission: mobs.can_change_repeating_outcomes
+        permission: mobs.can_reload_config      
 permissions:
-    mobs.can_reload_mobs:
+    mobs.can_reload_config:
         description: Allows a user to reload the config
-        default: op
-    mobs.can_change_timers:
-        description: Allows a user to change the timers (enable, disable, change interval, etc.)
         default: op

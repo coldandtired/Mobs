@@ -18,6 +18,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Damageable;
@@ -30,6 +31,7 @@ import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Sheep;
+import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.Slime;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
@@ -43,6 +45,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
 import org.bukkit.material.Openable;
@@ -51,11 +54,11 @@ import org.getspout.spoutapi.player.EntitySkinType;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import me.coldandtired.extra_events.LivingEntityBlockEvent;
-import me.coldandtired.extra_events.LivingEntityDamageEvent;
-import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
-import me.coldandtired.extra_events.PlayerLeaveLivingEntityEvent;
-import me.coldandtired.extra_events.PlayerNearLivingEntityEvent;
+import me.coldandtired.extraevents.LivingEntityBlockEvent;
+import me.coldandtired.extraevents.LivingEntityDamageEvent;
+import me.coldandtired.extraevents.PlayerApproachLivingEntityEvent;
+import me.coldandtired.extraevents.PlayerLeaveLivingEntityEvent;
+import me.coldandtired.extraevents.PlayerNearLivingEntityEvent;
 import me.coldandtired.mobs.api.Data;
 import me.coldandtired.mobs.api.MobsFailedActionEvent;
 import me.coldandtired.mobs.api.MobsPerformingActionEvent;
@@ -67,7 +70,10 @@ public class MobsEvent
 	private MobsElement ce;
 	private Map<String, MobsElement> linked_actions;	
 	private Map<String, MobsCondition> linked_conditions;
+	private Map<String, MobsElement> linked_items;
 	private Map<String, MobsElement> linked_targets;
+	private Map<String, MobsElement> linked_enchantments;
+	private List<Object> current_targets;
 	private MobsElement root;
 	
 	MobsEvent(Element element) throws XPathExpressionException
@@ -125,6 +131,40 @@ public class MobsEvent
 				linked_targets.put(name.toUpperCase(), new MobsElement(el, root, linked_conditions));
 			}
 		}
+		
+		list = (NodeList)Mobs.getXPath().evaluate("linked_item", element, XPathConstants.NODESET);
+		if (list.getLength() != 0)
+		{
+			linked_items = new HashMap<String, MobsElement>();
+			for (int i = 0; i < list.getLength(); i++)
+			{
+				Element el = (Element)list.item(i);
+				String name = el.getAttribute("name");
+				if (name == null || name.isEmpty())
+				{
+					Mobs.error("A linked_item is missing its name!");
+					continue;
+				}
+				linked_items.put(name.toUpperCase(), new MobsElement(el, root, linked_conditions));
+			}
+		}
+		
+		list = (NodeList)Mobs.getXPath().evaluate("linked_enchantment", element, XPathConstants.NODESET);
+		if (list.getLength() != 0)
+		{
+			linked_enchantments = new HashMap<String, MobsElement>();
+			for (int i = 0; i < list.getLength(); i++)
+			{
+				Element el = (Element)list.item(i);
+				String name = el.getAttribute("name");
+				if (name == null || name.isEmpty())
+				{
+					Mobs.error("A linked_enchantment is missing its name!");
+					continue;
+				}
+				linked_enchantments.put(name.toUpperCase(), new MobsElement(el, root, linked_conditions));
+			}
+		}
 	}
 		
 	/** Performs all the actions on all the targets */
@@ -132,6 +172,7 @@ public class MobsEvent
 	{
 		ce = root;
 		this.ev = ev;
+		current_targets = null;
 		
 		List<MobsElement> actions = getActions();
 		if (actions == null)
@@ -163,11 +204,11 @@ public class MobsEvent
 				case KILL: killSomething();
 					break;
 				case LOG: logSomething();
-					break;
-				case PLAY: playSomething();
 					break;				
 				case REMOVE: removeSomething();
-					break;					
+					break;	
+				case RESET: resetSomething();
+					break;
 				case SET: setSomething();
 					break;					
 				case SPAWN: spawnSomething();
@@ -178,6 +219,7 @@ public class MobsEvent
 		}
 	}
 
+	/** Disabled due to Bukkit bug */
 // Activate_button action
 	
 	/*private void activateSomething()
@@ -189,7 +231,6 @@ public class MobsEvent
 				actionFailed("activate_button", ReasonType.CHUNK_NOT_LOADED);
 				continue;
 			}
-			Mobs.log(loc.toString());
 			
 			BlockState bs = loc.getBlock().getState();
 			MaterialData md = bs.getData();
@@ -207,7 +248,6 @@ public class MobsEvent
 			bs.update(true);
 		}
 	}*/
-	
 	
 // Broadcast action
 	
@@ -254,19 +294,41 @@ public class MobsEvent
 		
 		switch (st)
 		{
-			case EXPLOSION: explode();
+			case EFFECT: causeEffect();
 				break;
-			case FIERY_EXPLOSION: explodeFire();
+			case EXPLOSION: causeExplosion();
 				break;
-			case LIGHTNING: lightningStrike();
+			case FIERY_EXPLOSION: causeFieryExplosion();
 				break;
-			case LIGHTNING_EFFECT: lightningEffect();
+			case LIGHTNING: causeLightning();
+				break;
+			case LIGHTNING_EFFECT: causeLightningEffect();
+				break;
+			case SOUND: causeSound();
 				break;
 		}
 	}
+	
+	/** Causes a visual or sound effect */
+	private void causeEffect()
+	{
+		Effect effect = getEffect();
+		if (effect == null)
+		{
+			actionFailed("cause effect", ReasonType.NO_EFFECT);
+			return;
+		}
 		
+		if (isActionCancelled("cause effect " + effect)) return;
+		
+		for (Location loc : getLocations())
+		{
+			loc.getWorld().playEffect(loc, effect, 10);
+		}
+	}
+	
 	/** Causes an explosion */
-	private void explode()
+	private void causeExplosion()
 	{		
 		int size = getSize(1);
 		
@@ -274,17 +336,12 @@ public class MobsEvent
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("cause explosion " + size + ", " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			loc.getWorld().createExplosion(loc, size);
 		}
 	}
 
 	/** Causes an explosion which sets blocks on fire */
-	private void explodeFire()
+	private void causeFieryExplosion()
 	{
 		int size = getSize(1);
 		
@@ -292,44 +349,50 @@ public class MobsEvent
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("cause fiery_explosion " + size + ", " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			loc.getWorld().createExplosion(loc, size, true);
 		}
 	}
 	
 	/** Strikes a location or mob with lightning */
-	private void lightningStrike()
+	private void causeLightning()
 	{
 		if (isActionCancelled("cause lightning")) return; 
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("cause lightning, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			loc.getWorld().strikeLightning(loc);
 		}
 	}
 
 	/** Shows lightning without damaging a location or mob */
-	private void lightningEffect()
+	private void causeLightningEffect()
 	{		
 		if (isActionCancelled("cause lightning_effect")) return; 
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("cause lightning_effect, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			loc.getWorld().strikeLightningEffect(loc);
+		}
+	}
+	
+	/** Plays a sound */
+	private void causeSound()
+	{
+		Sound sound = getSound();
+		if (sound == null)
+		{
+			actionFailed("cause sound", ReasonType.NO_SOUND);
+			return;
+		}
+		
+		float volume = getSoundVolume();
+		float pitch = getSoundPitch();
+		
+		if (isActionCancelled("cause sound " + sound + "(" + volume + ", " + pitch + ")")) return;
+		
+		for (Location loc : getLocations())
+		{
+			loc.getWorld().playSound(loc, sound, volume, pitch);
 		}
 	}
 	
@@ -356,36 +419,27 @@ public class MobsEvent
 	
 	/** Breaks a block */
 	private void breakBlock()
-	{				
-		int id = getItemId();
-		if (id == 0)
+	{		
+		List<ItemStack> items = getItems();
+		
+		if (items == null || items.size() == 0)
 		{
 			if (isActionCancelled("damage block")) return;
 			
 			for (Location loc : getLocations())
 			{
-				if (!loc.getChunk().isLoaded())
-				{
-					actionFailed("damage block, " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-					continue;
-				}
 				loc.getBlock().breakNaturally();
 			}
 			return;
 		}
 		
-		int data = getItemData(0);
+		//t data = getItemData(0);
 		
-		ItemStack is = new ItemStack(id, 1, (short)data);
+		ItemStack is = items.get(0);//new ItemStack(id, 1, (short)data);
 		if (isActionCancelled("damage block, " + getPrettyItem(is))) return;
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("damage block, (" + getPrettyItem(is) + "), " + getPrettyLoc(loc), ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			loc.getBlock().breakNaturally(is);
 		}
 	}
@@ -422,12 +476,39 @@ public class MobsEvent
 		
 		switch (st)
 		{
+			case CUSTOM_DROPS: giveCustomDrops();
+				break;
 			case EXP: giveExp();
 				break;
 			case ITEM: giveItem();
 				break;
 			case MONEY: giveMoney();
 				break;
+		}
+	}
+	
+	/** Adds items to drop when a mob or player dies */
+	@SuppressWarnings("unchecked")
+	private void giveCustomDrops()
+	{
+		List<ItemStack> list = getItems();
+		
+		if (list == null || list.size() == 0)
+		{
+			actionFailed("add custom_drops", ReasonType.NO_ITEM);
+			return;
+		}
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			if (isActionCancelled("add custom_drops " + le.toString())) continue;
+			if (Data.hasData(le, SubactionType.CUSTOM_DROPS))
+			{
+				List<ItemStack> temp = (List<ItemStack>)Data.getData(le, SubactionType.CUSTOM_DROPS);
+				temp.addAll(list);
+				Data.putData(le, SubactionType.CUSTOM_DROPS, temp);
+			}
+			else Data.putData(le, SubactionType.CUSTOM_DROPS, list);
 		}
 	}
 	
@@ -449,20 +530,23 @@ public class MobsEvent
 	/** Sends an item to players */
 	private void giveItem()
 	{
-		int id = getItemId();
-		if (id == 0)
+		List<ItemStack> list = getItems();
+		
+		if (list == null || list.size() == 0)
 		{
-			actionFailed("give item", ReasonType.BAD_ITEM_ID);
-			return;		
+			actionFailed("give item", ReasonType.NO_ITEM);
+			return;
 		}
 		
-		int data = getItemData(0);
-		int amount = getAmount(1);		
-		
-		ItemStack is = new ItemStack(id, amount, (short)data);
-		if (isActionCancelled("give item " + getPrettyItem(is))) return;
-			
-		for (Player p : getMobType(Player.class)) p.getInventory().addItem(is);
+		for (Player p : getMobType(Player.class))
+		{
+			PlayerInventory inv = p.getInventory();
+			for (ItemStack is : list)
+			{
+				if (isActionCancelled("give item " + getPrettyItem(is) + " (" + p.getName() + ")")) continue;
+				inv.addItem(is);
+			}
+		}
 	}
 	
 	/** Gives a player money (needs Vault) */
@@ -477,7 +561,7 @@ public class MobsEvent
 		int amount = getAmount(0);
 		if (amount < 0)
 		{
-			actionFailed("give exp", ReasonType.BAD_AMOUNT);
+			actionFailed("give money", ReasonType.BAD_AMOUNT);
 			return;		
 		}
 		
@@ -516,76 +600,6 @@ public class MobsEvent
 		Mobs.log(message);
 	}
 	
-// Play action
-	
-	/** Plays a visual effect or sound effect */
-	private void playSomething()
-	{
-		SubactionType st = getSubaction();
-		if (st == null)
-		{
-			actionFailed("play", ReasonType.NO_SUBACTION);
-			return;
-		}
-		
-		switch (st)
-		{
-			case EFFECT: playEffect();
-				break;
-			case SOUND: playSound();
-				break;
-		}
-	}	
-	
-	/** Plays a visual or sound effect */
-	private void playEffect()
-	{
-		Effect effect = getEffect();
-		if (effect == null)
-		{
-			actionFailed("play effect", ReasonType.NO_EFFECT);
-			return;
-		}
-		
-		if (isActionCancelled("play effect " + effect)) return;
-		
-		for (Location loc : getLocations())
-		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("play effect " + effect, ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
-			loc.getWorld().playEffect(loc, effect, 10);
-		}
-	}
-	
-	/** Plays a sound */
-	private void playSound()
-	{
-		Sound sound = getSound();
-		if (sound == null)
-		{
-			actionFailed("play sound", ReasonType.NO_SOUND);
-			return;
-		}
-		
-		float volume = getSoundVolume();
-		float pitch = getSoundPitch();
-		
-		if (isActionCancelled("play sound " + sound + "(" + volume + ", " + pitch + ")")) return;
-		
-		for (Location loc : getLocations())
-		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("play sound", ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
-			loc.getWorld().playSound(loc, sound, volume, pitch);
-		}
-	}
-
 // Remove action
 
 	/** Removes something from the world */
@@ -600,25 +614,17 @@ public class MobsEvent
 		
 		switch (st)
 		{
-			case ALL_DATA: removeData();
-				break;
 			case ALL_DROPS: removeAllDrops();
 				break;
 			case ALL_ITEMS: removeInventory();
 				break;
-			case DROPPED_EXP: removeDroppedExp();
+			case CUSTOM_DROPS: removeCustomDrops();
 				break;
-			case DROPPED_ITEMS: removeDroppedItems();
+			case DROPPED_EXP: removeDroppedExp();
 				break;
 			case ITEM: removeItem();
 				break;
-			case MAX_HP: removeMaxHp();
-				break;
 			case MOB: removeMob();
-				break;
-			case SKIN: removeSkin();
-				break;
-			default: removeProperty(st);
 				break;
 		}
 	}
@@ -630,17 +636,19 @@ public class MobsEvent
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
-			Data.putData(le, SubactionType.NO_DROPPED_ITEMS);
-			Data.putData(le, SubactionType.NO_DROPPED_EXP);
+			Data.removeData(le, SubactionType.CUSTOM_DROPS);
 		}
 	}
 	
-	/** Removes all data from a mob or block */
-	private void removeData()
-	{		
-		if (isActionCancelled("remove data")) return;
+	/** Flags a mob to not drop any custom items on death */
+	private void removeCustomDrops()
+	{
+		if (isActionCancelled("remove dropped_items")) return;
 		
-		for (LivingEntity le : getMobType(LivingEntity.class)) Data.clearData(le);
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.CUSTOM_DROPS);
+		}
 	}
 	
 	/** Flags a mob to not drop any exp on death */
@@ -650,21 +658,10 @@ public class MobsEvent
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
-			Data.putData(le, SubactionType.NO_DROPPED_EXP);
+			Data.putData(le, SubactionType.DROPPED_EXP, 0);
 		}
 	}
-	
-	/** Flags a mob to not drop any items on death */
-	private void removeDroppedItems()
-	{
-		if (isActionCancelled("remove dropped_items")) return;
 		
-		for (LivingEntity le : getMobType(LivingEntity.class))
-		{
-			Data.putData(le, SubactionType.NO_DROPPED_ITEMS);
-		}
-	}
-	
 	/** Removes all matching items from a player's inventory */
 	private void removeItem()
 	{
@@ -699,18 +696,7 @@ public class MobsEvent
 		
 		for (Player p : getMobType(Player.class)) p.getInventory().clear();
 	}
-	
-	/** Restore a mob's max_hp to its vanilla setting */
-	private void removeMaxHp()
-	{
-		if (isActionCancelled("remove max_hp")) return;
 		
-		for (Damageable d : getMobType(Damageable.class))
-		{
-			d.resetMaxHealth();
-		}
-	}
-	
 	/** Removes a mob from the world without it dying */
 	private void removeMob()
 	{
@@ -721,23 +707,69 @@ public class MobsEvent
 			if (!(le instanceof Player)) le.remove();
 		}
 	}
-	
-	/** Returns a mob's skin to default (requires Spout) */
-	private void removeSkin()
+			
+// Reset action
+
+	/** Resets values changed by the plugin */
+	private void resetSomething()
 	{
-		if (!Mobs.isSpoutEnabled())
+		SubactionType st = getSubaction();
+		if (st == null)
 		{
-			actionFailed("remove skin", ReasonType.NO_SPOUT);
+			actionFailed("reset", ReasonType.NO_SUBACTION);
 			return;
 		}
 		
-		if (isActionCancelled("remove skin")) return;
-		
-		for (LivingEntity le : getMobType(LivingEntity.class)) Spout.getServer().resetEntitySkin(le);
+		switch (st)
+		{
+			case ALL_DATA: resetAllData();
+				break;
+			case ALL_DROPS: resetAllDrops();
+				break;
+			case MAX_HP: resetMaxHp();
+				break;
+			case SKIN: resetSkin();
+				break;
+			default: resetProperty(st);
+				break;
+		}
 	}
 	
-	/** Removes some data from a mob */
-	private void removeProperty(SubactionType st)
+	/** Removes all data from a mob or block */
+	private void resetAllData()
+	{		
+		if (isActionCancelled("reset all_data")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class)) Data.clearData(le);
+	}
+	
+	/** Resets what a mob drops on death */
+	private void resetAllDrops()
+	{
+		if (isActionCancelled("reset all_drops")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.removeData(le, SubactionType.CUSTOM_DROPS);
+			Data.removeData(le, SubactionType.DROPPED_EXP);
+			Data.removeData(le, SubactionType.NO_DROPS);
+			Data.removeData(le, SubactionType.NO_DEFAULT_DROPS);
+		}
+	}
+	
+	/** Restore a mob's max_hp to its vanilla setting */
+	private void resetMaxHp()
+	{
+		if (isActionCancelled("reset max_hp")) return;
+		
+		for (Damageable d : getMobType(Damageable.class))
+		{
+			d.resetMaxHealth();
+		}
+	}	
+	
+	/** Resets some data from a mob */
+	private void resetProperty(SubactionType st)
 	{		
 		if (isActionCancelled("remove " + st)) return;
 		
@@ -747,6 +779,23 @@ public class MobsEvent
 		}
 	}
 	
+	/** Returns a mob's skin to default (requires Spout) */
+	private void resetSkin()
+	{
+		if (!Mobs.isSpoutEnabled())
+		{
+			actionFailed("reset skin", ReasonType.NO_SPOUT);
+			return;
+		}
+		
+		if (isActionCancelled("reset skin")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Spout.getServer().resetEntitySkin(le);
+		}
+	}
+		
 // Set action
 	
 	/** Sets something (mob property, door, etc.) */
@@ -767,13 +816,19 @@ public class MobsEvent
 				break;
 			case BLOCK: setBlock();
 				break;
+			case CUSTOM_DROPS: setCustomDrops();
+				break;
+			case EXP: setExp();
+				break;
 			case HP: setHp();
 				break;
 			case LEVEL: setLevel();
 				break;
 			case MAX_HP: setMaxHp();
 				break;  
-			case OCELOT_TYPE: setOcelotType();
+			case MONEY: setMoney();
+				break;
+			case OCELOT: setOcelot();
 				break;
 			case OPEN: setOpen();
 				break;
@@ -787,6 +842,8 @@ public class MobsEvent
 				break;	
 			case SIZE: setSize();
 				break;
+			case SKELETON: setSkeleton();
+				break;
 			case SKIN: setSkin();
 				break;
 			case TAMED: setTamed();
@@ -795,7 +852,7 @@ public class MobsEvent
 				break;
 			case TITLE: setTitle();
 				break;
-			case VILLAGER_TYPE: setVillagerType();
+			case VILLAGER: setVillager();
 				break;
 			case WEATHER: setWeather();
 				break;
@@ -816,9 +873,8 @@ public class MobsEvent
 			case FRIENDLY:
 			case NO_BURN:	
 			case NO_CREATE_PORTALS:
+			case NO_DEFAULT_DROPS:
 			case NO_DESTROY_BLOCKS:
-			case NO_DROPPED_EXP:
-			case NO_DROPPED_ITEMS:
 			case NO_DROPS:
 			case NO_DYED:
 			case NO_EVOLVE:		
@@ -866,6 +922,7 @@ public class MobsEvent
 			case DAMAGE_FROM_SUICIDE:
 			case DAMAGE_FROM_VOID:
 			case DAMAGE_FROM_WITHER:
+			case DROPPED_EXP:
 			case EXPLOSION_SIZE:
 			case MAX_LIFE: 
 			case SPLIT_INTO: setCustomInt(st);
@@ -883,18 +940,13 @@ public class MobsEvent
 			case CUSTOM_STRING_10: 
 			case NAME: setCustomValue(st);
 				break;
-			/*case EXP: setExp(temp, ev);
-				break;
-			case MONEY: setMoney(temp, ev);
-				break;*/
 		}
 		//TODO flexidamage?
 	}
-
 	
 	private void setBlock()
 	{
-		int id = getItemId();		
+		/*int id = getItemId();		
 		int data = getItemData(0);
 		
 		if (isActionCancelled("set block " + id + ":" + data)) return;
@@ -902,7 +954,7 @@ public class MobsEvent
 		for (Location loc : getLocations())
 		{
 			loc.getBlock().setTypeIdAndData(id, (byte)data, false);
-		}
+		}*/
 	}
 	
 	/** Sets a door, gate, etc. open or closed */
@@ -919,12 +971,6 @@ public class MobsEvent
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("set open " + value, ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
-			
 			BlockState bs = loc.getBlock().getState();
 			MaterialData md = bs.getData();
 			if (md instanceof Openable)
@@ -945,8 +991,7 @@ public class MobsEvent
 			bs.setData(md);
 			bs.update(true);
 		}
-	}
-	
+	}	
 	
 	private void setTime()
 	{		
@@ -990,7 +1035,7 @@ public class MobsEvent
 					break;
 				case 2: value = ValueType.STORMY;
 					break;
-			}//TODO docs random + effect / sound
+			}
 		}
 		
 		if (isActionCancelled("set weather, " + value + "(" + duration + ")")) return;
@@ -1081,6 +1126,17 @@ public class MobsEvent
 		}
 	}
 	
+	private void setCustomDrops()
+	{
+		List<ItemStack> list = getItems();
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.CUSTOM_DROPS, list);
+		}
+		
+	}
+	
 	private void setCustomInt(SubactionType st)
 	{
 		String value = getValue();
@@ -1101,7 +1157,7 @@ public class MobsEvent
 			Data.putData(le, st, amount);
 		}
 	}
-	
+		
 	private void setCustomValue(SubactionType st)
 	{
 		String value = getValue();
@@ -1119,6 +1175,48 @@ public class MobsEvent
 		}
 	}
 		
+	private void setExp()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set exp", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		int exp = getNumber(value);
+		
+		if (isActionCancelled("set exp " + exp)) return;
+		
+		for (Player p : getMobType(Player.class))
+		{
+			exp = adjustNumber(exp, p.getTotalExperience());
+			if (exp <= 272)
+			{
+				int level = exp / 17;
+				double d = exp / 17.0;
+				p.setLevel(level);
+				p.setExp((float) (d - level));
+			}
+			else
+			{
+				int temp = 272;
+				int level = 16;
+				int temp2 = 0;
+				while (temp < exp)
+				{
+					temp += 20 + temp2;
+					level++;
+					temp2 += 3;
+				}
+				p.setLevel(level);
+				double d = (temp - exp * 1.0) / (temp2 + 3);
+				p.setExp((float)d);
+			}
+			p.setTotalExperience(exp);
+		}
+	}
+	
 	/** Sets a mob's health */
 	private void setHp()
 	{
@@ -1203,16 +1301,44 @@ public class MobsEvent
 		}
 	}
 	
-	private void setOcelotType()
+	private void setMoney()
+	{
+		if (Mobs.getEconomy() == null)
+		{
+			actionFailed("set money", ReasonType.NO_VAULT);
+			return;
+		}
+		
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set money", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		int money = getNumber(value);
+		
+		if (isActionCancelled("set money " + money)) return;
+		
+		for (Player p : getMobType(Player.class))
+		{			
+			double amount = Mobs.getEconomy().getBalance(p.getName());
+			money = adjustNumber((int)Math.round(amount), money);
+			//double difference = money - amount;
+			Mobs.getEconomy().depositPlayer(p.getName(), money);
+		}
+	}
+	
+	private void setOcelot()
 	{
 		String value = getValue();
 		if (value == null)
 		{
-			actionFailed("set ocelot_type", ReasonType.NO_VALUE);
+			actionFailed("set ocelot", ReasonType.NO_VALUE);
 			return;
 		}
 		
-		if (isActionCancelled("set ocelot_type, " + value)) return;
+		if (isActionCancelled("set ocelot, " + value)) return;
 		
 		Ocelot.Type ot;
 		if (value.equalsIgnoreCase("random"))
@@ -1318,6 +1444,27 @@ public class MobsEvent
 		}
 	}
 	
+	private void setSkeleton()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set skeleton", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set skeleton, " + value)) return;
+		
+		Skeleton.SkeletonType st;
+		if (value.equalsIgnoreCase("random"))
+		{
+			st = Skeleton.SkeletonType.getType(new Random().nextInt(Skeleton.SkeletonType.values().length));
+		}
+		else st = Skeleton.SkeletonType.valueOf(value.toUpperCase());
+		
+		for (Skeleton s : getMobType(Skeleton.class)) s.setSkeletonType(st);
+	}
+	
 	private void setSkin()
 	{
 		if (!Mobs.isSpoutEnabled())
@@ -1383,16 +1530,16 @@ public class MobsEvent
 		}
 	}
 	
-	private void setVillagerType()
+	private void setVillager()
 	{
 		String value = getValue();
 		if (value == null)
 		{
-			actionFailed("set villager_type", ReasonType.NO_VALUE);
+			actionFailed("set villager", ReasonType.NO_VALUE);
 			return;
 		}
 		
-		if (isActionCancelled("set villager_type, " + value)) return;
+		if (isActionCancelled("set villager, " + value)) return;
 		
 		Villager.Profession vp;
 		if (value.equalsIgnoreCase("random"))
@@ -1463,11 +1610,6 @@ public class MobsEvent
 		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
-			{
-				actionFailed("spawn exp " + amount, ReasonType.CHUNK_NOT_LOADED);
-				continue;
-			}
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
 			orb.setExperience(amount);
 		}
@@ -1475,28 +1617,22 @@ public class MobsEvent
 	
 	/** Spawns an item at a location */
 	private void spawnItem()
-	{		
-		int id = getItemId();
-		if (id == 0)
+	{	
+		List<ItemStack> list = getItems();
+		
+		if (list == null || list.size() == 0)
 		{
-			actionFailed("spawn item", ReasonType.BAD_ITEM_ID);
+			actionFailed("spawn item", ReasonType.NO_ITEM);
 			return;
 		}
 		
-		int data = getItemData(0);
-		int amount = getAmount(1);
-		
-		ItemStack is = new ItemStack(id, amount, (short)data);
-		if (isActionCancelled("spawn item " + getPrettyItem(is))) return;
-		
 		for (Location loc : getLocations())
 		{
-			if (!loc.getChunk().isLoaded())
+			for (ItemStack is : list)
 			{
-				actionFailed("spawn item " + getPrettyItem(is), ReasonType.CHUNK_NOT_LOADED);
-				continue;
+				if (isActionCancelled("spawn item " + getPrettyItem(is) + " ," + getPrettyLoc(loc))) continue;			
+				loc.getWorld().dropItem(loc, is);
 			}
-			loc.getWorld().dropItem(loc, is);
 		}
 	}
 	
@@ -1519,17 +1655,10 @@ public class MobsEvent
 		{
 			for (Location loc : getLocations())
 			{
-				if (!loc.getChunk().isLoaded())
-				{
-					actionFailed("spawn mob " + et + "(" + mob_name + ")", ReasonType.CHUNK_NOT_LOADED);
-					continue;
-				}
-				
 				Mobs.setMobName(mob_name);
 				loc.getWorld().spawnEntity(loc, et);
 			}
 		}
-		//TODO mob description ?
 	}
 	
 // Tell action
@@ -1590,23 +1719,14 @@ public class MobsEvent
 		ce = me;
 		return getNumber(ce.getString(ElementType.AMOUNT));
 	}
-	
-	private AmountType getAmountType()
-	{
-		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT_TYPE, ev);
-		if (me == null) return null;
 		
-		ce = me;
-		return AmountType.valueOf(ce.getString(ElementType.AMOUNT_TYPE));
-	}
-	
 	private int getDuration()
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.DURATION, ev);
 		if (me == null) return 0;
 
 		ce = me;
-		return getNumber(ce.getString(ElementType.DURATION)) * 20;//TODO docs = ticks
+		return getNumber(ce.getString(ElementType.DURATION)) * 20;
 	}
 	
 	private Effect getEffect()
@@ -1615,7 +1735,71 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return Effect.valueOf(ce.getString(ElementType.EFFECT).toUpperCase());	
+		String s = ce.getString(ElementType.EFFECT).toUpperCase();
+		if (s.equalsIgnoreCase("random"))
+		{
+			return Effect.values()[new Random().nextInt(Effect.values().length)];
+		}
+		else return Effect.valueOf(s);
+	}
+	
+	private String getEnchantment()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.ENCHANTMENT, ev);
+		if (me == null) return null;
+
+		ce = me;
+		String s = ce.getString(ElementType.ENCHANTMENT).toUpperCase();
+		if (s.equalsIgnoreCase("random"))
+		{
+			return Enchantment.values()[new Random().nextInt(Enchantment.values().length)].getName();
+		}
+		else return s;
+	}
+	
+	private Map<Enchantment, Integer> getEnchantments()
+	{
+		String s = getEnchantment();
+		List<MobsElement> list = new ArrayList<MobsElement>();
+		
+		if (Enums.isEnchantment(s)) list.add(ce);		
+		else if (linked_enchantments != null)
+		{
+			String[] temp = s.replace(" ", "").split(",");
+			String ss = temp[new Random().nextInt(temp.length)];
+			temp = ss.split("\\+");
+			for (String la : temp)
+			{
+				MobsElement me = linked_enchantments.get(la);
+				if (me == null) continue;
+				
+				me.setParent(ce);
+				list.add(me);
+			}
+		}
+
+		Map<Enchantment, Integer> temp = new HashMap<Enchantment, Integer>();
+		for (MobsElement me : list)
+		{
+			ce = me;
+			String en = getEnchantment();
+			if (en != null)
+			{
+				int level = getEnchantmentLevel();
+				temp.put(Enchantment.getByName(en), level);
+			}
+		}
+		
+		return temp;
+	}
+	
+	private int getEnchantmentLevel()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.ENCHANTMENT_LEVEL, ev);
+		if (me == null) return 1;
+
+		ce = me;
+		return getNumber(ce.getString(ElementType.ENCHANTMENT_LEVEL));
 	}
 	
 	private int getItemData(int orig)
@@ -1627,13 +1811,67 @@ public class MobsEvent
 		return getNumber(ce.getString(ElementType.ITEM_DATA));
 	}
 	
+	private String getItem()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.ITEM, ev);
+		if (me == null) return null;
+
+		ce = me;
+		return ce.getString(ElementType.ITEM).toUpperCase();
+	}//TODO saving!
+	
 	private int getItemId()
 	{
-		MobsElement me = ce.getCurrentElement(ElementType.ITEM_ID, ev);
+		MobsElement me = ce.getCurrentElement(ElementType.ITEM, ev);
 		if (me == null) return 0;
 
 		ce = me;
-		return getNumber(ce.getString(ElementType.ITEM_ID));
+		return getNumber(ce.getString(ElementType.ITEM));
+	}
+	
+	private List<ItemStack> getItems() 
+	{
+		String s = getItem();
+		List<MobsElement> list = new ArrayList<MobsElement>();
+		if (isNumber(s)) list.add(ce);
+		
+		else if (linked_items != null)
+		{
+			String[] temp = s.replace(" ", "").split(",");
+			String ss = temp[new Random().nextInt(temp.length)];
+			temp = ss.split("\\+");
+			for (String la : temp)
+			{
+				MobsElement me = linked_items.get(la);
+				if (me == null) continue;
+				
+				me.setParent(ce);
+				list.add(me);
+			}
+		}
+
+		List<ItemStack> temp = new ArrayList<ItemStack>();
+		for (MobsElement me : list)
+		{
+			ce = me;
+
+			int id = getNumber(getItem());
+			if (id == 0) continue;
+			
+			int data = getItemData(0);
+			int amount = getAmount(1);		
+			
+			ItemStack is = new ItemStack(id, amount, (short)data);
+			
+			Map<Enchantment, Integer> en = getEnchantments();
+			if (en != null)
+			{
+				is.addUnsafeEnchantments(en);
+			}
+			temp.add(is);
+		}
+		
+		return temp;
 	}
 	
 	private String getMessage()
@@ -1663,6 +1901,15 @@ public class MobsEvent
 		return ce.getString(ElementType.MOB_NAME);
 	}
 	
+	private NumberType getNumberType()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT_TYPE, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return NumberType.valueOf(ce.getString(ElementType.AMOUNT_TYPE));
+	}
+	
 	private int getSize(int orig)
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.SIZE, ev);
@@ -1678,7 +1925,12 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return Sound.valueOf(ce.getString(ElementType.SOUND).toUpperCase());	
+		String s = ce.getString(ElementType.SOUND).toUpperCase();
+		if (s.equalsIgnoreCase("random"))
+		{
+			return Sound.values()[new Random().nextInt(Sound.values().length)];
+		}
+		else return Sound.valueOf(s);	
 	}
 	
 	private float getSoundPitch()
@@ -1712,15 +1964,19 @@ public class MobsEvent
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.TARGET, ev);
 		if (me == null) return null;
-
+		
 		ce = me;
 		return ce.getString(ElementType.TARGET).toUpperCase();
 	}
 	
 	@SuppressWarnings("unchecked")
 	private List<Object> getTargets() 
-	{
+	{		
+		String old_ce = ce.toString();
+		
 		String s = getTarget();
+		if (current_targets != null && !old_ce.equalsIgnoreCase(ce.toString())) return current_targets;
+		
 		if (s == null) s = "SELF";
 		List<MobsElement> list = new ArrayList<MobsElement>();
 		if (Enums.isTargetType(s)) list.add(ce);
@@ -1751,6 +2007,10 @@ public class MobsEvent
 			else mobs.add(o);
 		}
 	
+		if (!old_ce.equalsIgnoreCase(ce.toString()))
+		{
+			current_targets = mobs;
+		}
 		return mobs;
 	}
 	
@@ -1772,32 +2032,32 @@ public class MobsEvent
 		return ce.getString(ElementType.TARGET_NAME);
 	}
 
-	/*private int getTargetXOffset(int orig)
+	private int getTargetXOffset()
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.TARGET_X_OFFSET, ev);
-		if (me == null) return orig;
+		if (me == null) return 0;
 		
 		ce = me;
 		return getNumber(ce.getString(ElementType.TARGET_X_OFFSET));
 	}
 	
-	private int getTargetYOffset(int orig)
+	private int getTargetYOffset()
 	{
 		MobsElement me= ce.getCurrentElement(ElementType.TARGET_Y_OFFSET, ev);
-		if (me == null) return orig;
+		if (me == null) return 0;
 		
 		ce = me;
 		return getNumber(ce.getString(ElementType.TARGET_Y_OFFSET));
 	}
 	
-	private int getTargetZOffset(int orig)
+	private int getTargetZOffset()
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.TARGET_Z_OFFSET, ev);
-		if (me == null) return orig;
+		if (me == null) return 0;
 		
 		ce = me;
 		return getNumber(ce.getString(ElementType.TARGET_Z_OFFSET));
-	}*/
+	}
 	
 	private String getValue()
 	{
@@ -1845,6 +2105,17 @@ public class MobsEvent
 	
 // Utils
 		
+	private boolean isNumber(String orig)
+	{
+		try
+		{
+			Integer.valueOf(orig);
+			return true;
+		}
+		catch (Exception e) {};
+		return false;
+	}
+	
 	/** Returns a randomized int */
 	private int getNumber(String s)
 	{
@@ -1867,10 +2138,10 @@ public class MobsEvent
 	/** Adjusts an int by percentage */
 	private int adjustNumber(int orig, int value)
 	{
-		AmountType at = getAmountType();
-		if (at == null) return orig;
+		NumberType nt = getNumberType();
+		if (nt == null) return orig;
 		
-		switch (at)
+		switch (nt)
 		{
 			case ABSOLUTE: return orig;
 			case DEC: return orig - value;
@@ -1887,10 +2158,12 @@ public class MobsEvent
 	{
 		switch (vt)
 		{
-			case NO: return false;
+			case NO:
+			case FALSE: return false;
 			case RANDOM: return new Random().nextBoolean();
 			case TOGGLED: return !orig;
-			case YES: return true;
+			case YES:
+			case TRUE: return true;
 		}
 		
 		return orig;
@@ -1911,7 +2184,7 @@ public class MobsEvent
 	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
 	private Object getMCTarget()
 	{
-		String tt = getTarget();
+		String tt =  getTarget();
 		if (tt == null)
 		{
 			if (ev.getLivingEntity() != null) return ev.getLivingEntity();
@@ -2191,7 +2464,7 @@ public class MobsEvent
 	
 	/** Returns a list of target locations, using livingentity if necessary */
 	private List<Location> getLocations()
-	{//TODO add chunk check here
+	{
 		Object target = getMCTarget();
 		
 		List<Location> temp = new ArrayList<Location>();
@@ -2199,16 +2472,57 @@ public class MobsEvent
 		{
 			for (Object o : (List<?>)target)
 			{
-				if (o instanceof Location) temp.add((Location)o);
-				else if (o instanceof LivingEntity) temp.add(((LivingEntity)o).getLocation());
+				Location loc = null;
+				if (o instanceof Location) loc = (Location)o;
+				else if (o instanceof LivingEntity) loc = ((LivingEntity)o).getLocation();
+				
+				loc = adjustLocation(loc);
+				if (loc != null) temp.add(loc);
 			}
 		}
 		else
 		{
-			if (target instanceof Location) temp.add((Location)target);
-			else if (target instanceof LivingEntity) temp.add(((LivingEntity)target).getLocation());
+			Location loc = null;
+			if (target instanceof Location) loc = (Location)target;
+			else if (target instanceof LivingEntity) loc = ((LivingEntity)target).getLocation();
+			
+			loc = adjustLocation(loc);
+			if (loc != null) temp.add(loc);
 		}
 		return temp;
+	}
+	
+	private Location adjustLocation(Location loc)
+	{
+		if (loc == null) return null;
+		Random rng = new Random();
+		
+		int temp = getTargetXOffset();
+		if (temp > 0)
+		{
+			if (rng.nextBoolean()) temp = temp * -1;
+			loc.setX(loc.getX() + temp);
+		}
+		
+		temp = getTargetYOffset();
+		if (temp > 0)
+		{
+			if (rng.nextBoolean()) temp = temp * -1;
+			double h = loc.getY() + temp;
+			if (h > loc.getWorld().getMaxHeight()) h = loc.getWorld().getMaxHeight();
+			loc.setY(h);
+		}
+		
+		temp = getTargetZOffset();
+		if (temp > 0)
+		{
+			if (rng.nextBoolean()) temp = temp * -1;
+			loc.setZ(loc.getZ() + temp);
+		}		
+		
+		if (loc.getChunk().isLoaded()) return loc;
+		
+		return null;
 	}
 	
 	/** Returns a list of the relevant mobs (pigs, ageables, etc.) */
@@ -2222,7 +2536,7 @@ public class MobsEvent
 		for (Object o : targets)
 		{
 			if (type.isInstance(o))
-			{
+			{   
 				if (o instanceof Player && !((Player)o).isOnline()) continue;
 				temp.add((T)o);
 			}

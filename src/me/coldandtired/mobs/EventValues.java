@@ -3,6 +3,7 @@ package me.coldandtired.mobs;
 import java.util.HashSet;
 import java.util.Set;
 
+import me.coldandtired.extraevents.Timer;
 import me.coldandtired.mobs.Enums.EventType;
 
 import org.bukkit.Bukkit;
@@ -21,14 +22,11 @@ public class EventValues
 	private Timer timer;
 	private Set<Integer> checked_elements = new HashSet<Integer>();	
 	
-	public EventValues(Event orig_event, EventType mobs_event, LivingEntity le, LivingEntity aux_mob, Projectile projectile, Timer timer)
+	public EventValues(Event orig_event, EventType mobs_event, LivingEntity le)
 	{
 		this.orig_event = orig_event;
 		this.mobs_event = mobs_event;
 		this.le = le;
-		this.aux_mob = aux_mob;
-		this.projectile = projectile;
-		this.timer = timer;
 	}
 	
 	public Event getOrigEvent()
@@ -46,14 +44,34 @@ public class EventValues
 		return le;
 	}
 	
+	public void setAuxMob(LivingEntity aux_mob)
+	{
+		this.aux_mob = aux_mob;
+	}
+	
 	public LivingEntity getAuxMob()
 	{
 		return aux_mob;
 	}
 	
+	public void setProjectile(Projectile projectile)
+	{
+		this.projectile = projectile;
+	}
+	
 	public Projectile getProjectile()
 	{
 		return projectile;
+	}
+	
+	public void setTimer(Timer timer)
+	{
+		this.timer = timer;
+	}
+	
+	public Timer getTimer()
+	{
+		return timer;
 	}
 	
 	public World getWorld()

@@ -39,12 +39,13 @@ import org.w3c.dom.Element;
 
 import com.khorn.terraincontrol.LocalWorld;
 import com.khorn.terraincontrol.TerrainControl;
-import me.coldandtired.extra_events.Area;
-import me.coldandtired.extra_events.LivingEntityBlockEvent;
-import me.coldandtired.extra_events.LivingEntityDamageEvent;
-import me.coldandtired.extra_events.PlayerApproachLivingEntityEvent;
-import me.coldandtired.extra_events.PlayerLeaveLivingEntityEvent;
-import me.coldandtired.extra_events.PlayerNearLivingEntityEvent;
+import me.coldandtired.extraevents.Area;
+import me.coldandtired.extraevents.LivingEntityBlockEvent;
+import me.coldandtired.extraevents.LivingEntityDamageEvent;
+import me.coldandtired.extraevents.PlayerApproachLivingEntityEvent;
+import me.coldandtired.extraevents.PlayerLeaveLivingEntityEvent;
+import me.coldandtired.extraevents.PlayerNearLivingEntityEvent;
+import me.coldandtired.extraevents.Timer;
 import me.coldandtired.mobs.Enums.ConditionType;
 import me.coldandtired.mobs.Enums.ReasonType;
 import me.coldandtired.mobs.Enums.SubactionType;
@@ -235,6 +236,7 @@ public class MobsCondition
 			case IF_BIOME:
 			case IF_NOT_BIOME: return matchesBiome(ct, block);		
 			case IF_BLOCK_LIGHT_LEVEL: return matchesBlockLightLevel(ct, block);		
+			case IF_BLOCKS_FROM_SPAWN: return matchesBlocksFromSpawn(ct, block);
 			case IF_LIGHT_LEVEL: return matchesLightLevel(ct, block);
 			case IF_SKY_LIGHT_LEVEL: return matchesSkyLightLevel(ct, block);		
 			case IF_X: return matchesX(ct, block);		
@@ -351,7 +353,8 @@ public class MobsCondition
 				case IF_NOT_AREA:
 				case IF_BIOME:
 				case IF_NOT_BIOME:					
-				case IF_BLOCK_LIGHT_LEVEL:					
+				case IF_BLOCK_LIGHT_LEVEL:
+				case IF_BLOCKS_FROM_SPAWN:
 				case IF_LIGHT_LEVEL:
 				case IF_SKY_LIGHT_LEVEL:					
 				case IF_X:					
@@ -399,7 +402,12 @@ public class MobsCondition
 				case IF_SERVER_PLAYER_COUNT: if (!matchesServerPlayerCount(ct)) return false;
 					break;
 				case IF_THUNDERING: if (!matchesThundering(ct)) return false;
-					break;	
+					break;
+					
+				case IF_TIMER_NAME:
+				case IF_NOT_TIMER_NAME: if (!matchesTimerName(ct)) return false;
+					break;
+					
 				case IF_WEEK: if (!matchesWeek(ct)) return false;
 					break;
 				case IF_WEEK_OF_MONTH: if (!matchesWeekOfMonth(ct)) return false;
@@ -546,6 +554,16 @@ public class MobsCondition
 		String needed = conditions.get(ct);
 		
 		int i = block.getLightFromBlocks();
+		boolean b = matchesInt(i, needed);
+		callConditionEvent(ct, needed, i, b);
+		return b;
+	}
+	
+	private boolean matchesBlocksFromSpawn(ConditionType ct, Block block)
+	{
+		String needed = conditions.get(ct);
+		
+		int i = (int)block.getLocation().distance(block.getWorld().getSpawnLocation());
 		boolean b = matchesInt(i, needed);
 		callConditionEvent(ct, needed, i, b);
 		return b;
@@ -1174,6 +1192,23 @@ public class MobsCondition
 		boolean b = ev.getWorld().isThundering();
 		callConditionEvent(ct, needed, "" + b, b == needed);
 		return b == needed;
+	}
+	
+	private boolean matchesTimerName(ConditionType ct)
+	{
+		String needed = conditions.get(ct);		
+		Timer t = ev.getTimer();
+		
+		if (t != null) 
+		{
+			String s = t.getName();
+			boolean b = matchesString(s, needed);
+			if (ct.equals(ConditionType.IF_NOT_TIMER_NAME)) b = !b;
+			callConditionEvent(ct, needed, s, b);
+			return b;
+		}
+		callConditionEvent(ct, needed, ReasonType.NO_TIMER, false);
+		return false;
 	}
 	
 	private boolean matchesVillager(ConditionType ct, LivingEntity le)

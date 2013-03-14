@@ -1,6 +1,7 @@
 package me.coldandtired.mobs;
 
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 
 public class Enums
 {
@@ -50,16 +51,13 @@ public class Enums
 		ACTION,
 		AMOUNT,
 		AMOUNT_TYPE,
-		//AREA_NAME,
 		CONDITION,
 		DURATION,
 		EFFECT,
-		//EFFECT_TYPE,
-		//ENCHANTMENT_ID, 
-		//ENCHANTMENT_LEVEL, 
+		ENCHANTMENT, 
+		ENCHANTMENT_LEVEL, 
+		ITEM, 
 		ITEM_DATA, 
-		ITEM_ID, 
-		//LOCKED,
 		MESSAGE,
 		MOB, 		
 		MOB_NAME,
@@ -91,14 +89,14 @@ public class Enums
 		GIVE,
 		KILL,
 		LOG,
-		PLAY, 
 		REMOVE,
+		RESET,
 		SET,
 		SPAWN,
 		TELL
 	}
 	
-	enum AmountType
+	enum NumberType
 	{
 		ABSOLUTE,
 		DEC,
@@ -117,6 +115,7 @@ public class Enums
 		ANGRY,
 		ATTACK_POWER,
 		BLOCK,
+		CUSTOM_DROPS,
 		CUSTOM_FLAG_1,
 		CUSTOM_FLAG_2,
 		CUSTOM_FLAG_3,
@@ -148,7 +147,7 @@ public class Enums
 		CUSTOM_STRING_9,
 		CUSTOM_STRING_10,
 		DAMAGE_FROM_BLOCK_EXPLOSION,
-		DAMAGE_FROM_CONTACT,
+		DAMAGE_FROM_CONTACT, 
 		DAMAGE_FROM_CUSTOM,
 		DAMAGE_FROM_DROWNING,
 		DAMAGE_FROM_ENTITY_ATTACK,
@@ -169,7 +168,7 @@ public class Enums
 		DAMAGE_FROM_VOID,
 		DAMAGE_FROM_WITHER,
 		DROPPED_EXP,
-		DROPPED_ITEMS,		
+		//DROPPED_ITEMS,		
 		EFFECT,
 	    EXP,
 	    EXPLOSION,
@@ -188,9 +187,8 @@ public class Enums
 	    NAME,
 	    NO_BURN,	
 		NO_CREATE_PORTALS,
+		NO_DEFAULT_DROPS,
 		NO_DESTROY_BLOCKS,
-		NO_DROPPED_EXP,
-		NO_DROPPED_ITEMS,
 		NO_DROPS,
 		NO_DYED,
 		NO_EVOLVE,		
@@ -204,13 +202,14 @@ public class Enums
 		NO_SHEARING,
 		NO_TAMING,
 		NO_TELEPORT,    
-	    OCELOT_TYPE,
+	    OCELOT,
 		OPEN,
 		OWNER,
 		POWERED,
 		SADDLED,
 		SHEARED,
 		SIZE,
+		SKELETON,
 	    SKIN,
 	    SOUND,
 	    SPAWN_REASON,
@@ -218,7 +217,7 @@ public class Enums
 		TAMED,
 		TIME,
 		TITLE,
-		VILLAGER_TYPE,
+		VILLAGER,
 		WEATHER,
 		WOOL
     }
@@ -305,12 +304,14 @@ public class Enums
 	
 	enum ValueType
 	{
+		FALSE,
 		NO,
 		RAINY,
 		RANDOM,
 		STORMY,
 		SUNNY,
 		TOGGLED,
+		TRUE,
 		YES
 	}
 	
@@ -327,6 +328,7 @@ public class Enums
 		IF_BIOME,
 		IF_BLOCK,
 		IF_BLOCK_LIGHT_LEVEL,
+		IF_BLOCKS_FROM_SPAWN,
 		IF_CARRYING,
 		IF_CHUNK_COUNT,
 		IF_CUSTOM_FLAG_1,
@@ -400,6 +402,7 @@ public class Enums
 		IF_NOT_PROJECTILE,
 		IF_NOT_SPAWN_REASON,
 		IF_NOT_STANDING_ON,
+		IF_NOT_TIMER_NAME,
 		IF_NOT_VILLAGER,
 		IF_NOT_WEARING,
 		IF_NOT_WOOL,
@@ -424,6 +427,7 @@ public class Enums
 		IF_STANDING_ON,
 		IF_TAMED,
 		IF_THUNDERING,
+		IF_TIMER_NAME,
 		IF_VILLAGER,
 		IF_WEARING,
 		IF_WEEK,
@@ -445,7 +449,7 @@ public class Enums
 		BAD_ITEM_ID,
 		CANNOT_BE_OPENED,
 		CANNOT_CANCEL_EVENT,
-		CHUNK_NOT_LOADED,
+		//CHUNK_NOT_LOADED,
 		NO_ACTION,
 		NO_AREA,
 		NO_EFFECT,
@@ -461,6 +465,7 @@ public class Enums
 		NO_SPOUT,
 		NO_SUBACTION,
 		NO_TARGET,
+		NO_TIMER,
 		NO_VALUE,
 		NO_VAULT,
 		NO_X,
@@ -496,7 +501,17 @@ public class Enums
 		return false;
 	}
 	
-	public static boolean isTargetType(String s)
+	public static boolean isEnchantment(String s)
+	{
+		for (Enchantment e : Enchantment.values())
+		{
+			if (e.getName().equalsIgnoreCase(s)) return true;
+		}
+		
+		return false;
+	}
+	
+ 	public static boolean isTargetType(String s)
 	{
 		for (TargetType tt : TargetType.values())
 		{
