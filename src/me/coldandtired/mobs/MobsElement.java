@@ -82,7 +82,7 @@ public class MobsElement
 				break;
 			}
 		}
-		
+	
 		if (conditional)
 		{
 			for (MobsElement me : map.values())
@@ -135,7 +135,10 @@ public class MobsElement
 		}
 		
 		String s = getString(ElementType.CONDITION);
-		if (s == null) return main_list;
+		if (s == null)
+		{
+			if (main_list.size() > 0) return main_list; else return null;
+		}
 			
 		s = s.toUpperCase();
 		

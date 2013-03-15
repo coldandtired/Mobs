@@ -1735,7 +1735,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		String s = ce.getString(ElementType.EFFECT).toUpperCase();
+		String s = getRatioString(ce.getString(ElementType.EFFECT)).toUpperCase();
 		if (s.equalsIgnoreCase("random"))
 		{
 			return Effect.values()[new Random().nextInt(Effect.values().length)];
@@ -1749,7 +1749,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		String s = ce.getString(ElementType.ENCHANTMENT).toUpperCase();
+		String s = getRatioString(ce.getString(ElementType.ENCHANTMENT)).toUpperCase();
 		if (s.equalsIgnoreCase("random"))
 		{
 			return Enchantment.values()[new Random().nextInt(Enchantment.values().length)].getName();
@@ -1817,7 +1817,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return ce.getString(ElementType.ITEM).toUpperCase();
+		return getRatioString(ce.getString(ElementType.ITEM)).toUpperCase();
 	}//TODO saving!
 	
 	private int getItemId()
@@ -1889,7 +1889,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return EntityType.valueOf(ce.getString(ElementType.MOB).toUpperCase());	
+		return EntityType.valueOf(getRatioString(ce.getString(ElementType.MOB)).toUpperCase());	
 	}
 	
 	private String getMobName()
@@ -1898,7 +1898,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return ce.getString(ElementType.MOB_NAME);
+		return getRatioString(ce.getString(ElementType.MOB_NAME));
 	}
 	
 	private NumberType getNumberType()
@@ -1907,7 +1907,7 @@ public class MobsEvent
 		if (me == null) return null;
 		
 		ce = me;
-		return NumberType.valueOf(ce.getString(ElementType.AMOUNT_TYPE));
+		return NumberType.valueOf(getRatioString(ce.getString(ElementType.AMOUNT_TYPE)));
 	}
 	
 	private int getSize(int orig)
@@ -1925,7 +1925,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		String s = ce.getString(ElementType.SOUND).toUpperCase();
+		String s = getRatioString(ce.getString(ElementType.SOUND)).toUpperCase();
 		if (s.equalsIgnoreCase("random"))
 		{
 			return Sound.values()[new Random().nextInt(Sound.values().length)];
@@ -1939,7 +1939,7 @@ public class MobsEvent
 		if (me == null) return 1.0f;
 
 		ce = me;
-		return Float.parseFloat(ce.getString(ElementType.SOUND_PITCH)) / 100;
+		return Float.parseFloat(getRatioString(ce.getString(ElementType.SOUND_PITCH))) / 100;
 	}
 	
 	private float getSoundVolume()
@@ -1948,7 +1948,7 @@ public class MobsEvent
 		if (me == null) return 1.0f;
 
 		ce = me;
-		return Float.parseFloat(ce.getString(ElementType.SOUND_VOLUME)) / 100;
+		return Float.parseFloat(getRatioString(ce.getString(ElementType.SOUND_VOLUME))) / 100;
 	}
 	
 	private SubactionType getSubaction()
@@ -1957,7 +1957,7 @@ public class MobsEvent
 		if (me == null) return null;
 
 		ce = me;
-		return SubactionType.valueOf(ce.getString(ElementType.SUB).toUpperCase());
+		return SubactionType.valueOf(getRatioString(ce.getString(ElementType.SUB).toUpperCase()));
 	}
 	
 	private String getTarget()
@@ -1966,7 +1966,7 @@ public class MobsEvent
 		if (me == null) return null;
 		
 		ce = me;
-		return ce.getString(ElementType.TARGET).toUpperCase();
+		return getRatioString(ce.getString(ElementType.TARGET).toUpperCase());
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -2029,7 +2029,7 @@ public class MobsEvent
 		if (me == null) return null;
 		
 		ce = me;
-		return ce.getString(ElementType.TARGET_NAME);
+		return getRatioString(ce.getString(ElementType.TARGET_NAME));
 	}
 
 	private int getTargetXOffset()
@@ -2065,7 +2065,7 @@ public class MobsEvent
 		if (me == null) return null;
 		
 		ce = me;
-		return ce.getString(ElementType.VALUE);
+		return getRatioString(ce.getString(ElementType.VALUE));
 	}
 	
 	private ValueType getValueType()
@@ -2114,6 +2114,16 @@ public class MobsEvent
 		}
 		catch (Exception e) {};
 		return false;
+	}
+	
+	/** Returns a randomized string */
+	private String getRatioString(String s)
+	{
+		s = s.replace(" ", "");
+		if (!s.contains(",")) return s;
+		
+		String[] temp = s.split(",");
+		return temp[new Random().nextInt(temp.length)];
 	}
 	
 	/** Returns a randomized int */
