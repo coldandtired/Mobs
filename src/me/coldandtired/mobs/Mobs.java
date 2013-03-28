@@ -71,7 +71,7 @@ public class Mobs extends JavaPlugin
 	        if (economyProvider != null) economy = economyProvider.getProvider();
 		}
 		
-		extra_events = (ExtraEvents)pm.getPlugin("Extra events");
+		extra_events = (ExtraEvents)pm.getPlugin("Extra Events");
 		
 		try 
 		{

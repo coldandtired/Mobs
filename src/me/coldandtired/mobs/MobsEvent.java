@@ -332,7 +332,7 @@ public class MobsEvent
 	{		
 		int size = getSize(1);
 		
-		if (isActionCancelled("cause explosion " + Integer.toString(size))) return; 
+		if (isActionCancelled("cause explosion " + size)) return; 
 		
 		for (Location loc : getLocations())
 		{
@@ -345,7 +345,7 @@ public class MobsEvent
 	{
 		int size = getSize(1);
 		
-		if (isActionCancelled("cause fiery_explosion " + Integer.toString(size))) return; 
+		if (isActionCancelled("cause fiery_explosion " + size)) return; 
 		
 		for (Location loc : getLocations())
 		{
@@ -433,9 +433,7 @@ public class MobsEvent
 			return;
 		}
 		
-		//t data = getItemData(0);
-		
-		ItemStack is = items.get(0);//new ItemStack(id, 1, (short)data);
+		ItemStack is = items.get(0);
 		if (isActionCancelled("damage block, " + getPrettyItem(is))) return;
 		
 		for (Location loc : getLocations())
@@ -495,13 +493,13 @@ public class MobsEvent
 		
 		if (list == null || list.size() == 0)
 		{
-			actionFailed("add custom_drops", ReasonType.NO_ITEM);
+			actionFailed("give custom_drops", ReasonType.NO_ITEM);
 			return;
 		}
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
-			if (isActionCancelled("add custom_drops " + le.toString())) continue;
+			if (isActionCancelled("give custom_drops " + le.toString())) continue;
 			if (Data.hasData(le, SubactionType.CUSTOM_DROPS))
 			{
 				List<ItemStack> temp = (List<ItemStack>)Data.getData(le, SubactionType.CUSTOM_DROPS);
@@ -526,7 +524,9 @@ public class MobsEvent
 		
 		for (Player p : getMobType(Player.class)) p.giveExp(amount);
 	}
-		
+		//TODO set in hand
+	//TODO other events
+	//TODO EE enter area all LEs.
 	/** Sends an item to players */
 	private void giveItem()
 	{
@@ -620,6 +620,8 @@ public class MobsEvent
 				break;
 			case CUSTOM_DROPS: removeCustomDrops();
 				break;
+			case DEFAULT_DROPS: removeDefaultDrops();
+				break;
 			case DROPPED_EXP: removeDroppedExp();
 				break;
 			case ITEM: removeItem();
@@ -636,18 +638,29 @@ public class MobsEvent
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
-			Data.removeData(le, SubactionType.CUSTOM_DROPS);
+			Data.putData(le, SubactionType.NO_DROPS);
 		}
 	}
 	
 	/** Flags a mob to not drop any custom items on death */
 	private void removeCustomDrops()
 	{
-		if (isActionCancelled("remove dropped_items")) return;
+		if (isActionCancelled("remove custom_drops")) return;
 		
 		for (LivingEntity le : getMobType(LivingEntity.class))
 		{
 			Data.putData(le, SubactionType.CUSTOM_DROPS);
+		}
+	}
+	
+	/** Flags a mob to not drop its default items on death */
+	private void removeDefaultDrops()
+	{
+		if (isActionCancelled("remove default_drops")) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			Data.putData(le, SubactionType.NO_DEFAULT_DROPS);
 		}
 	}
 	
@@ -946,15 +959,21 @@ public class MobsEvent
 	
 	private void setBlock()
 	{
-		/*int id = getItemId();		
-		int data = getItemData(0);
+		List<ItemStack> items = getItems();
 		
-		if (isActionCancelled("set block " + id + ":" + data)) return;
+		if (items == null || items.size() == 0)
+		{
+			actionFailed("set block", ReasonType.NO_ITEM);
+			return;
+		}
 		
+		ItemStack is = items.get(0);
+		if (isActionCancelled("set block, " + getPrettyItem(is))) return;
+				
 		for (Location loc : getLocations())
 		{
-			loc.getBlock().setTypeIdAndData(id, (byte)data, false);
-		}*/
+			loc.getBlock().setTypeIdAndData(is.getTypeId(), is.getData().getData(), false);
+		}
 	}
 	
 	/** Sets a door, gate, etc. open or closed */

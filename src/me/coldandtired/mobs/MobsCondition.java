@@ -226,11 +226,10 @@ public class MobsCondition
 			callConditionEvent(ct, conditions.get(ct), ReasonType.NO_LOCATION, false);
 			return false;
 		}
-		
+
 		switch (ct)
 		{
 			case IF_AREA: return matchesArea(ct, block);
-			case IF_AREA_COUNT: return matchesAreaCount(ct, block);
 			case IF_BLOCK:
 			case IF_NOT_BLOCK: return matchesBlockType(ct, block);
 			case IF_BIOME:
@@ -347,7 +346,6 @@ public class MobsCondition
 					break;
 					
 				case IF_AREA:
-				case IF_AREA_COUNT:
 				case IF_BLOCK:
 				case IF_NOT_BLOCK:
 				case IF_NOT_AREA:
@@ -368,6 +366,8 @@ public class MobsCondition
 		{
 			switch (ct)
 			{
+				case IF_AREA_COUNT: if (!matchesAreaCount(ct)) return false;
+					break;
 				case IF_DATE: if (!matchesDate(ct)) return false;
 					break;
 				case IF_DAY: if (!matchesDay(ct)) return false;
@@ -488,18 +488,16 @@ public class MobsCondition
 	
 	private boolean matchesArea(ConditionType ct, Block block)
 	{
-		String s = conditions.get(ct);
-		String needed = s.contains(":") ? "" : block.getWorld().getName() + ":";
-		needed = s + needed;		
+		String needed = block.getWorld().getName() + ":" + conditions.get(ct);
 		
 		Area area = Mobs.getExtraEvents().getArea(needed);
 		boolean b = area != null && area.isIn_area(block.getLocation());
 		if (ct.equals(ConditionType.IF_NOT_AREA)) b = !b;
-		callConditionEvent(ct, needed, s, b);
+		callConditionEvent(ct, needed, "", b);
 		return b;
 	}
 	
-	private boolean matchesAreaCount(ConditionType ct, Block block)
+	private boolean matchesAreaCount(ConditionType ct)
 	{		
 		String s = conditions.get(ConditionType.CONDITION_TARGET_AREA);
 		if (s == null)
@@ -508,23 +506,27 @@ public class MobsCondition
 			return false;
 		}
 		
-		String area_name = s.contains(":") ? "" : block.getWorld().getName() + ":";
-		area_name = s + area_name;	
-		Area area = Mobs.getExtraEvents().getArea(area_name);
+		s = ev.getWorld().getName() + ":" + s;
+		Area area = Mobs.getExtraEvents().getArea(s);
+		if (area == null)
+		{
+			callConditionEvent(ct, s, ReasonType.NO_AREA, false);
+			return false;
+		}
+		
 		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("AREA", "").replace("COUNT", "").replace("_", "");
+		String mob = ct.toString().replace("IF_AREA", "").replace("COUNT", "").replace("_", "");
 		String needed = temp[0];
 		
-		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
 		int i = 0;
+		
 		for (LivingEntity le : getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null))
 		{
 			if (area.isIn_area(le.getLocation())) i++;
 		}
 		
 		boolean b = matchesInt(i, needed);
-		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
-		callConditionEvent(ct, needed + ", " + area_name, i, b);
+		callConditionEvent(ct, needed + ", " + s, i, b);
 		return b;
 	}
 	
@@ -598,10 +600,9 @@ public class MobsCondition
 	private boolean matchesChunkCount(ConditionType ct, LivingEntity le)
 	{
 		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("CHUNK", "").replace("COUNT", "").replace("_", "");
+		String mob = ct.toString().replace("IF_CHUNK", "").replace("COUNT", "").replace("_", "");
 		String needed = temp[0];
 		
-		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
 		int i = getRelevantMobs(Arrays.asList(le.getLocation().getChunk().getEntities()), mob, temp.length > 1 ? temp[1] : null).size();
 		boolean b = matchesInt(i, needed);
 		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
@@ -1322,10 +1323,9 @@ public class MobsCondition
 	private boolean matchesWorldCount(ConditionType ct)
 	{
 		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("WORLD", "").replace("COUNT", "").replace("_", "");
+		String mob = ct.toString().replace("IF_WORLD", "").replace("COUNT", "").replace("_", "");
 		String needed = temp[0];
 		
-		if (mob.equalsIgnoreCase("")) mob = "LIVINGENTITY";
 		int i = getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null).size();
 		boolean b = matchesInt(i, needed);
 		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
@@ -1624,12 +1624,15 @@ public class MobsCondition
 
 	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
 	{		
-		List<String> temp = Arrays.asList(m.replace(" ", "").split(","));
+		List<String> temp = m.equalsIgnoreCase("") ? null : Arrays.asList(m.replace(" ", "").split(","));
 		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
 		
 		for (Entity e : orig)
 		{
-			if (!temp.contains(e.getType().toString())) continue;
+			if (!(e instanceof LivingEntity)) continue;
+			
+			if (temp != null && !temp.contains(e.getType().toString())) continue;
+			
 			if (name != null)
 			{
 				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);
