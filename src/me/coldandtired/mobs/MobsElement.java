@@ -64,7 +64,7 @@ public class MobsElement
 		if (mv == null) return null;
 		
 		Object o = mv.values.get(et);
-		
+	
 		if (o instanceof String)
 		{
 			if (mv.passesConditions(ev)) return mv;

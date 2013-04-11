@@ -220,7 +220,9 @@ public class BukkitListener implements Listener
 				
 		if (events.containsKey(et))
 		{
-			Entity e = le.getLastDamageCause().getEntity();
+			EntityDamageEvent ede = le.getLastDamageCause();
+			Entity e = null;
+			if (ede != null) e = le.getLastDamageCause().getEntity();
 			LivingEntity attacker = e instanceof LivingEntity ? (LivingEntity)e : null;
 			EventValues ev = new EventValues(event, et, le);
 			ev.setAuxMob(attacker);

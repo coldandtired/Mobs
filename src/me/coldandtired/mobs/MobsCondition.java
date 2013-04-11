@@ -972,7 +972,7 @@ public class MobsCondition
 		String needed = conditions.get(ct);
 		
 		int i = new Random().nextInt(101);
-		boolean b = i >= Integer.valueOf(needed);
+		boolean b = matchesInt(i, needed);
 		callConditionEvent(ct, needed, i, b);
 		return b;
 	}

@@ -5,8 +5,8 @@
 	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/Vault.jar"/>
 	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/jansi-1.9.jar"/>
 	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/SpoutPlugin.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/bukkit.jar"/>
 	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/Extra Events.jar"/>
 	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/TerrainControl.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Luke/Documents/GitHub/bukkit.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

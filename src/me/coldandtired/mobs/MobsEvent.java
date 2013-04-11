@@ -1701,7 +1701,7 @@ public class MobsEvent
 	
 	private String getAction()
 	{
-		MobsElement me = ce.getCurrentElement(ElementType.ACTION, ev);
+		MobsElement me = ce.getCurrentElement(ElementType.ACTION, ev);		
 		if (me == null) return null;
 
 		ce = me;
@@ -1711,6 +1711,9 @@ public class MobsEvent
 	private List<MobsElement> getActions() 
 	{
 		String s = getAction();
+
+		if (s == null) return null;
+		
 		List<MobsElement> list = new ArrayList<MobsElement>();
 		if (Enums.isActionType(s)) list.add(ce);
 		
