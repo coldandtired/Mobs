@@ -191,6 +191,8 @@ public class MobsEvent
 			{	
 				//case ACTIVATE_BUTTON: activateSomething();
 					//break;
+				case ATTACK: attackSomething();
+					break;
 				case BROADCAST: broadcastSomething();
 					break;
 				case CANCEL_EVENT: cancelEvent();
@@ -249,6 +251,33 @@ public class MobsEvent
 		}
 	}*/
 	
+// Attack action
+	
+	private void attackSomething()
+	{
+		final int amount = getAmount(0);
+			
+		if (isActionCancelled("attack mob " + amount)) return;
+			
+		for (final Damageable d : getMobType(Damageable.class))
+		{
+			for (final Entity e : d.getNearbyEntities(30, 10, 30))
+			{
+				if (e instanceof Player)
+				{
+					Bukkit.getScheduler().runTaskLater(Mobs.getPlugin(), new Runnable()
+					{
+						public void run()
+						{
+							d.damage(amount, e);
+						}
+					}, 5);
+					break;
+				}				
+			}
+		}
+	}
+	
 // Broadcast action
 	
 	/** Sends a message to everyone on the server */
@@ -260,6 +289,8 @@ public class MobsEvent
 			actionFailed("broadcast", ReasonType.NO_MESSAGE);
 			return;
 		}		
+		
+		message = replaceText(message);
 		
 		if (isActionCancelled("broadcast " + message)) return;
 		
@@ -594,6 +625,7 @@ public class MobsEvent
 			actionFailed("log", ReasonType.NO_MESSAGE);
 			return;
 		}		
+		message = replaceText(message);
 		
 		if (isActionCancelled("log " + message)) return;
 		
@@ -1638,13 +1670,12 @@ public class MobsEvent
 	private void spawnItem()
 	{	
 		List<ItemStack> list = getItems();
-		
+
 		if (list == null || list.size() == 0)
 		{
 			actionFailed("spawn item", ReasonType.NO_ITEM);
 			return;
 		}
-		
 		for (Location loc : getLocations())
 		{
 			for (ItemStack is : list)
@@ -1691,6 +1722,8 @@ public class MobsEvent
 			actionFailed("tell", ReasonType.NO_MESSAGE);
 			return;
 		}		
+		
+		message = replaceText(message);
 		
 		if (isActionCancelled("tell " + message)) return;
 			
@@ -1855,7 +1888,7 @@ public class MobsEvent
 	{
 		String s = getItem();
 		List<MobsElement> list = new ArrayList<MobsElement>();
-		if (isNumber(s)) list.add(ce);
+		if (isNumber(s) || Enums.isMaterial(s)) list.add(ce);
 		
 		else if (linked_items != null)
 		{
@@ -2574,6 +2607,74 @@ public class MobsEvent
 			}
 		}
 		return temp;
+	}
+	
+	private String replaceText(String orig)
+	{
+		int start = orig.indexOf("^");
+		if (start == -1) return orig;
+		
+		int end = orig.indexOf("^", start + 1);
+		String sub = orig.substring(start, end + 1);
+		String name = orig.substring(start + 1, end).toUpperCase();
+		
+		if (!Enums.isGameConstant(name)) return orig;
+		String replacement = "";
+		switch (GameConstant.valueOf(name))
+		{
+			case DROPPED_XP:
+				if (ev.getMobsEvent().equals(EventType.DIES))
+				{
+					EntityDeathEvent ede = (EntityDeathEvent)ev.getOrigEvent();
+					return "" + ede.getDroppedExp();
+				}
+				if (ev.getMobsEvent().equals(EventType.PLAYER_DIES))
+				{
+					PlayerDeathEvent pde = (PlayerDeathEvent)ev.getOrigEvent();
+					return "" + pde.getDroppedExp();
+				}
+				
+			case HP:
+				if (ev.getLivingEntity() != null)
+				{
+					replacement = "" + ev.getLivingEntity().getHealth();
+					break;
+				}
+			case NAME:
+				if (ev.getLivingEntity() == null) break;
+				
+				if (ev.getLivingEntity() instanceof Player)
+				{
+					replacement = ((Player)ev.getLivingEntity()).getName();
+				}
+				else if (Data.hasData(ev.getLivingEntity(), SubactionType.NAME)) replacement = (String)Data.getData(ev.getLivingEntity(), SubactionType.NAME);
+				break;
+			/*case PLAYER_HP:
+				if (ev.getLivingEntity() != null && ev.getLivingEntity() instanceof Player)
+				{
+					return "" + ((Player)ev.getLivingEntity()).getHealth();
+				}
+				if (ev.getAuxMob() != null && ev.getAuxMob() instanceof Player)
+				{
+					return "" + ((Player)ev.getAuxMob()).getHealth();
+				}
+				
+			case PLAYER_XP:
+				if (ev.getLivingEntity() != null && ev.getLivingEntity() instanceof Player)
+				{
+					return "" + ((Player)ev.getLivingEntity()).getTotalExperience();
+				}
+				if (ev.getAuxMob() != null && ev.getAuxMob() instanceof Player)
+				{
+					return "" + ((Player)ev.getAuxMob()).getTotalExperience();
+				}*/
+			case TYPE:
+				if (ev.getLivingEntity() == null) break;
+				
+				replacement = ev.getLivingEntity().getType().getName();
+				break;
+		}//TODO attack action
+		return replaceText(orig.replace(sub, replacement));
 	}
 	
 	/** Calls an event when an action is about to be performed, with the possibility of cancelling */

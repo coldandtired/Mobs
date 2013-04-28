@@ -1,10 +1,12 @@
 package me.coldandtired.mobs.api;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import me.coldandtired.mobs.Mobs;
 
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.Metadatable;
 
 public class Data 
@@ -14,7 +16,9 @@ public class Data
 	{
 		if (m.hasMetadata("mobs_data"))
 		{
-			return ((Map<String, Object>)m.getMetadata("mobs_data").get(0).value()).containsKey(param.toString());
+			List<MetadataValue> list = m.getMetadata("mobs_data");
+			if (list.size() == 0) return false;
+			return ((Map<String, Object>)list.get(0).value()).containsKey(param.toString());
 		} else return false;
 	}
 	
@@ -24,7 +28,16 @@ public class Data
 		Map<String, Object> data;
 		if (m.hasMetadata("mobs_data"))
 		{
-			data = (Map<String, Object>)m.getMetadata("mobs_data").get(0).value();
+			List<MetadataValue> list = m.getMetadata("mobs_data");
+			if (list.size() == 0)
+			{
+				data = new HashMap<String, Object>();
+				data.put(param.toString(), null);
+				m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
+				return;
+			}
+			
+			data = (Map<String, Object>)list.get(0).value();
 			data.put(param.toString(), null);
 		}
 		else 
@@ -41,7 +54,16 @@ public class Data
 		Map<String, Object> data;
 		if (m.hasMetadata("mobs_data"))
 		{
-			data = (Map<String, Object>)m.getMetadata("mobs_data").get(0).value();
+			List<MetadataValue> list = m.getMetadata("mobs_data");
+			if (list.size() == 0)
+			{
+				data = new HashMap<String, Object>();
+				data.put(param.toString(), value);
+				m.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
+				return;
+			}
+			
+			data = (Map<String, Object>)list.get(0).value();
 			data.put(param.toString(), value);
 		}
 		else 
@@ -57,7 +79,9 @@ public class Data
 	{
 		if (m.hasMetadata("mobs_data"))
 		{
-			((Map<String, Object>)m.getMetadata("mobs_data").get(0).value()).remove(param.toString());
+			List<MetadataValue> list = m.getMetadata("mobs_data");
+			if (list.size() == 0) return;
+			((Map<String, Object>)list.get(0).value()).remove(param.toString());
 		}
 	}
 	
@@ -65,8 +89,9 @@ public class Data
 	public static Object getData(Metadatable m, Object param)
 	{
 		if (!m.hasMetadata("mobs_data")) return null;
-		
-		return	((Map<String, Object>)m.getMetadata("mobs_data").get(0).value()).get(param.toString());		
+		List<MetadataValue> list = m.getMetadata("mobs_data");
+		if (list.size() == 0) return null;
+		return	((Map<String, Object>)list.get(0).value()).get(param.toString());		
 	}
 	
 	public static void clearData(Metadatable m)

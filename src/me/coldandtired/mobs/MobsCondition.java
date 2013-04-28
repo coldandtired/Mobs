@@ -491,7 +491,9 @@ public class MobsCondition
 		String needed = block.getWorld().getName() + ":" + conditions.get(ct);
 		
 		Area area = Mobs.getExtraEvents().getArea(needed);
-		boolean b = area != null && area.isIn_area(block.getLocation());
+		
+		boolean b = area != null && area.isIn_area(block.getLocation());	
+		
 		if (ct.equals(ConditionType.IF_NOT_AREA)) b = !b;
 		callConditionEvent(ct, needed, "", b);
 		return b;
@@ -500,27 +502,32 @@ public class MobsCondition
 	private boolean matchesAreaCount(ConditionType ct)
 	{		
 		String s = conditions.get(ConditionType.CONDITION_TARGET_AREA);
+		Area area = null;
 		if (s == null)
 		{
-			callConditionEvent(ct, conditions.get(ct), ReasonType.NO_AREA, false);
-			return false;
+			for (Area a : Mobs.getExtraEvents().getAreas())
+			{
+				if (a.isIn_area(ev.getLivingEntity().getLocation()))
+				{
+					area = a;
+					break;
+				}
+			}
 		}
 		
 		s = ev.getWorld().getName() + ":" + s;
-		Area area = Mobs.getExtraEvents().getArea(s);
+		if (area == null) area = Mobs.getExtraEvents().getArea(s);
+		
 		if (area == null)
 		{
 			callConditionEvent(ct, s, ReasonType.NO_AREA, false);
 			return false;
 		}
-		
-		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("IF_AREA", "").replace("COUNT", "").replace("_", "");
-		String needed = temp[0];
-		
+		String[] mob = conditions.get(ConditionType.IF_AREA_COUNT_MOB).replace(" ", "").split(":");
+		String needed = conditions.get(ct);
 		int i = 0;
 		
-		for (LivingEntity le : getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null))
+		for (LivingEntity le : getRelevantMobs(ev.getWorld().getEntities(), mob[0], mob.length > 1 ? mob[1] : null))
 		{
 			if (area.isIn_area(le.getLocation())) i++;
 		}
@@ -599,11 +606,10 @@ public class MobsCondition
 	
 	private boolean matchesChunkCount(ConditionType ct, LivingEntity le)
 	{
-		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("IF_CHUNK", "").replace("COUNT", "").replace("_", "");
-		String needed = temp[0];
+		String[] mob = conditions.get(ConditionType.IF_CHUNK_COUNT_MOB).replace(" ", "").split(":");
+		String needed = conditions.get(ct);
 		
-		int i = getRelevantMobs(Arrays.asList(le.getLocation().getChunk().getEntities()), mob, temp.length > 1 ? temp[1] : null).size();
+		int i = getRelevantMobs(Arrays.asList(le.getLocation().getChunk().getEntities()), mob[0], mob.length > 1 ? mob[1] : null).size();
 		boolean b = matchesInt(i, needed);
 		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
 		callConditionEvent(ct, needed, i, b);
@@ -1322,11 +1328,10 @@ public class MobsCondition
 	
 	private boolean matchesWorldCount(ConditionType ct)
 	{
-		String[] temp = conditions.get(ct).split(":");
-		String mob = ct.toString().replace("IF_WORLD", "").replace("COUNT", "").replace("_", "");
-		String needed = temp[0];
+		String[] mob = conditions.get(ConditionType.IF_WORLD_COUNT_MOB).replace(" ", "").split(":");
+		String needed = conditions.get(ct);
 		
-		int i = getRelevantMobs(ev.getWorld().getEntities(), mob, temp.length > 1 ? temp[1] : null).size();
+		int i = getRelevantMobs(ev.getWorld().getEntities(), mob[0], mob.length > 1 ? mob[1] : null).size();
 		boolean b = matchesInt(i, needed);
 		if (ct.equals(ConditionType.IF_NOT_WORLD_TYPE)) b = !b;
 		callConditionEvent(ct, needed, i, b);
@@ -1624,7 +1629,7 @@ public class MobsCondition
 
 	private List<LivingEntity> getRelevantMobs(List<Entity> orig, String m, String name)
 	{		
-		List<String> temp = m.equalsIgnoreCase("") ? null : Arrays.asList(m.replace(" ", "").split(","));
+		List<String> temp = m.equalsIgnoreCase("") ? null : Arrays.asList(m.replace(" ", "").toUpperCase().split(","));
 		List<LivingEntity> mobs = new ArrayList<LivingEntity>();
 		
 		for (Entity e : orig)

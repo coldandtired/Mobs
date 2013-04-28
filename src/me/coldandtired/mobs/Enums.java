@@ -82,6 +82,7 @@ public class Enums
 	{
 		//ACTIVATE_BUTTON,
 		//TODO Bukkit bug
+		ATTACK,
 		BROADCAST,
 		CANCEL_EVENT,
 		CAUSE,
@@ -325,12 +326,14 @@ public class Enums
 		IF_ANGRY,
 		IF_AREA,
 		IF_AREA_COUNT,
+		IF_AREA_COUNT_MOB,
 		IF_BIOME,
 		IF_BLOCK,
 		IF_BLOCK_LIGHT_LEVEL,
 		IF_BLOCKS_FROM_SPAWN,
 		IF_CARRYING,
 		IF_CHUNK_COUNT,
+		IF_CHUNK_COUNT_MOB,
 		IF_CUSTOM_FLAG_1,
 		IF_CUSTOM_FLAG_2,
 		IF_CUSTOM_FLAG_3,
@@ -435,12 +438,23 @@ public class Enums
 		IF_WOOL,
 		IF_WORLD,
 		IF_WORLD_COUNT,
+		IF_WORLD_COUNT_MOB,
 		IF_WORLD_TIME,
 		IF_WORLD_TYPE,
 		IF_X,
 		IF_Y,
 		IF_YEAR,
 		IF_Z
+	}
+	
+	enum GameConstant
+	{
+		DROPPED_XP,
+		HP,
+		NAME,
+		PLAYER_HP,
+		PLAYER_XP,
+		TYPE,
 	}
 	
 	public enum ReasonType
@@ -492,6 +506,15 @@ public class Enums
 		Y_EXCEEDS_MAX_HEIGHT
 	}
 
+	public static boolean isGameConstant(String s)
+	{
+		for (GameConstant gc : GameConstant.values())
+		{
+			if (gc.toString().equalsIgnoreCase(s)) return true;
+		}
+		return false;
+	}
+	
 	public static boolean isActionType(String s)
 	{
 		for (ActionType at : ActionType.values())
