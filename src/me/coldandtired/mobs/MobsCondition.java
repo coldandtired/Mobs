@@ -43,6 +43,7 @@ import me.coldandtired.extraevents.Area;
 import me.coldandtired.extraevents.LivingEntityBlockEvent;
 import me.coldandtired.extraevents.LivingEntityDamageEvent;
 import me.coldandtired.extraevents.PlayerApproachLivingEntityEvent;
+import me.coldandtired.extraevents.PlayerLeaveAreaEvent;
 import me.coldandtired.extraevents.PlayerLeaveLivingEntityEvent;
 import me.coldandtired.extraevents.PlayerNearLivingEntityEvent;
 import me.coldandtired.extraevents.Timer;
@@ -491,8 +492,13 @@ public class MobsCondition
 		String needed = block.getWorld().getName() + ":" + conditions.get(ct);
 		
 		Area area = Mobs.getExtraEvents().getArea(needed);
+		boolean b = false;
 		
-		boolean b = area != null && area.isIn_area(block.getLocation());	
+		if (ev.getOrigEvent() instanceof PlayerLeaveAreaEvent)
+		{
+			b = ((PlayerLeaveAreaEvent)ev.getOrigEvent()).getArea() == area;
+		}
+		else b = area != null && area.isIn_area(block.getLocation());	
 		
 		if (ct.equals(ConditionType.IF_NOT_AREA)) b = !b;
 		callConditionEvent(ct, needed, "", b);
@@ -505,6 +511,8 @@ public class MobsCondition
 		Area area = null;
 		if (s == null)
 		{
+			if (ev.getLivingEntity() == null) return false;
+			
 			for (Area a : Mobs.getExtraEvents().getAreas())
 			{
 				if (a.isIn_area(ev.getLivingEntity().getLocation()))

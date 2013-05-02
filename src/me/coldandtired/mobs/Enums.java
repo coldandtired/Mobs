@@ -209,6 +209,7 @@ public class Enums
 		POWERED,
 		SADDLED,
 		SHEARED,
+		SHOULD_DESPAWN,
 		SIZE,
 		SKELETON,
 	    SKIN,

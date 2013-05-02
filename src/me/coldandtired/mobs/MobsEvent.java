@@ -885,6 +885,8 @@ public class MobsEvent
 				break;
 			case SHEARED: setSheared();
 				break;	
+			case SHOULD_DESPAWN: setShouldDespawn();
+				break;
 			case SIZE: setSize();
 				break;
 			case SKELETON: setSkeleton();
@@ -1475,6 +1477,25 @@ public class MobsEvent
 		}
 	}
 	
+	/** Sets whether mobs should disappear away from players */
+	private void setShouldDespawn()
+	{
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set should_despawn", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set should_despawn, " + value)) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			boolean b = getBooleanValue(le.getRemoveWhenFarAway(), value);
+			if (le.getRemoveWhenFarAway() != b) le.setRemoveWhenFarAway(b);
+		}
+	}
+	
 	private void setSize()
 	{
 		String value = getValue();
@@ -1744,7 +1765,6 @@ public class MobsEvent
 	private List<MobsElement> getActions() 
 	{
 		String s = getAction();
-
 		if (s == null) return null;
 		
 		List<MobsElement> list = new ArrayList<MobsElement>();
