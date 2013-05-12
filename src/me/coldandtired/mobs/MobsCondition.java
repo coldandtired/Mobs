@@ -42,6 +42,7 @@ import com.khorn.terraincontrol.TerrainControl;
 import me.coldandtired.extraevents.Area;
 import me.coldandtired.extraevents.LivingEntityBlockEvent;
 import me.coldandtired.extraevents.LivingEntityDamageEvent;
+import me.coldandtired.extraevents.LivingEntityLeaveAreaEvent;
 import me.coldandtired.extraevents.PlayerApproachLivingEntityEvent;
 import me.coldandtired.extraevents.PlayerLeaveAreaEvent;
 import me.coldandtired.extraevents.PlayerLeaveLivingEntityEvent;
@@ -490,13 +491,17 @@ public class MobsCondition
 	private boolean matchesArea(ConditionType ct, Block block)
 	{
 		String needed = block.getWorld().getName() + ":" + conditions.get(ct);
-		
+
 		Area area = Mobs.getExtraEvents().getArea(needed);
 		boolean b = false;
 		
 		if (ev.getOrigEvent() instanceof PlayerLeaveAreaEvent)
 		{
 			b = ((PlayerLeaveAreaEvent)ev.getOrigEvent()).getArea() == area;
+		}
+		else if (ev.getOrigEvent() instanceof LivingEntityLeaveAreaEvent)
+		{
+			b = ((LivingEntityLeaveAreaEvent)ev.getOrigEvent()).getArea() == area;
 		}
 		else b = area != null && area.isIn_area(block.getLocation());	
 		

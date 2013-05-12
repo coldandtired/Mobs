@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -54,6 +55,7 @@ import org.getspout.spoutapi.player.EntitySkinType;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import me.coldandtired.extraevents.Area;
 import me.coldandtired.extraevents.LivingEntityBlockEvent;
 import me.coldandtired.extraevents.LivingEntityDamageEvent;
 import me.coldandtired.extraevents.PlayerApproachLivingEntityEvent;
@@ -200,7 +202,9 @@ public class MobsEvent
 				case CAUSE: causeSomething();
 					break;					
 				case DAMAGE: damageSomething();
-					break;					
+					break;	
+				case EXECUTE: executeCommand();
+					break;
 				case GIVE: giveSomething();
 					break;	
 				case KILL: killSomething();
@@ -490,6 +494,30 @@ public class MobsEvent
 			d.damage(amount);
 		}
 	}	
+	
+// Execute Command
+	
+	private void executeCommand()
+	{
+		String command = getCommand();
+		if (command == null)
+		{
+			actionFailed("execute", ReasonType.NO_COMMAND);
+			return;
+		}		
+		command = replaceText(command);
+		
+		if (isActionCancelled("execute " + command)) return;
+		
+		try
+		{
+			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+		}
+		catch (Exception e)
+		{
+			Mobs.error("Something went wrong with the command!");
+		}
+	}
 	
 // Give action
 	
@@ -1785,7 +1813,16 @@ public class MobsEvent
 		}
 		return list;
 	}
-		
+	
+	private String getAllMobsInArea()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.TARGET_AREA, ev);
+		if (me == null) return null;
+
+		ce = me;
+		return getRatioString(ce.getString(ElementType.TARGET_AREA));	
+	}
+	
 	private int getAmount(int orig)
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.AMOUNT, ev);
@@ -1795,6 +1832,15 @@ public class MobsEvent
 		return getNumber(ce.getString(ElementType.AMOUNT));
 	}
 		
+	private String getCommand()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.COMMAND, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return ce.getString(ElementType.COMMAND);
+	}
+	
 	private int getDuration()
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.DURATION, ev);
@@ -2285,6 +2331,38 @@ public class MobsEvent
 			}
 			return ((PlayerApproachLivingEntityEvent)ev.getOrigEvent()).getPlayer();
 			
+			case ALL_MOBS_IN_AREA:
+				World w = ev.getWorld();
+
+				String a = getAllMobsInArea();
+				if (a == null) return null;
+				String needed = w.getName() + ":" + a;
+				
+				Area area = Mobs.getExtraEvents().getArea(needed);
+				if (area == null) return null;	
+				
+				List<LivingEntity> mobs = getRelevantMobs(w.getEntities(), "LIVINGENTITY", getTargetName());
+				if (mobs.size() == 0)
+				{
+					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
+					return null;			
+				}
+				
+				Iterator<LivingEntity> it = mobs.iterator();
+				
+				while (it.hasNext())
+				{
+					LivingEntity le = it.next();
+					if (!area.isIn_area(le.getLocation())) it.remove();
+				}
+				
+				int i = getTargetAmount(0);
+				Collections.shuffle(mobs);
+				if (i == 0) return mobs;
+				
+				if (i > mobs.size()) i = mobs.size();
+				return mobs.subList(0, i);
+			
 			case ATTACKER:
 			if (ev.getOrigEvent() instanceof EntityDamageByEntityEvent
 					|| ev.getOrigEvent() instanceof LivingEntityBlockEvent
@@ -2299,7 +2377,7 @@ public class MobsEvent
 			}
 			
 			case BLOCK:
-				World w = ev.getWorld();
+				w = ev.getWorld();
 				String temp = getX();
 				if (temp == null)
 				{
@@ -2373,7 +2451,7 @@ public class MobsEvent
 				if (s == "") s = "LIVINGENTITY";
 				else if (s.startsWith("_")) s = s.replaceFirst("_", "");
 				
-				List<LivingEntity> mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), s, getTargetName());
+				mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), s, getTargetName());
 				if (mobs.size() == 0)
 				{
 					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -2395,7 +2473,7 @@ public class MobsEvent
 				    }
 				});
 				
-				int i = getTargetAmount(1);
+				i = getTargetAmount(1);
 				if (i == 1) return nearby_mobs.get(0).getLivingEntity();
 				
 				if (i > nearby_mobs.size()) i = nearby_mobs.size();
@@ -2536,7 +2614,9 @@ public class MobsEvent
 		
 		for (Entity e : orig)
 		{
-			if (!m.equalsIgnoreCase(e.getType().toString())) continue;
+			if (!(e instanceof LivingEntity)) continue;
+			
+			if (!m.equalsIgnoreCase("livingentity") && !m.equalsIgnoreCase(e.getType().toString())) continue;
 			if (name != null)
 			{
 				String s = e instanceof Player ? ((Player)e).getName() : (String)Data.getData(e, SubactionType.NAME);

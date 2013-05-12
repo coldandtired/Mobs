@@ -366,11 +366,11 @@ public class BukkitListener implements Listener
 	}
 	
 	@EventHandler
-	public void entersArea(PlayerEnterAreaEvent event)
+	public void playerEntersArea(PlayerEnterAreaEvent event)
 	{
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
-		EventType et = EventType.ENTERS_AREA;		
+		EventType et = EventType.PLAYER_ENTERS_AREA;		
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer());
@@ -498,11 +498,11 @@ public class BukkitListener implements Listener
 	}
 	
 	@EventHandler
-	public void inArea(PlayerInAreaEvent event)
+	public void playerInArea(PlayerInAreaEvent event)
 	{
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
-		EventType et = EventType.IN_AREA;		
+		EventType et = EventType.PLAYER_IN_AREA;		
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer());
@@ -542,11 +542,11 @@ public class BukkitListener implements Listener
 	}
 	
 	@EventHandler
-	public void leavesArea(PlayerLeaveAreaEvent event)
+	public void playerLeavesArea(PlayerLeaveAreaEvent event)
 	{
 		if (ignoreWorld(event.getPlayer().getWorld())) return;
 		
-		EventType et = EventType.LEAVES_AREA;		
+		EventType et = EventType.PLAYER_LEAVES_AREA;		
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getPlayer());
@@ -572,6 +572,45 @@ public class BukkitListener implements Listener
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, null);
+			events.get(et).performActions(ev);
+		}
+	}
+	
+	@EventHandler
+	public void mobEntersArea(LivingEntityEnterAreaEvent event)
+	{
+		if (ignoreWorld(event.getLivingEntity().getWorld())) return;
+		
+		EventType et = EventType.MOB_ENTERS_AREA;		
+		if (events.containsKey(et))
+		{
+			EventValues ev = new EventValues(event, et, event.getLivingEntity());
+			events.get(et).performActions(ev);
+		}
+	}
+	
+	@EventHandler
+	public void mobInArea(LivingEntityInAreaEvent event)
+	{
+		if (ignoreWorld(event.getLivingEntity().getWorld())) return;
+		
+		EventType et = EventType.MOB_IN_AREA;		
+		if (events.containsKey(et))
+		{
+			EventValues ev = new EventValues(event, et, event.getLivingEntity());
+			events.get(et).performActions(ev);
+		}
+	}
+	
+	@EventHandler
+	public void mobLeavesArea(LivingEntityLeaveAreaEvent event)
+	{
+		if (ignoreWorld(event.getLivingEntity().getWorld())) return;
+		
+		EventType et = EventType.MOB_LEAVES_AREA;		
+		if (events.containsKey(et))
+		{
+			EventValues ev = new EventValues(event, et, event.getLivingEntity());
 			events.get(et).performActions(ev);
 		}
 	}
