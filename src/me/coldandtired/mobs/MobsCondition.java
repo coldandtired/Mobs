@@ -25,9 +25,12 @@ import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Sheep;
+import org.bukkit.entity.Skeleton;
+import org.bukkit.entity.Skeleton.SkeletonType;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityTameEvent;
@@ -187,6 +190,8 @@ public class MobsCondition
 				
 			case IF_SHEARED: return matchesSheared(ct, le);
 				
+			case IF_SKELETON_IS_WITHER: return matchesSkeletonType(ct, le);
+			
 			case IF_SPAWN_REASON:
 			case IF_NOT_SPAWN_REASON: return matchesSpawnReason(ct, le);
 
@@ -203,6 +208,8 @@ public class MobsCondition
 			
 			case IF_WOOL:
 			case IF_NOT_WOOL: return matchesWool(ct, le);
+			
+			case IF_ZOMBIE_IS_VILLAGER: return matchesZombieVillager(ct, le);
 		}
 		
 		return false;
@@ -334,6 +341,7 @@ public class MobsCondition
 				case IF_REMAINING_LIFETIME:
 				case IF_SADDLED:
 				case IF_SHEARED:
+				case IF_SKELETON_IS_WITHER:
 				case IF_SPAWN_REASON:
 				case IF_STANDING_ON:
 				case IF_NOT_STANDING_ON:
@@ -344,7 +352,8 @@ public class MobsCondition
 				case IF_WEARING:
 				case IF_NOT_WEARING:
 				case IF_WOOL:
-				case IF_NOT_WOOL: if (!matchesLivingEntity(ct, o)) return false;
+				case IF_NOT_WOOL: 
+				case IF_ZOMBIE_IS_VILLAGER: if (!matchesLivingEntity(ct, o)) return false;
 					break;
 					
 				case IF_AREA:
@@ -440,6 +449,12 @@ public class MobsCondition
 			callConditionEvent(ct, needed, b, b == needed);
 			return b == needed;
 		}
+		else if (le instanceof Zombie)
+		{
+			boolean b = !((Zombie)le).isBaby();
+			callConditionEvent(ct, needed, b, b == needed);
+			return b == needed;
+		}
 		else
 		{
 			callConditionEvent(ct, needed, ReasonType.NOT_AN_AGEABLE_MOB, false);
@@ -503,7 +518,7 @@ public class MobsCondition
 		{
 			b = ((LivingEntityLeaveAreaEvent)ev.getOrigEvent()).getArea() == area;
 		}
-		else b = area != null && area.isIn_area(block.getLocation());	
+		else b = area != null && area.isInArea(block.getLocation());	
 		
 		if (ct.equals(ConditionType.IF_NOT_AREA)) b = !b;
 		callConditionEvent(ct, needed, "", b);
@@ -520,7 +535,7 @@ public class MobsCondition
 			
 			for (Area a : Mobs.getExtraEvents().getAreas())
 			{
-				if (a.isIn_area(ev.getLivingEntity().getLocation()))
+				if (a.isInArea(ev.getLivingEntity().getLocation()))
 				{
 					area = a;
 					break;
@@ -542,7 +557,7 @@ public class MobsCondition
 		
 		for (LivingEntity le : getRelevantMobs(ev.getWorld().getEntities(), mob[0], mob.length > 1 ? mob[1] : null))
 		{
-			if (area.isIn_area(le.getLocation())) i++;
+			if (area.isInArea(le.getLocation())) i++;
 		}
 		
 		boolean b = matchesInt(i, needed);
@@ -900,9 +915,8 @@ public class MobsCondition
 			callConditionEvent(ct, needed, s, b);
 			return b;
 		}
-		else if (!Data.hasData(le, SubactionType.NAME)) return false;
 		
-		String s = (String)Data.getData(le, SubactionType.NAME);
+		String s = le.getCustomName();
 		boolean b = matchesString(s, needed);
 		if (ct.equals(ConditionType.IF_NOT_NAME)) b = !b;
 		callConditionEvent(ct, needed, s, b);
@@ -1144,6 +1158,23 @@ public class MobsCondition
 		else
 		{
 			callConditionEvent(ct, needed, ReasonType.NOT_A_SHEEP, false);
+			return false;
+		}
+	}
+	
+	private boolean matchesSkeletonType(ConditionType ct, LivingEntity le)
+	{
+		boolean needed = getBool(conditions.get(ct));
+		
+		if (le instanceof Skeleton)
+		{
+			boolean b = ((Skeleton)le).getSkeletonType().equals(SkeletonType.WITHER);
+			callConditionEvent(ct, needed, b, b == needed);
+			return b == needed;
+		}
+		else
+		{
+			callConditionEvent(ct, needed, ReasonType.NOT_A_SKELETON, false);
 			return false;
 		}
 	}
@@ -1411,6 +1442,23 @@ public class MobsCondition
 		boolean b = matchesInt(i, needed);
 		callConditionEvent(ct, needed, i, b);
 		return b;
+	}
+	
+	private boolean matchesZombieVillager(ConditionType ct, LivingEntity le)
+	{
+		boolean needed = getBool(conditions.get(ct));
+		
+		if (le instanceof Zombie)
+		{
+			boolean b = ((Zombie)le).isVillager();
+			callConditionEvent(ct, needed, b, b == needed);
+			return b == needed;
+		}
+		else
+		{
+			callConditionEvent(ct, needed, ReasonType.NOT_A_ZOMBIE, false);
+			return false;
+		}
 	}
 	
 // Utils	

@@ -212,10 +212,11 @@ public class BukkitListener implements Listener
 	@SuppressWarnings("unchecked")
 	@EventHandler
 	public void dies(EntityDeathEvent event)
-	{
+	{		
 		if (ignoreWorld(event.getEntity().getWorld())) return;
 		
-		LivingEntity le = event.getEntity();		
+		LivingEntity le = event.getEntity();	
+		
 		EventType et = EventType.DIES;
 				
 		if (events.containsKey(et))
@@ -594,7 +595,7 @@ public class BukkitListener implements Listener
 	{
 		if (ignoreWorld(event.getLivingEntity().getWorld())) return;
 		
-		EventType et = EventType.MOB_IN_AREA;		
+		EventType et = EventType.MOB_IN_AREA;	
 		if (events.containsKey(et))
 		{
 			EventValues ev = new EventValues(event, et, event.getLivingEntity());
@@ -709,7 +710,7 @@ public class BukkitListener implements Listener
 		if (spawn_reason == null) spawn_reason = event.getSpawnReason().toString();
 		Map<String, Object> data = new HashMap<String, Object>();
 		data.put(SubactionType.SPAWN_REASON.toString(), spawn_reason);
-		if (mob_name != null) data.put(SubactionType.NAME.toString(), mob_name);
+		if (mob_name != null) le.setCustomName(mob_name);
 		le.setMetadata("mobs_data", new FixedMetadataValue(Mobs.getPlugin(), data));
 		
 		if (events.containsKey(et))

@@ -65,6 +65,9 @@ public class Enums
 		MESSAGE,
 		MOB, 		
 		MOB_NAME,
+		PROJECTILE,
+		PROJECTILE_SPEED,
+		PROJECTILE_TARGET,
 		SIZE,
 		SOUND,
 		SOUND_PITCH,
@@ -99,6 +102,7 @@ public class Enums
 		REMOVE,
 		RESET,
 		SET,
+		SHOOT,
 		SPAWN,
 		TELL
 	}
@@ -172,6 +176,7 @@ public class Enums
 		DAMAGE_FROM_STARVATION,
 		DAMAGE_FROM_SUFFOCATION,
 		DAMAGE_FROM_SUICIDE,
+		DAMAGE_FROM_THORNS,
 		DAMAGE_FROM_VOID,
 		DAMAGE_FROM_WITHER,
 		DEFAULT_DROPS,
@@ -224,10 +229,11 @@ public class Enums
 	    SPLIT_INTO,
 		TAMED,
 		TIME,
-		TITLE,
 		VILLAGER,
+		VISIBLE_NAME,
 		WEATHER,
-		WOOL
+		WOOL,
+		ZOMBIE_IS_VILLAGER
     }
 		
 	enum TargetType
@@ -432,6 +438,7 @@ public class Enums
 		IF_SECOND,
 		IF_SERVER_PLAYER_COUNT,
 		IF_SHEARED,
+		IF_SKELETON_IS_WITHER,
 		IF_SKY_LIGHT_LEVEL,
 		IF_SPAWN_REASON,
 		IF_STANDING_ON,
@@ -451,7 +458,8 @@ public class Enums
 		IF_X,
 		IF_Y,
 		IF_YEAR,
-		IF_Z
+		IF_Z,
+		IF_ZOMBIE_IS_VILLAGER
 	}
 	
 	enum GameConstant
@@ -462,6 +470,21 @@ public class Enums
 		PLAYER_HP,
 		PLAYER_XP,
 		TYPE,
+	}
+	
+	enum ProjectileType
+	{
+		ARROW,
+		EGG,
+		ENDERPEARL,
+		FIREBALL,
+		FISH,
+		LARGEFIREBALL,
+		SMALLFIREBALL,
+		SNOWBALL,
+		THROWNEXPBOTTLE,
+		THROWNPOTION,
+		WITHERSKULL
 	}
 	
 	public enum ReasonType
@@ -498,8 +521,10 @@ public class Enums
 		NOT_A_PIG,
 		NOT_A_PLAYER,
 		NOT_A_SHEEP,
+		NOT_A_SKELETON,
 		NOT_A_TAMEABLE_MOB,
 		NOT_A_VILLAGER,
+		NOT_A_ZOMBIE,
 		NOT_AN_AGEABLE_MOB,
 		NOT_AN_ANGERABLE_MOB,
 		NOT_AN_EVENT_WITH_AN_ATTACKER,

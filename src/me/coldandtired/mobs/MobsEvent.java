@@ -21,22 +21,35 @@ import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Ageable;
+import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Damageable;
+import org.bukkit.entity.Egg;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ExperienceOrb;
+import org.bukkit.entity.Fireball;
+import org.bukkit.entity.Fish;
+import org.bukkit.entity.LargeFireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Ocelot;
 import org.bukkit.entity.Pig;
 import org.bukkit.entity.PigZombie;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Sheep;
 import org.bukkit.entity.Skeleton;
 import org.bukkit.entity.Slime;
+import org.bukkit.entity.SmallFireball;
+import org.bukkit.entity.Snowball;
 import org.bukkit.entity.Tameable;
+import org.bukkit.entity.ThrownExpBottle;
+import org.bukkit.entity.ThrownPotion;
 import org.bukkit.entity.Villager;
+import org.bukkit.entity.WitherSkull;
 import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -169,7 +182,8 @@ public class MobsEvent
 		}
 	}
 		
-	/** Performs all the actions on all the targets */
+	/** Performs all the actions on all the targets 
+	 * @throws ClassNotFoundException */
 	public void performActions(EventValues ev)
 	{
 		ce = root;
@@ -187,6 +201,7 @@ public class MobsEvent
 		{		
 			ce = me;
 			String s = getAction();
+			
 			if (!Enums.isActionType(s)) continue;
 			
 			switch (ActionType.valueOf(s))
@@ -216,7 +231,9 @@ public class MobsEvent
 				case RESET: resetSomething();
 					break;
 				case SET: setSomething();
-					break;					
+					break;	
+				case SHOOT: shootSomething();
+					break;
 				case SPAWN: spawnSomething();
 					break;					
 				case TELL: tellSomething();
@@ -356,7 +373,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("cause effect " + effect)) return;
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().playEffect(loc, effect, 10);
 		}
@@ -369,7 +386,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("cause explosion " + size)) return; 
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().createExplosion(loc, size);
 		}
@@ -382,7 +399,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("cause fiery_explosion " + size)) return; 
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().createExplosion(loc, size, true);
 		}
@@ -393,7 +410,7 @@ public class MobsEvent
 	{
 		if (isActionCancelled("cause lightning")) return; 
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().strikeLightning(loc);
 		}
@@ -404,7 +421,7 @@ public class MobsEvent
 	{		
 		if (isActionCancelled("cause lightning_effect")) return; 
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().strikeLightningEffect(loc);
 		}
@@ -425,7 +442,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("cause sound " + sound + "(" + volume + ", " + pitch + ")")) return;
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getWorld().playSound(loc, sound, volume, pitch);
 		}
@@ -461,7 +478,7 @@ public class MobsEvent
 		{
 			if (isActionCancelled("damage block")) return;
 			
-			for (Location loc : getLocations())
+			for (Location loc : getLocations(true))
 			{
 				loc.getBlock().breakNaturally();
 			}
@@ -471,7 +488,7 @@ public class MobsEvent
 		ItemStack is = items.get(0);
 		if (isActionCancelled("damage block, " + getPrettyItem(is))) return;
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getBlock().breakNaturally(is);
 		}
@@ -901,6 +918,8 @@ public class MobsEvent
 				break;  
 			case MONEY: setMoney();
 				break;
+			case NAME: setName();
+				break;
 			case OCELOT: setOcelot();
 				break;
 			case OPEN: setOpen();
@@ -925,13 +944,15 @@ public class MobsEvent
 				break;
 			case TIME: setTime();
 				break;
-			case TITLE: setTitle();
-				break;
 			case VILLAGER: setVillager();
+				break;
+			case VISIBLE_NAME: setVisibleName();
 				break;
 			case WEATHER: setWeather();
 				break;
 			case WOOL: setWool();
+				break;
+			case ZOMBIE_IS_VILLAGER: setZombieVillager();
 				break;
 				
 			case CUSTOM_FLAG_1:
@@ -1012,8 +1033,7 @@ public class MobsEvent
 			case CUSTOM_STRING_7:
 			case CUSTOM_STRING_8:
 			case CUSTOM_STRING_9:
-			case CUSTOM_STRING_10: 
-			case NAME: setCustomValue(st);
+			case CUSTOM_STRING_10: setCustomValue(st);
 				break;
 		}
 		//TODO flexidamage?
@@ -1032,7 +1052,7 @@ public class MobsEvent
 		ItemStack is = items.get(0);
 		if (isActionCancelled("set block, " + getPrettyItem(is))) return;
 				
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			loc.getBlock().setTypeIdAndData(is.getTypeId(), is.getData().getData(), false);
 		}
@@ -1050,7 +1070,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("set open " + value)) return;
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			BlockState bs = loc.getBlock().getState();
 			MaterialData md = bs.getData();
@@ -1161,6 +1181,14 @@ public class MobsEvent
 			if (a.isAdult() == b2) return;
 				
 			if (b2) a.setAdult(); else a.setBaby();
+		}
+		
+		for (Zombie z : getMobType(Zombie.class))
+		{
+			boolean b2 = getBooleanValue(z.isBaby(), value);
+			if (z.isBaby() != b2) return;
+				
+			z.setBaby(!b2);
 		}
 	}
 	
@@ -1410,6 +1438,23 @@ public class MobsEvent
 		}
 	}
 	
+	private void setName()
+	{
+		String value = getValue();
+		if (value == null)
+		{
+			actionFailed("set name", ReasonType.NO_VALUE);
+			return;
+		}
+		
+		if (isActionCancelled("set name, " + value)) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			le.setCustomName(value);
+		}
+	}
+	
 	private void setOcelot()
 	{
 		String value = getValue();
@@ -1606,30 +1651,7 @@ public class MobsEvent
 			if (t.isTamed() != b) t.setTamed(b);
 		}
 	}
-	
-	private void setTitle()
-	{
-		if (!Mobs.isSpoutEnabled())
-		{
-			actionFailed("set title", ReasonType.NO_SPOUT);
-			return;
-		}
 		
-		String value = getValue();
-		if (value == null)
-		{
-			actionFailed("set title", ReasonType.NO_VALUE);
-			return;
-		}
-		
-		if (isActionCancelled("set title, " + value)) return;
-		
-		for (LivingEntity le : getMobType(LivingEntity.class))
-		{
-			Spout.getServer().setTitle(le, value);
-		}
-	}
-	
 	private void setVillager()
 	{
 		String value = getValue();
@@ -1649,6 +1671,26 @@ public class MobsEvent
 		else vp = Villager.Profession.valueOf(value.toUpperCase());
 		
 		for (Villager v : getMobType(Villager.class)) v.setProfession(vp);
+	}
+	
+	private void setVisibleName()
+	{		
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set visible_name", ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		if (isActionCancelled("set visible_name, " + value)) return;
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			boolean b2 = getBooleanValue(le.isCustomNameVisible(), value);
+			if (le.isCustomNameVisible() == b2) return;
+				
+			le.setCustomNameVisible(b2);
+		}
 	}
 	
 	/** Sets a sheep's wool colour */
@@ -1671,6 +1713,78 @@ public class MobsEvent
 		else dc = DyeColor.valueOf(value.toUpperCase());
 		
 		for (Sheep s : getMobType(Sheep.class)) s.setColor(dc);
+	}
+	
+	private void setZombieVillager()
+	{
+		ValueType value = getValueType();
+		if (value == null)
+		{
+			actionFailed("set adult", ReasonType.NO_VALUE);
+			return;
+		}	
+		
+		for (Zombie z : getMobType(Zombie.class))
+		{
+			boolean b2 = getBooleanValue(z.isVillager(), value);
+			if (z.isVillager() == b2) return;
+				
+			z.setVillager(b2);
+		}
+	}
+	
+// Shoot action
+	
+	private void shootSomething()
+	{
+		ProjectileType projectile = getProjectile();
+		if (projectile == null)
+		{
+			actionFailed("shoot", ReasonType.NO_PROJECTILE);
+			return;
+		}		
+		
+		Class<? extends Projectile> c = null;
+		switch (projectile)
+		{
+			case ARROW: c = Arrow.class;
+				break;
+			case EGG: c = Egg.class;
+				break;
+			case ENDERPEARL: c = EnderPearl.class;
+				break;
+			case FIREBALL: c = Fireball.class;
+				break;
+			case FISH: c = Fish.class;
+				break;
+			case LARGEFIREBALL: c = LargeFireball.class;
+				break;
+			case SMALLFIREBALL: c = SmallFireball.class;
+				break;
+			case SNOWBALL: c = Snowball.class;
+				break;
+			case THROWNEXPBOTTLE: c = ThrownExpBottle.class;
+				break;
+			case THROWNPOTION: c = ThrownPotion.class;
+				break;
+			case WITHERSKULL: c = WitherSkull.class;
+				break;
+		}
+		
+		if (c == null) return;
+			
+		int speed = getProjectileSpeed();
+		
+		List<Location> locs = getLocations(false);
+		
+		for (LivingEntity le : getMobType(LivingEntity.class))
+		{
+			for (Location loc : locs)
+			{
+				Projectile p = le.launchProjectile(c);
+				p.setVelocity(loc.toVector().subtract(le.getEyeLocation().toVector()).normalize().multiply(speed));
+			}
+		}
 	}
 	
 // spawn action
@@ -1708,7 +1822,7 @@ public class MobsEvent
 		
 		if (isActionCancelled("spawn exp " + amount)) return;
 		
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			ExperienceOrb orb = (ExperienceOrb)loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB);
 			orb.setExperience(amount);
@@ -1725,7 +1839,7 @@ public class MobsEvent
 			actionFailed("spawn item", ReasonType.NO_ITEM);
 			return;
 		}
-		for (Location loc : getLocations())
+		for (Location loc : getLocations(true))
 		{
 			for (ItemStack is : list)
 			{
@@ -1752,7 +1866,7 @@ public class MobsEvent
 		
 		for (int i = 0; i < amount; i++)
 		{
-			for (Location loc : getLocations())
+			for (Location loc : getLocations(true))
 			{
 				Mobs.setMobName(mob_name);
 				loc.getWorld().spawnEntity(loc, et);
@@ -1793,6 +1907,7 @@ public class MobsEvent
 	private List<MobsElement> getActions() 
 	{
 		String s = getAction();
+		
 		if (s == null) return null;
 		
 		List<MobsElement> list = new ArrayList<MobsElement>();
@@ -2031,6 +2146,33 @@ public class MobsEvent
 		return NumberType.valueOf(getRatioString(ce.getString(ElementType.AMOUNT_TYPE)));
 	}
 	
+	private ProjectileType getProjectile()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.PROJECTILE, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return ProjectileType.valueOf(ce.getString(ElementType.PROJECTILE).toUpperCase());
+	}
+	
+	private int getProjectileSpeed()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.PROJECTILE_SPEED, ev);
+		if (me == null) return 1;
+		
+		ce = me;
+		return getNumber(ce.getString(ElementType.PROJECTILE_SPEED).toUpperCase());
+	}
+	
+	private String getProjectileTarget()
+	{
+		MobsElement me = ce.getCurrentElement(ElementType.PROJECTILE_TARGET, ev);
+		if (me == null) return null;
+		
+		ce = me;
+		return getRatioString(ce.getString(ElementType.PROJECTILE_TARGET).toUpperCase());
+	}
+	
 	private int getSize(int orig)
 	{
 		MobsElement me = ce.getCurrentElement(ElementType.SIZE, ev);
@@ -2120,7 +2262,7 @@ public class MobsEvent
 		for (MobsElement me : list)
 		{
 			ce = me;
-			Object o = getMCTarget();
+			Object o = getMCTarget(true);
 			if (o instanceof List<?>)
 			{
 				mobs.addAll((List<Object>)o);
@@ -2313,9 +2455,9 @@ public class MobsEvent
 	}
 			
 	/** Returns an object or a list of objects (LivingEntity or Location) to have actions performed on */
-	private Object getMCTarget()
+	private Object getMCTarget(boolean target)
 	{
-		String tt =  getTarget();
+		String tt = target ? getTarget() : getProjectileTarget();
 		if (tt == null)
 		{
 			if (ev.getLivingEntity() != null) return ev.getLivingEntity();
@@ -2353,7 +2495,7 @@ public class MobsEvent
 				while (it.hasNext())
 				{
 					LivingEntity le = it.next();
-					if (!area.isIn_area(le.getLocation())) it.remove();
+					if (!area.isInArea(le.getLocation())) it.remove();
 				}
 				
 				int i = getTargetAmount(0);
@@ -2451,7 +2593,7 @@ public class MobsEvent
 				if (s == "") s = "LIVINGENTITY";
 				else if (s.startsWith("_")) s = s.replaceFirst("_", "");
 				
-				mobs = getRelevantMobs(orig.getNearbyEntities(50, 10, 50), s, getTargetName());
+				mobs = getRelevantMobs(orig.getNearbyEntities(100, 200, 500), s, getTargetName());
 				if (mobs.size() == 0)
 				{
 					actionFailed(ev.getMobsEvent(), ReasonType.NO_MATCHING_TARGET);
@@ -2628,9 +2770,9 @@ public class MobsEvent
 	}
 	
 	/** Returns a list of target locations, using livingentity if necessary */
-	private List<Location> getLocations()
+	private List<Location> getLocations(boolean t)
 	{
-		Object target = getMCTarget();
+		Object target = getMCTarget(t);
 		
 		List<Location> temp = new ArrayList<Location>();
 		if (target instanceof List<?>)
@@ -2639,7 +2781,11 @@ public class MobsEvent
 			{
 				Location loc = null;
 				if (o instanceof Location) loc = (Location)o;
-				else if (o instanceof LivingEntity) loc = ((LivingEntity)o).getLocation();
+				else if (o instanceof LivingEntity)
+				{
+					if (t) loc = ((LivingEntity)o).getLocation();
+					else loc = ((LivingEntity)o).getEyeLocation();
+				}
 				
 				loc = adjustLocation(loc);
 				if (loc != null) temp.add(loc);
@@ -2649,7 +2795,11 @@ public class MobsEvent
 		{
 			Location loc = null;
 			if (target instanceof Location) loc = (Location)target;
-			else if (target instanceof LivingEntity) loc = ((LivingEntity)target).getLocation();
+			else if (target instanceof LivingEntity)
+			{
+				if (t) loc = ((LivingEntity)target).getLocation();
+				else loc = ((LivingEntity)target).getEyeLocation();
+			}
 			
 			loc = adjustLocation(loc);
 			if (loc != null) temp.add(loc);

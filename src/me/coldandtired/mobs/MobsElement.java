@@ -39,7 +39,7 @@ public class MobsElement
 			}
 			
 			NodeList list = (NodeList)Mobs.getXPath().evaluate(name + "/entry", element, XPathConstants.NODESET);
-			if (list.getLength() == 0) continue;			
+			if (list.getLength() == 0) continue;	
 			
 			int count = 0;
 			SortedMap<Integer, MobsElement> temp = new TreeMap<Integer, MobsElement>();
@@ -92,17 +92,16 @@ public class MobsElement
 			return null;
 		}
 		
-		int temp = 0;
-		for (int i : map.keySet())
+		int temp = map.size();
+		if (temp > 1)
 		{
-			temp += i;
+			temp = new Random().nextInt(temp - 1) + 1;
+			for (int i : map.keySet())
+			{
+				if (temp <= i) return map.get(i);
+			}
 		}
-		
-		temp = new Random().nextInt(temp - 1) + 1;
-		for (int i : map.keySet())
-		{
-			if (temp <= i) return map.get(i);
-		}
+		else return map.get(1);
 		
 		return null;
 	}
