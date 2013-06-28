@@ -1,2 +1,2 @@
 <event/>
-<!-- see coldandtired.binhoster.com to learn how to edit this file -->
+<!-- see mobs.sylian.eu to learn how to edit this file -->

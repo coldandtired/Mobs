@@ -1,9 +1,9 @@
 name: Mobs
-version: 1.5.2 b5
+version: 1.5.2 b8
 author: coldandtired
-main: me.coldandtired.mobs.Mobs
+main: eu.sylian.mobs.Mobs
 description: THE mob plugin
-website: coldandtired.binhoster.com
+website: sylian.eu
 softdepend: [Vault, SpoutPlugin, TerrainControl]
 depend: [Extra Events]
 commands:
