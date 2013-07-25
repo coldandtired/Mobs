@@ -1415,7 +1415,7 @@ public class MobsEvent
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
-			amount = adjustNumber(amount, d.getMaxHealth());
+			amount = adjustNumber(amount, Double.valueOf(d.getMaxHealth()).intValue());
 			d.setMaxHealth(amount);
 			d.setHealth(amount);
 		}
@@ -1454,7 +1454,7 @@ public class MobsEvent
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
-			amount = adjustNumber(amount, d.getHealth());
+			amount = adjustNumber(amount, Double.valueOf(d.getHealth()).intValue());
 			if (amount > d.getMaxHealth()) d.setHealth(d.getMaxHealth()); else d.setHealth(amount);
 		}
 	}
@@ -1529,7 +1529,7 @@ public class MobsEvent
 		
 		for (Damageable d : getMobType(Damageable.class))
 		{
-			amount = adjustNumber(amount, d.getMaxHealth());
+			amount = adjustNumber(amount, Double.valueOf(d.getMaxHealth()).intValue());
 			d.setMaxHealth(amount);
 		}
 	}
@@ -2589,12 +2589,12 @@ public class MobsEvent
 	/** Returns a randomized int */
 	private int getNumber(String s)
 	{
-		s = s.replace(" ", "").toUpperCase();
+		s = s.toUpperCase();
 		String[] temp = s.split(",");
 		String s2 = temp[new Random().nextInt(temp.length)];
-		if (s2.contains("TO"))
+		if (s2.contains(" TO "))
 		{
-			String[] temp2 = s2.split("TO");
+			String[] temp2 = s2.split(" TO ");
 			return new Random().nextInt(Integer.parseInt(temp2[1]) - Integer.parseInt(temp2[0])) +
 					Integer.parseInt(temp2[0]);
 		}
