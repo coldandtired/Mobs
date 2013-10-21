@@ -1619,6 +1619,7 @@ public class MobsCondition
 		return false;
 	}
 	
+	@SuppressWarnings("deprecation")
 	private boolean matchesBlock(Block orig, String needed)
 	{
 		needed = needed.replace(" ", "").toUpperCase();
@@ -1637,6 +1638,7 @@ public class MobsCondition
 		return false;
 	}
 	
+	@SuppressWarnings("deprecation")
 	private boolean matchesItem(ItemStack orig, String needed)
 	{
 		if (orig == null) return false;

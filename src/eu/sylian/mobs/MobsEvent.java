@@ -754,6 +754,7 @@ public class MobsEvent
 	}
 		
 	/** Removes all matching items from a player's inventory */
+	@SuppressWarnings("deprecation")
 	private void removeItem()
 	{
 		int id = getItemId();		
@@ -1058,6 +1059,7 @@ public class MobsEvent
 		//TODO flexidamage?
 	}
 	
+	@SuppressWarnings("deprecation")
 	private void setBlock()
 	{
 		List<ItemStack> items = getItems();
@@ -1643,6 +1645,7 @@ public class MobsEvent
 		}
 	}
 	
+	@SuppressWarnings("deprecation")
 	private void setOcelot()
 	{
 		String value = getValue();
@@ -1777,6 +1780,7 @@ public class MobsEvent
 		}
 	}
 	
+	@SuppressWarnings("deprecation")
 	private void setSkeleton()
 	{
 		String value = getValue();
@@ -1840,6 +1844,7 @@ public class MobsEvent
 		}
 	}
 		
+	@SuppressWarnings("deprecation")
 	private void setVillager()
 	{
 		String value = getValue();
@@ -1882,6 +1887,7 @@ public class MobsEvent
 	}
 	
 	/** Sets a sheep's wool colour */
+	@SuppressWarnings("deprecation")
 	private void setWool()
 	{
 		String value = getValue();
@@ -2262,6 +2268,7 @@ public class MobsEvent
 		return getNumber(ce.getString(ElementType.ITEM));
 	}
 	
+	@SuppressWarnings("deprecation")
 	private List<ItemStack> getItems() 
 	{
 		String s = getItem();
@@ -2587,6 +2594,7 @@ public class MobsEvent
 	}
 	
 	/** Returns a randomized int */
+	@SuppressWarnings("deprecation")
 	private int getNumber(String s)
 	{
 		s = s.toUpperCase();
@@ -2640,6 +2648,7 @@ public class MobsEvent
 	}
 	
 	/** Returns a formatted ItemStack */
+	@SuppressWarnings("deprecation")
 	private String getPrettyItem(ItemStack is)
 	{
 		return "" + is.getType() + ":" + is.getData().getData() + " x " + is.getAmount();
@@ -3102,6 +3111,7 @@ public class MobsEvent
 		return temp;
 	}
 	
+	@SuppressWarnings("deprecation")
 	private String replaceText(String orig)
 	{
 		int start = orig.indexOf("^");
