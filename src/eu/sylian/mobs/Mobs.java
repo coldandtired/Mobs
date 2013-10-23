@@ -1,10 +1,8 @@
 package eu.sylian.mobs;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,6 +23,9 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.fusesource.jansi.Ansi;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -90,16 +91,23 @@ public class Mobs extends JavaPlugin
 	private void checkVersion()
 	{
 		if (!getConfig().getBoolean("check_for_newer_version", true)) return;
-		
-		DocumentBuilder dbf;
-		try 
-		{
-			dbf = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document doc = dbf.parse("http://dev.bukkit.org/server-mods/mobs/files.rss");
-			String s = ((Element) xpath.evaluate("//item[1]/title", doc, XPathConstants.NODE)).getTextContent();
-			if (!s.equalsIgnoreCase(getDescription().getVersion())) log("There's a more recent version available!");
-		} 
-		catch (Exception e) {}		
+
+        try (InputStream is = new URL("https://api.curseforge.com/servermods/files?projectIds=34954").openStream())
+        {
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+            JSONArray array = (JSONArray) JSONValue.parse(rd.readLine());
+            String s;
+            if (array.size() > 0)
+            {
+                JSONObject latest = (JSONObject) array.get(array.size() - 1);
+                s = (String)latest.get("gameVersion");
+                if (!s.equalsIgnoreCase(getDescription().getVersion())) log("There's a more recent version available!");
+            }
+        }
+        catch (Exception e)
+        {
+            error("Error checking version :(");
+        }
 	}
 	
 	/** Loads the config file and splits it into the relevant objects */

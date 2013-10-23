@@ -191,7 +191,7 @@ public class BukkitListener implements Listener
 			events.get(et).performActions(ev);
 		}
 		
-		int damage = event.getDamage();		
+		double damage = event.getDamage();
 			
 		SubactionType st = SubactionType.valueOf("DAMAGE_FROM_" + event.getCause());
 		switch (event.getCause())

@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Mobs:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Mobs_jar</output-path>
+    <root id="archive" name="Mobs.jar">
+      <element id="module-output" name="Mobs" />
+      <element id="file-copy" path="$PROJECT_DIR$/plugin.yml" />
+      <element id="file-copy" path="$PROJECT_DIR$/template.txt" />
+      <element id="file-copy" path="$PROJECT_DIR$/config.yml" />
+    </root>
+  </artifact>
+</component>
